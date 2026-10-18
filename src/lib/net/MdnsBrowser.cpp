@@ -215,7 +215,8 @@ std::vector<int> openClientSockets()
 
 struct MdnsBrowserPrivate
 {
-  std::atomic<bool> running{false};
+  // Never reset in run(): stop() may be called before initialization completes.
+  std::atomic<bool> stopRequested{false};
   mutable QMutex mutex;
   QVector<DiscoveredServer> snapshot;
   alignas(32) char buffer[2048];
@@ -233,7 +234,7 @@ MdnsBrowser::~MdnsBrowser()
 
 void MdnsBrowser::stop()
 {
-  d->running = false;
+  d->stopRequested = true;
 }
 
 QVector<DiscoveredServer> MdnsBrowser::servers() const
@@ -246,13 +247,12 @@ void MdnsBrowser::run()
 {
   std::vector<int> sockets = openClientSockets();
   if (sockets.empty()) {
-    d->running = false;
+    d->stopRequested = true;
     return;
   }
 
   static const std::string service = kServiceType;
 
-  d->running = true;
   qint64 nextQueryMsec = 0;
   qint64 nextPruneMsec = 0;
 
@@ -262,7 +262,7 @@ void MdnsBrowser::run()
                       sizeof(d->buffer), 0);
   };
 
-  while (d->running) {
+  while (!d->stopRequested) {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
 
     if (now >= nextQueryMsec) {

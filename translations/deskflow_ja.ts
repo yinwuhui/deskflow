@@ -1428,6 +1428,10 @@ Enabling this setting will disable the server config GUI.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Advertised certificate fingerprint (unverified): %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>No servers found yet — scanning…</source>
         <translation type="unfinished"></translation>
     </message>

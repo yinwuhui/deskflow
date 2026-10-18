@@ -4,8 +4,7 @@
  *
  * MdnsPublisher: advertises a Deskflow server on the local network using
  * multicast DNS (RFC 6762 / DNS-SD RFC 6763) so that clients can discover it
- * without knowing its IP address. When the server IP changes, the OS mDNS
- * resolver on the client side keeps resolving "<name>.local" to the new IP.
+ * without knowing its IP address or requiring a system mDNS resolver.
  */
 
 #pragma once

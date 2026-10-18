@@ -1427,6 +1427,10 @@ Al habilitar esta opción, se deshabilitará la interfaz gráfica de usuario (GU
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Advertised certificate fingerprint (unverified): %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>No servers found yet — scanning…</source>
         <translation type="unfinished"></translation>
     </message>

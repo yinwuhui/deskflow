@@ -24,11 +24,11 @@ struct DiscoveredServer
 {
   // Human readable instance name (the ComputerName of the server).
   QString name;
-  // Host name to connect to, e.g. "server.local" (resolved by the OS mDNS resolver).
+  // SRV target hostname, e.g. "server.local".
   QString hostName;
   // TCP port of the Deskflow server (usually 24800).
   int port = 0;
-  // Best known IPv4 address (may be empty; the OS resolves hostName anyway).
+  // Discovered IPv4 address; required before offering a server for connection.
   QString ipAddress;
   // SHA-256 fingerprint of the server TLS certificate (hex), if advertised.
   QString fingerprint;

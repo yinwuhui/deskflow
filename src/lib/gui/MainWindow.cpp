@@ -652,17 +652,12 @@ void MainWindow::open()
     qDebug() << "skipping check for new version, disabled";
   }
 
-  if (Settings::value(Settings::Gui::AutoStartCore).toBool()) {
+  const bool autoConnect = ui->rbModeClient->isChecked() &&
+                           Settings::value(Settings::Client::AutoConnect).toBool();
+  if (Settings::value(Settings::Gui::AutoStartCore).toBool() || autoConnect) {
     if (ui->rbModeClient->isChecked() && ui->lineHostname->text().isEmpty())
       return;
     startCore();
-  }
-
-  // Auto-connect to a previously chosen server (mDNS discovery) on launch.
-  if (Settings::value(Settings::Client::AutoConnect).toBool()) {
-    ui->rbModeClient->setChecked(true);
-    if (!ui->lineHostname->text().isEmpty() && !m_coreProcess.isStarted())
-      startCore();
   }
 }
 
@@ -1253,7 +1248,7 @@ void MainWindow::browseServers()
 
   deskflow::gui::ServerBrowserDialog dialog(m_mdnsBrowser, this);
   if (dialog.exec() == QDialog::Accepted) {
-    const QString host = dialog.selectedHostName();
+    const QString host = dialog.selectedAddress();
     if (!host.isEmpty()) {
       ui->lineHostname->setText(host);
       Settings::setValue(Settings::Client::AutoConnect, dialog.autoConnectRequested());

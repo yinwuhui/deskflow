@@ -11,6 +11,7 @@
 #include <QByteArray>
 #include <QString>
 #include <atomic>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,7 @@ struct ServiceState
 
   struct sockaddr_in addressIpv4{};
   bool hasIpv4 = false;
+  std::map<int, sockaddr_in> addresses;
   int port = 0;
 
   mdns_record_t recordPtr{};
@@ -149,6 +151,7 @@ extern "C" int deskflowMdnsPublisherCallback(int sock, const struct sockaddr *fr
     return 0;
 
   auto *st = static_cast<ServiceState *>(user_data);
+  st->recordA.data.a.addr = st->addresses.at(sock);
 
   char namebuffer[256] = {0};
   size_t offset = name_offset;
@@ -233,7 +236,8 @@ struct MdnsPublisherPrivate
   QString name;
   int port = 0;
   QString fingerprint;
-  std::atomic<bool> running{false};
+  // Never reset in run(): stop() may be called before initialization completes.
+  std::atomic<bool> stopRequested{false};
   ServiceState state;
   std::vector<int> socks; // one per LAN interface
   alignas(32) char buffer[2048];
@@ -256,7 +260,7 @@ MdnsPublisher::~MdnsPublisher()
 
 void MdnsPublisher::stop()
 {
-  d->running = false;
+  d->stopRequested = true;
 }
 
 void MdnsPublisher::run()
@@ -290,7 +294,13 @@ void MdnsPublisher::run()
     int s = mdns_socket_open_ipv4(&saddr);
     if (s < 0)
       continue;
+#ifdef IP_MULTICAST_ALL
+    // Linux otherwise delivers traffic from every joined interface to every socket.
+    const int multicastAll = 0;
+    setsockopt(s, IPPROTO_IP, IP_MULTICAST_ALL, &multicastAll, sizeof(multicastAll));
+#endif
     d->socks.push_back(s);
+    st.addresses.emplace(s, addr);
   }
   if (d->socks.empty()) {
     Q_EMIT errorOccurred(QStringLiteral("mDNS: failed to open service socket (port 5353 in use?)"));
@@ -353,16 +363,17 @@ void MdnsPublisher::run()
     additional[n++] = st.recordA;
     for (size_t i = 0; i < st.txtCount; ++i)
       additional[n++] = st.txtRecords[i];
-    for (int s : d->socks)
+    for (int s : d->socks) {
+      additional[1].data.a.addr = st.addresses.at(s);
       mdns_announce_multicast(s, d->buffer, sizeof(d->buffer), st.recordPtr, 0, 0, additional, n);
+    }
   }
 
   int maxfd = 0;
   for (int s : d->socks)
     maxfd = (s > maxfd) ? s : maxfd;
 
-  d->running = true;
-  while (d->running) {
+  while (!d->stopRequested) {
     fd_set readfs;
     FD_ZERO(&readfs);
     for (int s : d->socks)
@@ -388,8 +399,10 @@ void MdnsPublisher::run()
     additional[n++] = st.recordA;
     for (size_t i = 0; i < st.txtCount; ++i)
       additional[n++] = st.txtRecords[i];
-    for (int s : d->socks)
+    for (int s : d->socks) {
+      additional[1].data.a.addr = st.addresses.at(s);
       mdns_goodbye_multicast(s, d->buffer, sizeof(d->buffer), st.recordPtr, 0, 0, additional, n);
+    }
   }
 
   for (int s : d->socks)

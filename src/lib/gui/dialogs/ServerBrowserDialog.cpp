@@ -5,6 +5,8 @@
 
 #include "ServerBrowserDialog.h"
 
+#include "common/Settings.h"
+
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QPushButton>
@@ -34,6 +36,7 @@ ServerBrowserDialog::ServerBrowserDialog(deskflow::mdns::MdnsBrowser *browser, Q
   m_status->setText(tr("Scanning…"));
   layout->addWidget(m_status);
 
+  m_autoConnectCheck->setChecked(Settings::value(Settings::Client::AutoConnect).toBool());
   layout->addWidget(m_autoConnectCheck);
 
   auto *buttons = new QDialogButtonBox;
@@ -42,6 +45,7 @@ ServerBrowserDialog::ServerBrowserDialog(deskflow::mdns::MdnsBrowser *browser, Q
   buttons->addButton(QDialogButtonBox::Cancel);
   layout->addWidget(buttons);
 
+  connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   m_btnConnect->setEnabled(false);
 
   connect(m_list, &QListWidget::itemDoubleClicked, this, &ServerBrowserDialog::onItemActivated);
@@ -68,8 +72,12 @@ void ServerBrowserDialog::refreshList()
     return;
   }
   const auto servers = m_browser->servers();
+  const auto *selected = m_list->currentItem();
+  const QString selectedKey = selected ? selected->data(Qt::UserRole + 1).toString() : QString();
   m_list->clear();
   for (const auto &s : servers) {
+    if (s.ipAddress.isEmpty() || s.port <= 0 || s.port > 65535)
+      continue;
     auto *item = new QListWidgetItem(m_list);
     QString label = s.name;
     if (!s.hostName.isEmpty())
@@ -77,19 +85,25 @@ void ServerBrowserDialog::refreshList()
     if (!s.ipAddress.isEmpty())
       label += QStringLiteral("  %1:%2").arg(s.ipAddress).arg(s.port);
     item->setText(label);
-    item->setData(Qt::UserRole, s.hostName);
+    item->setData(Qt::UserRole, QStringLiteral("%1:%2").arg(s.ipAddress).arg(s.port));
+    const QString key = QStringLiteral("%1:%2").arg(s.hostName).arg(s.port);
+    item->setData(Qt::UserRole + 1, key);
+    if (key == selectedKey)
+      m_list->setCurrentItem(item);
+    if (!s.fingerprint.isEmpty())
+      item->setToolTip(tr("Advertised certificate fingerprint (unverified): %1").arg(s.fingerprint));
   }
-  if (servers.isEmpty())
+  if (m_list->count() == 0)
     m_status->setText(tr("No servers found yet — scanning…"));
   else
-    m_status->setText(tr("%n server(s) found", nullptr, servers.size()));
+    m_status->setText(tr("%n server(s) found", nullptr, m_list->count()));
 }
 
 void ServerBrowserDialog::onItemActivated(QListWidgetItem *item)
 {
   if (!item)
     return;
-  m_selectedHostName = item->data(Qt::UserRole).toString();
+  m_selectedAddress = item->data(Qt::UserRole).toString();
   m_autoConnect = m_autoConnectCheck->isChecked();
   accept();
 }

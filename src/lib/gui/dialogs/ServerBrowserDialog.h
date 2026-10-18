@@ -25,10 +25,10 @@ class ServerBrowserDialog : public QDialog
 public:
   explicit ServerBrowserDialog(deskflow::mdns::MdnsBrowser *browser, QWidget *parent = nullptr);
 
-  // The host name to connect to (e.g. "server.local") if the user accepted.
-  QString selectedHostName() const
+  // The discovered IPv4 address and port to connect to if accepted.
+  QString selectedAddress() const
   {
-    return m_selectedHostName;
+    return m_selectedAddress;
   }
 
   // Whether the user asked to auto-connect to this server on future launches.
@@ -48,7 +48,7 @@ private:
   QPushButton *m_btnConnect;
   QPushButton *m_btnRescan;
   QCheckBox *m_autoConnectCheck;
-  QString m_selectedHostName;
+  QString m_selectedAddress;
   bool m_autoConnect = false;
 };
 

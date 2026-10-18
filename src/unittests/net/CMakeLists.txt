@@ -30,3 +30,11 @@ create_test(
 )
 
 
+
+create_test(
+  NAME MdnsLifecycleTests
+  DEPENDS net
+  LIBS base arch mt io ${extra_libs}
+  SOURCE MdnsLifecycleTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net"
+)
