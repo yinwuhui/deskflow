@@ -9,6 +9,7 @@
 
 #include "base/FinalAction.h"
 
+#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
@@ -61,6 +62,29 @@ Fingerprint sslCertFingerprint(const X509 *cert, QCryptographicHash::Algorithm t
 
   QByteArray digestArray(reinterpret_cast<const char *>(digest), digestLength);
   return {type, digestArray};
+}
+
+QString localCertFingerprint(const QString &certPath, QCryptographicHash::Algorithm type)
+{
+  if (certPath.isEmpty())
+    return {};
+
+  BIO *bio = BIO_new_file(QFile::encodeName(certPath).constData(), "r");
+  if (!bio)
+    return {};
+  auto bioFree = finally([bio]() { BIO_free(bio); });
+
+  X509 *cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+  if (!cert)
+    return {};
+  auto certFree = finally([cert]() { X509_free(cert); });
+
+  try {
+    auto fp = sslCertFingerprint(cert, type);
+    return formatSSLFingerprint(fp.data, true);
+  } catch (...) {
+    return {};
+  }
 }
 
 void generatePemSelfSignedCert(const QString &path, int keyLength)

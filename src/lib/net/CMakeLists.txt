@@ -24,6 +24,11 @@ add_library(net STATIC
   ISocket.h
   ISocketFactory.h
   ISocketMultiplexerJob.h
+  MdnsBrowser.cpp
+  MdnsBrowser.h
+  MdnsCommon.h
+  MdnsPublisher.cpp
+  MdnsPublisher.h
   NetworkAddress.cpp
   NetworkAddress.h
   SecureListenSocket.cpp
@@ -46,7 +51,10 @@ add_library(net STATIC
   TCPSocketFactory.cpp
   TCPSocketFactory.h
   TSocketMultiplexerMethodJob.h
+  mdns/mdns.h
 )
+
+target_include_directories(net PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(
   net
@@ -57,6 +65,6 @@ if(WIN32)
   target_link_libraries(
     net
     PUBLIC OpenSSL::applink
-    PRIVATE Crypt32 ws2_32
+    PRIVATE Crypt32 ws2_32 iphlpapi
   )
 endif()

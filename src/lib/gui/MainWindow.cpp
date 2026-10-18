@@ -17,6 +17,7 @@
 #include "dialogs/ClientConfigDialog.h"
 #include "dialogs/FingerprintDialog.h"
 #include "dialogs/HelpDialog.h"
+#include "dialogs/ServerBrowserDialog.h"
 #include "dialogs/ServerConfigDialog.h"
 #include "dialogs/SettingsDialog.h"
 
@@ -289,6 +290,7 @@ void MainWindow::connectSlots()
 
   connect(ui->lineHostname, &QLineEdit::returnPressed, ui->btnRestartCore, &QPushButton::click);
   connect(ui->lineHostname, &QLineEdit::textChanged, this, &MainWindow::remoteHostChanged);
+  connect(ui->btnBrowseServers, &QPushButton::clicked, this, &MainWindow::browseServers);
 
   connect(ui->btnSaveServerConfig, &QPushButton::clicked, this, &MainWindow::saveServerConfig);
   connect(ui->btnConfigureServer, &QPushButton::clicked, this, [this] { showConfigureServer(""); });
@@ -654,6 +656,13 @@ void MainWindow::open()
     if (ui->rbModeClient->isChecked() && ui->lineHostname->text().isEmpty())
       return;
     startCore();
+  }
+
+  // Auto-connect to a previously chosen server (mDNS discovery) on launch.
+  if (Settings::value(Settings::Client::AutoConnect).toBool()) {
+    ui->rbModeClient->setChecked(true);
+    if (!ui->lineHostname->text().isEmpty() && !m_coreProcess.isStarted())
+      startCore();
   }
 }
 
@@ -1232,6 +1241,26 @@ void MainWindow::remoteHostChanged(const QString &newRemoteHost)
     Settings::setValue(Settings::Client::RemoteHost);
   } else {
     Settings::setValue(Settings::Client::RemoteHost, newRemoteHost);
+  }
+}
+
+void MainWindow::browseServers()
+{
+  if (!m_mdnsBrowser) {
+    m_mdnsBrowser = new deskflow::mdns::MdnsBrowser(this);
+    m_mdnsBrowser->start();
+  }
+
+  deskflow::gui::ServerBrowserDialog dialog(m_mdnsBrowser, this);
+  if (dialog.exec() == QDialog::Accepted) {
+    const QString host = dialog.selectedHostName();
+    if (!host.isEmpty()) {
+      ui->lineHostname->setText(host);
+      Settings::setValue(Settings::Client::AutoConnect, dialog.autoConnectRequested());
+      // Trigger a reconnect with the discovered host.
+      if (m_coreProcess.mode() == CoreMode::Client)
+        resetCore();
+    }
   }
 }
 

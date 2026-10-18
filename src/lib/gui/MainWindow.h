@@ -19,6 +19,7 @@
 #include "config/ServerConfig.h"
 #include "gui/core/CoreProcess.h"
 #include "gui/core/NetworkMonitor.h"
+#include "net/MdnsBrowser.h"
 #include "net/Fingerprint.h"
 
 #ifdef Q_OS_MACOS
@@ -144,6 +145,7 @@ private:
   void updateTimeoutDelay(int newDelay);
   void setHelpFilePath();
   void showHelpViewer() const;
+  void browseServers();
 
   bool canRunCore() const;
 
@@ -206,6 +208,9 @@ private:
   // Network monitoring
   NetworkMonitor *m_networkMonitor = nullptr;
   QString m_currentIpAddress;
+
+  // mDNS server discovery (client side)
+  deskflow::mdns::MdnsBrowser *m_mdnsBrowser = nullptr;
 
   // Server IP strategy optimization
   QStringList m_serverStartIPs;

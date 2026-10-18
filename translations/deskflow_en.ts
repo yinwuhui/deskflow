@@ -12,4 +12,14 @@
         </translation>
     </message>
 </context>
+<context>
+    <name>deskflow::gui::ServerBrowserDialog</name>
+    <message numerus="yes">
+        <source>%n server(s) found</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+</context>
 </TS>

@@ -25,6 +25,11 @@ QString formatSSLFingerprintColumns(const QByteArray &fingerprint);
 
 Fingerprint sslCertFingerprint(const X509 *cert, QCryptographicHash::Algorithm type);
 
+// SHA-256 fingerprint (colon-separated uppercase hex) of the PEM certificate
+// at the given path, or an empty string if the file is missing or invalid.
+// Used to advertise the server certificate fingerprint via mDNS TXT records.
+QString localCertFingerprint(const QString &certPath, QCryptographicHash::Algorithm type = QCryptographicHash::Sha256);
+
 void generatePemSelfSignedCert(const QString &path, int keyLength = 2048);
 
 QString generateFingerprintArt(const QByteArray &rawDigest);

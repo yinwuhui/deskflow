@@ -19,6 +19,8 @@
 #include "deskflow/DisplayException.h"
 #include "deskflow/ProtocolTypes.h"
 #include "deskflow/ipc/CoreIpc.h"
+#include "net/MdnsCommon.h"
+#include "net/SecureUtils.h"
 #include "net/SocketException.h"
 #include "net/SocketMultiplexer.h"
 #include "net/TCPSocketFactory.h"
@@ -197,6 +199,7 @@ void ServerApp::closeClientListener(ClientListener *listen)
 void ServerApp::stopServer()
 {
   using enum ServerState;
+  stopMdnsPublisher();
   if (m_serverState == Started) {
     closeServer(m_server);
     closeClientListener(m_listener);
@@ -209,6 +212,28 @@ void ServerApp::stopServer()
   }
   assert(m_server == nullptr);
   assert(m_listener == nullptr);
+}
+
+void ServerApp::startMdnsPublisher()
+{
+  if (m_mdnsPublisher)
+    return;
+  const auto port = static_cast<int>(m_config->getDeskflowAddress().getPort());
+  const QString name = QString::fromStdString(m_name);
+  const QString fingerprint = deskflow::localCertFingerprint(
+      Settings::value(Settings::Security::Certificate).toString()
+  );
+  m_mdnsPublisher = std::make_unique<deskflow::mdns::MdnsPublisher>(name, port, fingerprint, nullptr);
+  m_mdnsPublisher->start();
+}
+
+void ServerApp::stopMdnsPublisher()
+{
+  if (!m_mdnsPublisher)
+    return;
+  m_mdnsPublisher->stop();
+  m_mdnsPublisher->wait();
+  m_mdnsPublisher.reset();
 }
 
 void ServerApp::closePrimaryClient(PrimaryClient *primaryClient)
@@ -376,6 +401,7 @@ bool ServerApp::startServer()
     LOG_DEBUG("started server, waiting for clients");
     ipcSendConnectionState(deskflow::core::ConnectionState::Listening);
     m_serverState = Started;
+    startMdnsPublisher();
     return true;
   } catch (SocketAddressInUseException &e) {
     LOG_CRIT("cannot listen for clients: %s", e.what());

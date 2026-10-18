@@ -66,6 +66,8 @@ add_library(${target} STATIC
   dialogs/ServerConfigDialog.cpp
   dialogs/ServerConfigDialog.h
   dialogs/ServerConfigDialog.ui
+  dialogs/ServerBrowserDialog.cpp
+  dialogs/ServerBrowserDialog.h
   dialogs/SettingsDialog.cpp
   dialogs/SettingsDialog.h
   dialogs/SettingsDialog.ui

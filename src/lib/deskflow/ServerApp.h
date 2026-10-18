@@ -12,6 +12,7 @@
 #include "arch/IArchMultithread.h"
 #include "deskflow/App.h"
 #include "net/NetworkAddress.h"
+#include "net/MdnsPublisher.h"
 #include "server/Config.h"
 
 #include <memory>
@@ -105,6 +106,8 @@ private:
   void handleComputerSwitched() const;
   std::unique_ptr<ISocketFactory> getSocketFactory() const;
   NetworkAddress getAddress(const NetworkAddress &address) const;
+  void startMdnsPublisher();
+  void stopMdnsPublisher();
 
   bool m_suspended = false;
   Server *m_server = nullptr;
@@ -116,4 +119,5 @@ private:
   NetworkAddress *m_deskflowAddress = nullptr;
   std::string m_name;
   std::shared_ptr<deskflow::server::Config> m_config;
+  std::unique_ptr<deskflow::mdns::MdnsPublisher> m_mdnsPublisher;
 };
