@@ -1,0 +1,64 @@
+{
+  "_notice": "应用层拟议契约示例，不是现有IPC或配置协议；所有地址指纹虚构",
+  "schemaVersion": "design-0.9",
+  "local": {
+    "id": "device-local",
+    "activeRole": "source",
+    "candidateRole": null,
+    "identityRevision": 2
+  },
+  "runtime": {
+    "process": "running",
+    "paused": false,
+    "mode": "desktop",
+    "window": "visible",
+    "permission": "allowed"
+  },
+  "configuration": {
+    "savedRevision": 12,
+    "activeRevision": 11,
+    "applyingRevision": null,
+    "pendingGroups": [
+      "layout"
+    ],
+    "activeFileMode": false
+  },
+  "devices": [
+    {
+      "id": "device-b",
+      "displayName": "工作电脑",
+      "connectionIdentifier": "work-pc",
+      "aliases": [
+        "office"
+      ],
+      "trust": {
+        "state": "trusted",
+        "digest": "EXAMPLE-SHA256",
+        "peerAcknowledgedLocalRevision": 2
+      },
+      "transport": {
+        "state": "connected",
+        "attemptId": "attempt-09"
+      },
+      "inputVerification": {
+        "state": "unverified",
+        "evidence": null
+      },
+      "position": {
+        "column": 1,
+        "row": 0
+      }
+    }
+  ],
+  "capabilities": {
+    "pause": {
+      "support": "unknown",
+      "reason": "待CAP-01核验"
+    },
+    "tray": {
+      "support": "supported",
+      "available": true
+    }
+  },
+  "issues": []
+}

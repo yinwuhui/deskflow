@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: MIT */
+html{color-scheme:light dark}body{margin:0;padding:24px;background:light-dark(#e8ebf0,#171a20)}
+#deskflow-prototype{max-width:1280px;margin:0 auto;position:relative}
+#deskflow-prototype .review-toolbar{background:var(--a-panel);border:1px solid var(--a-line);border-radius:10px;padding:16px;margin-bottom:18px}
+#deskflow-prototype .review-title{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+#deskflow-prototype .review-title span,#deskflow-prototype #review-result{font-size:12px;color:var(--a-muted)}
+#deskflow-prototype .review-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:9px 0}
+#deskflow-prototype .review-controls label{display:flex;align-items:center;gap:5px;font-size:12px}
+#deskflow-prototype .review-toolbar select,#deskflow-prototype .review-toolbar button{font:inherit;font-size:12px;color:var(--a-text);background:var(--a-bg);border:1px solid var(--a-line);border-radius:5px;padding:5px 7px}
+#deskflow-prototype .session-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--a-line);padding-bottom:17px;margin-bottom:23px}
+#deskflow-prototype .session-strip p{font-size:12px;color:var(--a-muted);margin-top:5px}
+#deskflow-prototype .issue-banner{margin-bottom:18px}
+#deskflow-prototype .choice-grid{display:grid;gap:14px;margin-top:25px;max-width:620px}
+#deskflow-prototype .choice-grid button{padding:22px;white-space:normal;min-height:70px;font-size:15px}
+#deskflow-prototype .digest{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;font:12px/1.7 ui-monospace,monospace;margin:12px 0;max-width:620px}
+#deskflow-prototype .system-menu{position:absolute;right:20px;top:240px;width:310px;padding:20px;background:var(--a-panel);border:1px solid var(--a-line);border-radius:11px;box-shadow:0 12px 40px #0003;z-index:20}
+#deskflow-prototype .menu-stack{display:grid;gap:8px;margin-top:16px}
+#deskflow-prototype .system-notification{position:fixed;bottom:20px;right:20px;max-width:340px;background:var(--a-panel);border:1px solid var(--a-line);border-radius:10px;padding:16px;z-index:25;box-shadow:0 10px 30px #0003}
+#deskflow-prototype .system-notification p{margin:10px 0}
+#deskflow-prototype .background-screen{background:var(--a-bg);padding:100px 25px;text-align:center;border:1px solid var(--a-line);border-radius:12px;min-height:500px}
+#deskflow-prototype .background-screen p{margin:20px}
+#deskflow-prototype .peer-summary{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+#deskflow-prototype .peer-status{border:1px solid var(--a-line);background:var(--a-panel);color:var(--a-text);border-radius:7px;padding:10px;text-align:left;display:grid;gap:5px;min-width:170px;flex:1}
+#deskflow-prototype .peer-status span{font-size:12px;color:var(--a-muted)}
+#deskflow-prototype .peer-line{display:flex;gap:25px;align-items:center;justify-content:center;padding:35px 10px}
+#deskflow-prototype .peer-line div{border:1px solid var(--a-line);border-radius:8px;padding:25px;text-align:center;background:var(--a-panel)}
+#deskflow-prototype .a-bar #app-system-menu{margin-left:auto}
+#deskflow-prototype button:focus-visible,#deskflow-prototype select:focus-visible{outline:3px solid var(--a-blue);outline-offset:3px}
+@media(max-width:760px){body{padding:10px}#deskflow-prototype .session-strip{align-items:flex-start;flex-direction:column}#deskflow-prototype .a-bar>span{display:none}#deskflow-prototype .system-menu{right:10px;max-width:calc(100% - 20px)}#deskflow-prototype .review-controls label{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){#deskflow-prototype *{scroll-behavior:auto!important;transition:none!important}}

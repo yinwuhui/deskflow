@@ -1,0 +1,1 @@
+{"name":"deskflow-product-design","version":"0.9.0","private":true,"description":"Design review only; not part of Deskflow product build","scripts":{"test":"node 测试/原型验收.cjs","check:docs":"python3 测试/文档一致性检查.py"},"devDependencies":{"playwright":"1.62.1"}}

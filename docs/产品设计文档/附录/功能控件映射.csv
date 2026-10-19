@@ -1,0 +1,107 @@
+﻿mapping_id,source,control,kind,label,screen_id,prototype_route,destination,note,design_status,implementation_status
+MAP-001,src/lib/gui/MainWindow.ui,lineEditName,QLineEdit,lineEditName,S03,device,设备 / 本机详情,区分显示名称与参与匹配的连接标识；标识更改需同步引用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-002,src/lib/gui/MainWindow.ui,btnEditName,QPushButton,btnEditName,S03,device,设备 / 本机详情,区分显示名称与参与匹配的连接标识；标识更改需同步引用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-003,src/lib/gui/MainWindow.ui,rbModeServer,QRadioButton,Use this computer's keyboard and mouse / (make this computer the server),S01,setup,首次设置 / 键鼠来源,不在日常首页反复展示技术角色。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-004,src/lib/gui/MainWindow.ui,rbModeClient,QRadioButton,Use another computer’s mouse and keyboard / (make this computer the client),S01,setup,首次设置 / 键鼠来源,不在日常首页反复展示技术角色。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-005,src/lib/gui/MainWindow.ui,btnConfigureServer,QPushButton,&Configure Server,S02,layout,设备 / 完整排列与设备选项,四方向是快捷定位，不是布局限制；保留多列多行、交换、空位与自定义拓扑。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-006,src/lib/gui/MainWindow.ui,btnSaveServerConfig,QPushButton,btnSaveServerConfig,S11,config,设置 / 高级 / 配置文件 / 导出,S11导出先预览完整范围，再选择本地路径；覆盖明确确认，取消/写入失败保留旧文件；原型仅节选。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-007,src/lib/gui/MainWindow.ui,btnConfigureClient,QPushButton,&Configure Client,S07,receiver,设置 / 接收端输入与连接,接收端自己的语言同步与滚轮选项不能一概设为只读。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-008,src/lib/gui/MainWindow.ui,lineHostname,QLineEdit,lineHostname,S01,setup,设置助手 / 发现来源与手动地址,来源端等待接收端请求；接收端发现来源及手动地址走S01，多候选列表在S10编辑，解析语义复用现有核心。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-009,src/lib/gui/MainWindow.ui,btnBrowseServers,QPushButton,Scan,S01,setup,设置助手 / 发现来源与手动地址,来源端等待接收端请求；接收端发现来源及手动地址走S01，多候选列表在S10编辑，解析语义复用现有核心。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-010,src/lib/gui/MainWindow.ui,btnToggleCore,QPushButton,&Start,S16,菜单栏／托盘浮层,菜单栏或托盘 / 开始共享、停止共享、重新连接,现有 Start/Stop/Restart 与拟议暂停不等价；需验证剪贴板、输入钩子、状态与恢复路径。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-011,src/lib/gui/MainWindow.ui,btnRestartCore,QPushButton,btnRestartCore,S16,菜单栏／托盘浮层,菜单栏或托盘 / 开始共享、停止共享、重新连接,现有 Start/Stop/Restart 与拟议暂停不等价；需验证剪贴板、输入钩子、状态与恢复路径。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-012,src/lib/gui/dialogs/AboutDialog.ui,btnCopyVersion,QPushButton,btnCopyVersion,S15,about,帮助 / 关于与更新,保留复制版本信息、发布下载入口、许可、贡献者和致谢。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-013,src/lib/gui/dialogs/AboutDialog.ui,btnOk,QPushButton,&Close,S15,about,帮助 / 关于与更新,保留复制版本信息、发布下载入口、许可、贡献者和致谢。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-014,src/lib/gui/dialogs/ActionDialog.ui,comboTriggerOn,QComboBox,comboTriggerOn,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-015,src/lib/gui/dialogs/ActionDialog.ui,comboActionType,QComboBox,comboActionType,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-016,src/lib/gui/dialogs/ActionDialog.ui,comboSwitchToComputer,QComboBox,comboSwitchToComputer,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-017,src/lib/gui/dialogs/ActionDialog.ui,comboSwitchInDirection,QComboBox,comboSwitchInDirection,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-018,src/lib/gui/dialogs/ActionDialog.ui,comboLockCursorToComputer,QComboBox,comboLockCursorToComputer,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-019,src/lib/gui/dialogs/ActionDialog.ui,keySequenceWidget,KeySequenceWidget,keySequenceWidget,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-020,src/lib/gui/dialogs/ActionDialog.ui,listComputers,QListWidget,listComputers,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作编辑,保留按下/释放触发、按键按下/释放/点击、指定电脑/方向/下一台、光标锁与重启来源、目标电脑范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-021,src/lib/gui/dialogs/ClientConfigDialog.ui,cbDynamicConnectTime,QCheckBox,Use dynamic reconnection time based on connection attempts,S07,receiver,设置 / 接收端连接 / 动态重试,接收端负责发起重连；需显示实际重试倒计时。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-022,src/lib/gui/dialogs/ClientConfigDialog.ui,cbLanguageSync,QCheckBox,Use server's keyboard language on this computer,S07,receiver,设置 / 接收端输入,保留跟随来源键盘语言、X/Y 滚轮反向及各轴倍率。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-023,src/lib/gui/dialogs/ClientConfigDialog.ui,cbYScrollInvert,QCheckBox,Invert,S07,receiver,设置 / 接收端输入,保留跟随来源键盘语言、X/Y 滚轮反向及各轴倍率。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-024,src/lib/gui/dialogs/ClientConfigDialog.ui,cbXScrollInvert,QCheckBox,Invert,S07,receiver,设置 / 接收端输入,保留跟随来源键盘语言、X/Y 滚轮反向及各轴倍率。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-025,src/lib/gui/dialogs/ClientConfigDialog.ui,sbYScrollScale,QDoubleSpinBox,sbYScrollScale,S07,receiver,设置 / 接收端输入,保留跟随来源键盘语言、X/Y 滚轮反向及各轴倍率。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-026,src/lib/gui/dialogs/ClientConfigDialog.ui,sbXScrollScale,QDoubleSpinBox,sbXScrollScale,S07,receiver,设置 / 接收端输入,保留跟随来源键盘语言、X/Y 滚轮反向及各轴倍率。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-027,src/lib/gui/dialogs/ComputerSettingsDialog.ui,lineNameEdit,QLineEdit,lineNameEdit,S03,device,设备 / 详情 / 名称与连接标识,修改会影响按名称引用的布局和快捷键目标，需原子更新。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-028,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboMeta,QComboBox,comboMeta,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-029,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboShift,QComboBox,comboShift,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-030,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboAlt,QComboBox,comboAlt,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-031,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboSuper,QComboBox,comboSuper,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-032,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboCtrl,QComboBox,comboCtrl,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-033,src/lib/gui/dialogs/ComputerSettingsDialog.ui,comboAltGr,QComboBox,comboAltGr,S03,device,设备 / 详情 / 完整修饰键映射,不能只剩 Command 与 Control 对调；保留 Shift、Ctrl、Alt、Meta、Super、AltGr 和 None。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-034,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkDeadTopLeft,QCheckBox,chkDeadTopLeft,S03,device,设备 / 详情 / 边缘与角落,保留四角禁止切换及角落尺寸。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-035,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkDeadTopRight,QCheckBox,chkDeadTopRight,S03,device,设备 / 详情 / 边缘与角落,保留四角禁止切换及角落尺寸。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-036,src/lib/gui/dialogs/ComputerSettingsDialog.ui,sbSwitchCornerSize,QSpinBox,sbSwitchCornerSize,S03,device,设备 / 详情 / 边缘与角落,保留四角禁止切换及角落尺寸。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-037,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkDeadBottomLeft,QCheckBox,chkDeadBottomLeft,S03,device,设备 / 详情 / 边缘与角落,保留四角禁止切换及角落尺寸。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-038,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkDeadBottomRight,QCheckBox,chkDeadBottomRight,S03,device,设备 / 详情 / 边缘与角落,保留四角禁止切换及角落尺寸。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-039,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkFixScrollLock,QCheckBox,SCROLL LOCK key,S03,device,设备 / 详情 / 平台兼容修复,锁定键修复保留；XTest/Xinerama 与弱化焦点按 X11 能力显示，不在 Wayland 伪装可用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-040,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkFixCapsLock,QCheckBox,CAPS LOCK key,S03,device,设备 / 详情 / 平台兼容修复,锁定键修复保留；XTest/Xinerama 与弱化焦点按 X11 能力显示，不在 Wayland 伪装可用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-041,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkFixNumLock,QCheckBox,NUM LOCK key,S03,device,设备 / 详情 / 平台兼容修复,锁定键修复保留；XTest/Xinerama 与弱化焦点按 X11 能力显示，不在 Wayland 伪装可用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-042,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkFixXTest,QCheckBox,XTest for Xinerama,S03,device,设备 / 详情 / 平台兼容修复,锁定键修复保留；XTest/Xinerama 与弱化焦点按 X11 能力显示，不在 Wayland 伪装可用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-043,src/lib/gui/dialogs/ComputerSettingsDialog.ui,chkWeakX11Focus,QCheckBox,Weaken X11 Focus,S03,device,设备 / 详情 / 平台兼容修复,锁定键修复保留；XTest/Xinerama 与弱化焦点按 X11 能力显示，不在 Wayland 伪装可用。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-044,src/lib/gui/dialogs/ComputerSettingsDialog.ui,lineAddAlias,QLineEdit,lineAddAlias,S03,device,设备 / 详情 / 多个别名,支持多个别名及重复验证，不替换成单个输入框。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-045,src/lib/gui/dialogs/ComputerSettingsDialog.ui,btnAddAlias,QPushButton,&Add,S03,device,设备 / 详情 / 多个别名,支持多个别名及重复验证，不替换成单个输入框。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-046,src/lib/gui/dialogs/ComputerSettingsDialog.ui,listAliases,QListWidget,listAliases,S03,device,设备 / 详情 / 多个别名,支持多个别名及重复验证，不替换成单个输入框。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-047,src/lib/gui/dialogs/ComputerSettingsDialog.ui,btnRemoveAlias,QPushButton,&Remove,S03,device,设备 / 详情 / 多个别名,支持多个别名及重复验证，不替换成单个输入框。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-048,src/lib/gui/dialogs/HotkeyDialog.ui,m_pKeySequenceWidgetHotkey,KeySequenceWidget,m_pKeySequenceWidgetHotkey,S06,rules,设置 / 快捷键 / 规则录制,常用快捷键录制已示意；完整事件模型与保留键按平台核验。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-049,src/lib/gui/dialogs/ServerConfigDialog.ui,lblRemoveComputer,RemoveComputerWidget,lblRemoveComputer,S02,layout,设备 / 完整排列 / 添加、移动与移除,S02保留完整网格、拖动定位和添加/移除能力，按钮与键盘提供等效路径；移除布局不撤销信任。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-050,src/lib/gui/dialogs/ServerConfigDialog.ui,lblNewComputer,NewComputerWidget,lblNewComputer,S02,layout,设备 / 完整排列 / 添加、移动与移除,S02保留完整网格、拖动定位和添加/移除能力，按钮与键盘提供等效路径；移除布局不撤销信任。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-051,src/lib/gui/dialogs/ServerConfigDialog.ui,computerSetupView,ComputerSetupView,computerSetupView,S02,layout,设备 / 完整排列 / 添加、移动与移除,S02保留完整网格、拖动定位和添加/移除能力，按钮与键盘提供等效路径；移除布局不撤销信任。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-052,src/lib/gui/dialogs/ServerConfigDialog.ui,listHotkeys,QListWidget,listHotkeys,S06,rules,设置 / 快捷键 / 高级动作规则,保留规则增删改、触发条件、动作列表，不压缩成两个常用快捷键。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-053,src/lib/gui/dialogs/ServerConfigDialog.ui,btnNewHotkey,QPushButton,&New,S06,rules,设置 / 快捷键 / 高级动作规则,保留规则增删改、触发条件、动作列表，不压缩成两个常用快捷键。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-054,src/lib/gui/dialogs/ServerConfigDialog.ui,btnEditHotkey,QPushButton,&Edit,S06,rules,设置 / 快捷键 / 高级动作规则,保留规则增删改、触发条件、动作列表，不压缩成两个常用快捷键。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-055,src/lib/gui/dialogs/ServerConfigDialog.ui,btnRemoveHotkey,QPushButton,&Remove,S06,rules,设置 / 快捷键 / 高级动作规则,保留规则增删改、触发条件、动作列表，不压缩成两个常用快捷键。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-056,src/lib/gui/dialogs/ServerConfigDialog.ui,listActions,QListWidget,listActions,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作,S06提供完整有序动作编辑器、按下/释放时机、全部动作类型、按键目标集与重启确认。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-057,src/lib/gui/dialogs/ServerConfigDialog.ui,btnNewAction,QPushButton,Ne&w,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作,S06提供完整有序动作编辑器、按下/释放时机、全部动作类型、按键目标集与重启确认。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-058,src/lib/gui/dialogs/ServerConfigDialog.ui,btnEditAction,QPushButton,E&dit,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作,S06提供完整有序动作编辑器、按下/释放时机、全部动作类型、按键目标集与重启确认。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-059,src/lib/gui/dialogs/ServerConfigDialog.ui,btnRemoveAction,QPushButton,Re&move,S06,rules,设置 / 快捷键 / 高级动作规则 / 动作,S06提供完整有序动作编辑器、按下/释放时机、全部动作类型、按键目标集与重启确认。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-060,src/lib/gui/dialogs/ServerConfigDialog.ui,cbDisableLockToComputer,QCheckBox,Disable lock to computer (scroll lock key),S05,sharing,设置 / 共享与切换 / 高级输入,保留 Scroll Lock 控制、启动锁定、相对鼠标与 Windows 前台窗口选项。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-061,src/lib/gui/dialogs/ServerConfigDialog.ui,cbDefaultLockToComputerState,QCheckBox,Enable lock to computer at startup,S05,sharing,设置 / 共享与切换 / 高级输入,保留 Scroll Lock 控制、启动锁定、相对鼠标与 Windows 前台窗口选项。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-062,src/lib/gui/dialogs/ServerConfigDialog.ui,cbRelativeMouseMoves,QCheckBox,Use &relative mouse movements,S05,sharing,设置 / 共享与切换 / 高级输入,保留 Scroll Lock 控制、启动锁定、相对鼠标与 Windows 前台窗口选项。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-063,src/lib/gui/dialogs/ServerConfigDialog.ui,cbWin32KeepForeground,QCheckBox,Don't take &foreground window (Windows only),S05,sharing,设置 / 共享与切换 / 高级输入,保留 Scroll Lock 控制、启动锁定、相对鼠标与 Windows 前台窗口选项。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-064,src/lib/gui/dialogs/ServerConfigDialog.ui,cbEnableClipboard,QCheckBox,Enable clipboard sharing,S05,sharing,设置 / 共享与切换,关闭剪贴板与停止键鼠共享分开。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-065,src/lib/gui/dialogs/ServerConfigDialog.ui,sbClipboardSizeLimit,QSpinBox,sbClipboardSizeLimit,S05,sharing,设置 / 共享与切换 / 剪贴板限制,保留容量上限和单位。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-066,src/lib/gui/dialogs/ServerConfigDialog.ui,cbSwitchDelay,QCheckBox,Switch &after waiting,S05,sharing,设置 / 共享与切换 / 防误触,代码为两个独立开关。不能未经确认改成互斥的三选一；保留同时启用的可能性并解释组合行为。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-067,src/lib/gui/dialogs/ServerConfigDialog.ui,sbSwitchDelay,QSpinBox,sbSwitchDelay,S05,sharing,设置 / 共享与切换 / 防误触,代码为两个独立开关。不能未经确认改成互斥的三选一；保留同时启用的可能性并解释组合行为。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-068,src/lib/gui/dialogs/ServerConfigDialog.ui,cbSwitchDoubleTap,QCheckBox,Switch on double &tap within,S05,sharing,设置 / 共享与切换 / 防误触,代码为两个独立开关。不能未经确认改成互斥的三选一；保留同时启用的可能性并解释组合行为。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-069,src/lib/gui/dialogs/ServerConfigDialog.ui,sbSwitchDoubleTap,QSpinBox,sbSwitchDoubleTap,S05,sharing,设置 / 共享与切换 / 防误触,代码为两个独立开关。不能未经确认改成互斥的三选一；保留同时启用的可能性并解释组合行为。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-070,src/lib/gui/dialogs/ServerConfigDialog.ui,cbHeartbeat,QCheckBox,&Check clients every,S05,sharing,设置 / 高级 / 网络 / 连接检测,保留心跳开关、间隔和单位。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-071,src/lib/gui/dialogs/ServerConfigDialog.ui,sbHeartbeat,QSpinBox,sbHeartbeat,S05,sharing,设置 / 高级 / 网络 / 连接检测,保留心跳开关、间隔和单位。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-072,src/lib/gui/dialogs/ServerConfigDialog.ui,rbProtocolSynergy,QRadioButton,Synergy,S11,config,设置 / 高级 / 兼容性,来源端选择协议；接收端按来源自动适配。需保留旧配置读取与报错。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-073,src/lib/gui/dialogs/ServerConfigDialog.ui,rbProtocolBarrier,QRadioButton,Barrier,S11,config,设置 / 高级 / 兼容性,来源端选择协议；接收端按来源自动适配。需保留旧配置读取与报错。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-074,src/lib/gui/dialogs/ServerConfigDialog.ui,groupExternalConfig,QGroupBox,Use a server config file,S11,config,设置 / 高级 / 配置文件,S11覆盖读取、真实解析错误、保存后应用、接管后只读和回退；完整序列化见第07章。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-075,src/lib/gui/dialogs/ServerConfigDialog.ui,lineConfigFile,QLineEdit,lineConfigFile,S11,config,设置 / 高级 / 配置文件,S11覆盖读取、真实解析错误、保存后应用、接管后只读和回退；完整序列化见第07章。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-076,src/lib/gui/dialogs/ServerConfigDialog.ui,btnBrowseConfigFile,QPushButton,btnBrowseConfigFile,S11,config,设置 / 高级 / 配置文件,S11覆盖读取、真实解析错误、保存后应用、接管后只读和回退；完整序列化见第07章。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-077,src/lib/gui/dialogs/SettingsDialog.ui,comboLanguage,QComboBox,comboLanguage,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-078,src/lib/gui/dialogs/SettingsDialog.ui,cbAutoUpdate,QCheckBox,Check for updates on startup,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-079,src/lib/gui/dialogs/SettingsDialog.ui,cbPreventSleep,QCheckBox,Prevent this computer from going to sleep,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-080,src/lib/gui/dialogs/SettingsDialog.ui,rbIconColorful,QRadioButton,Colorful,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-081,src/lib/gui/dialogs/SettingsDialog.ui,rbIconMono,QRadioButton,Monocolor,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-082,src/lib/gui/dialogs/SettingsDialog.ui,rbShowOnStart,QRadioButton,Show the main window,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-083,src/lib/gui/dialogs/SettingsDialog.ui,rbAutoHide,QRadioButton,Send to background,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-084,src/lib/gui/dialogs/SettingsDialog.ui,rbExitOnClose,QRadioButton,Exit,S04,general,设置 / 通用 / 关闭窗口行为,默认关闭到后台；无可返回入口时不隐藏；主动退出与关闭窗口分离。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-085,src/lib/gui/dialogs/SettingsDialog.ui,rbCloseToTray,QRadioButton,Send to background,S04,general,设置 / 通用 / 关闭窗口行为,默认关闭到后台；无可返回入口时不隐藏；主动退出与关闭窗口分离。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-086,src/lib/gui/dialogs/SettingsDialog.ui,cbShowVersion,QCheckBox,Include version in the window title,S04,general,设置 / 通用 / 语言、启动、显示与电源,保留界面语言、启动更新检查、防休眠、启动显示方式、图标和标题版本信息；登录自启为另行核验的新增整合。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-087,src/lib/gui/dialogs/SettingsDialog.ui,comboLogLevel,QComboBox,comboLogLevel,S14,logs,诊断 / 技术日志与支持,S14保留六级日志、路径、写入失败、GUI调试、搜索前后与独立窗口；S13提供脱敏报告预览。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-088,src/lib/gui/dialogs/SettingsDialog.ui,groupLogToFile,QGroupBox,Log to file,S14,logs,诊断 / 技术日志与支持,S14保留六级日志、路径、写入失败、GUI调试、搜索前后与独立窗口；S13提供脱敏报告预览。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-089,src/lib/gui/dialogs/SettingsDialog.ui,lineLogFilename,QLineEdit,lineLogFilename,S14,logs,诊断 / 技术日志与支持,S14保留六级日志、路径、写入失败、GUI调试、搜索前后与独立窗口；S13提供脱敏报告预览。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-090,src/lib/gui/dialogs/SettingsDialog.ui,btnBrowseLog,QPushButton,btnBrowseLog,S14,logs,诊断 / 技术日志与支持,S14保留六级日志、路径、写入失败、GUI调试、搜索前后与独立窗口；S13提供脱敏报告预览。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-091,src/lib/gui/dialogs/SettingsDialog.ui,cbGuiDebug,QCheckBox,Enable GUI debug messages,S14,logs,诊断 / 技术日志与支持,S14保留六级日志、路径、写入失败、GUI调试、搜索前后与独立窗口；S13提供脱敏报告预览。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-092,src/lib/gui/dialogs/SettingsDialog.ui,comboInterface,QComboBox,comboInterface,S10,network,设置 / 高级 / 网络,已保存和已生效分别显示；应用时说明重连范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-093,src/lib/gui/dialogs/SettingsDialog.ui,sbPort,QSpinBox,sbPort,S10,network,设置 / 高级 / 网络,已保存和已生效分别显示；应用时说明重连范围。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-094,src/lib/gui/dialogs/SettingsDialog.ui,groupSecurity,QGroupBox,Enable TLS Encryption,S08,certificates,设置 / 高级 / 安全 / 旧版本兼容,保留现有 TLS 开关与对端证书策略的显式配置入口；默认加密，诊断不得通过关闭验证自动修复。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-095,src/lib/gui/dialogs/SettingsDialog.ui,lineTlsCertPath,QLineEdit,lineTlsCertPath,S08,certificates,设置 / 高级 / 本机身份 / 证书维护,保留自定义证书位置与 2048/4096 密钥长度；证书不可读、无效及写入失败需显示。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-096,src/lib/gui/dialogs/SettingsDialog.ui,btnTlsCertPath,QPushButton,btnTlsCertPath,S08,certificates,设置 / 高级 / 本机身份 / 证书维护,保留自定义证书位置与 2048/4096 密钥长度；证书不可读、无效及写入失败需显示。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-097,src/lib/gui/dialogs/SettingsDialog.ui,comboTlsKeyLength,QComboBox,comboTlsKeyLength,S08,certificates,设置 / 高级 / 本机身份 / 证书维护,保留自定义证书位置与 2048/4096 密钥长度；证书不可读、无效及写入失败需显示。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-098,src/lib/gui/dialogs/SettingsDialog.ui,btnTlsRegenCert,QPushButton,Regenerate certificate,S08,certificates,安全与设备信任 / 本机身份,再生成影响所有对端；等待对方重新核对，不自动恢复。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-099,src/lib/gui/dialogs/SettingsDialog.ui,cbRequireClientCert,QCheckBox,Require client certificates,S08,certificates,设置 / 高级 / 安全 / 旧版本兼容,保留现有 TLS 开关与对端证书策略的显式配置入口；默认加密，诊断不得通过关闭验证自动修复。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-100,src/lib/gui/dialogs/SettingsDialog.ui,groupService,QGroupBox,Use background service (daemon),S12,maintenance,设置 / 高级 / Windows 后台服务,现代码仅 Windows 非便携模式开放。停止共享并退出须显式停止服务中的核心；仅退出界面必须单独命名。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-101,src/lib/gui/dialogs/SettingsDialog.ui,cbElevateDaemon,QCheckBox,Always run as system (work at login screen and UAC),S12,maintenance,设置 / 高级 / Windows 后台服务,现代码仅 Windows 非便携模式开放。停止共享并退出须显式停止服务中的核心；仅退出界面必须单独命名。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-102,src/lib/gui/dialogs/SettingsDialog.ui,cbRunEnterCommand,QCheckBox,Run command on enter,S12,maintenance,设置 / 高级 / 自动化,S12保留本机进入/离开命令，分别启用、保存后待应用；保存和预览不执行，实际在本机执行。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-103,src/lib/gui/dialogs/SettingsDialog.ui,lineCommandEnter,QLineEdit,lineCommandEnter,S12,maintenance,设置 / 高级 / 自动化,S12保留本机进入/离开命令，分别启用、保存后待应用；保存和预览不执行，实际在本机执行。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-104,src/lib/gui/dialogs/SettingsDialog.ui,cbRunExitCommand,QCheckBox,Run command on exit,S12,maintenance,设置 / 高级 / 自动化,S12保留本机进入/离开命令，分别启用、保存后待应用；保存和预览不执行，实际在本机执行。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-105,src/lib/gui/dialogs/SettingsDialog.ui,lineCommandExit,QLineEdit,lineCommandExit,S12,maintenance,设置 / 高级 / 自动化,S12保留本机进入/离开命令，分别启用、保存后待应用；保存和预览不执行，实际在本机执行。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
+MAP-106,src/lib/gui/dialogs/SettingsDialog.ui,btnClearAllSettings,QPushButton,Remove all settings,S12,maintenance,设置 / 高级 / 维护 / 清除应用配置,现代码清除整个配置目录并重启，不能用仅恢复普通偏好的按钮替代；需列明设备、身份、证书及日志的实际影响。,已映射至贯通设计，待整体确认,未实施；需补实现与真实产品验收证据
