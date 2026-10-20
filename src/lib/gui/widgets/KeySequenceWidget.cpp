@@ -14,7 +14,8 @@ KeySequenceWidget::KeySequenceWidget(QWidget *parent, const KeySequence &seq)
       m_KeySequence(seq),
       m_BackupSequence(seq)
 {
-  setFocusPolicy(Qt::NoFocus);
+  setFocusPolicy(Qt::StrongFocus);
+  setAccessibleName(tr("录制键盘或鼠标组合"));
   updateOutput();
 }
 
@@ -44,11 +45,13 @@ void KeySequenceWidget::mousePressEvent(QMouseEvent *event)
 
 void KeySequenceWidget::startRecording()
 {
+  m_BackupSequence = m_KeySequence;
   m_KeySequence = KeySequence();
   setDown(true);
   setFocus();
   grabKeyboard();
   setStatus(Recording);
+  updateOutput();
 }
 
 void KeySequenceWidget::stopRecording()
@@ -59,10 +62,22 @@ void KeySequenceWidget::stopRecording()
   }
 
   setDown(false);
-  focusNextChild();
-  releaseKeyboard();
   setStatus(Stopped);
+  releaseKeyboard();
+  focusNextChild();
+  updateOutput();
   Q_EMIT keySequenceChanged();
+}
+
+void KeySequenceWidget::cancelRecording()
+{
+  if (status() != Recording)
+    return;
+  m_KeySequence = m_BackupSequence;
+  setStatus(Stopped);
+  setDown(false);
+  releaseKeyboard();
+  updateOutput();
 }
 
 bool KeySequenceWidget::event(QEvent *event)
@@ -98,8 +113,13 @@ void KeySequenceWidget::keyPressEvent(QKeyEvent *event)
 {
   event->accept();
 
-  if (status() == Stopped)
+  if (status() == Stopped) {
+    if (event->key() == Qt::Key_Space || event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+      startRecording();
+    else
+      QPushButton::keyPressEvent(event);
     return;
+  }
 
   if (m_KeySequence.appendKey(event->key(), event->modifiers()))
     stopRecording();
@@ -109,6 +129,14 @@ void KeySequenceWidget::keyPressEvent(QKeyEvent *event)
 
 void KeySequenceWidget::updateOutput()
 {
+  if (status() == Recording) {
+    setText(tr("正在录制，请按键或点击鼠标…"));
+    return;
+  }
+  if (m_KeySequence.toString().isEmpty()) {
+    setText(tr("点击或按空格开始录制"));
+    return;
+  }
   QString s;
 
   if (m_KeySequence.isMouseButton())

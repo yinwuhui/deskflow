@@ -30,6 +30,7 @@
 
 #if defined(Q_OS_UNIX) && defined(QT_DEBUG)
 #include <QLoggingCategory>
+#include <QStorageInfo>
 #endif
 
 #if !defined(Q_OS_MACOS) && !defined(Q_OS_WIN)
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
 
 #if defined(Q_OS_MACOS)
 
-  if (app.applicationDirPath().startsWith("/Volumes/")) {
+  if (app.applicationDirPath().startsWith("/Volumes/") && QStorageInfo(app.applicationDirPath()).isReadOnly()) {
     QString msgBody = QStringLiteral(
         "Please drag %1 to the Applications folder, "
         "and open it from there."
@@ -140,9 +141,8 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if (!checkMacAssistiveDevices()) {
-    return 1;
-  }
+  // Keep the workspace available when input permission is missing.
+  // Starting the core is gated by the recoverable diagnostics page.
 #endif
 
   // --no-reset

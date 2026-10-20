@@ -8,6 +8,7 @@
 
 #include <QEvent>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 
@@ -49,9 +50,12 @@ SearchWidget::SearchWidget(QWidget *parent)
 
   setText();
 
+  m_result = new QLabel(this);
+  m_result->setAccessibleName(tr("Search result count"));
   auto mainLayout = new QHBoxLayout;
   mainLayout->addWidget(m_btnToggle);
   mainLayout->addWidget(m_searchLine);
+  mainLayout->addWidget(m_result);
   mainLayout->addWidget(m_btnNext);
   mainLayout->addWidget(m_btnPrev);
 
@@ -75,6 +79,9 @@ void SearchWidget::changeEvent(QEvent *e)
 void SearchWidget::toggleVisible(bool visible)
 {
   m_searchLine->setVisible(visible);
+  m_result->setVisible(visible);
+  if (visible)
+    m_searchLine->setFocus();
   m_btnNext->setVisible(visible);
   m_btnPrev->setVisible(visible);
 }
@@ -95,4 +102,9 @@ void SearchWidget::next()
 void SearchWidget::previous()
 {
   Q_EMIT findPrevious(m_searchLine->text());
+}
+
+void SearchWidget::setSearchResult(int count)
+{
+  m_result->setText(count ? tr("%1 matches").arg(count) : tr("No matches"));
 }

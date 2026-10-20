@@ -94,10 +94,15 @@ void SettingsDialog::changeEvent(QEvent *e)
   }
 }
 
-void SettingsDialog::initConnections() const
+void SettingsDialog::initConnections()
 {
   connect(m_buttonBox, &SettingsDialogButtonBox::accepted, this, &SettingsDialog::accept);
-  connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, [this] {
+    if (m_embedded)
+      loadFromConfig();
+    else
+      reject();
+  });
   connect(m_buttonBox, &SettingsDialogButtonBox::reset, this, &SettingsDialog::loadFromConfig);
   connect(m_buttonBox, &SettingsDialogButtonBox::restoreDefault, this, &SettingsDialog::resetToDefault);
 
@@ -147,7 +152,15 @@ void SettingsDialog::initConnections() const
 
 void SettingsDialog::regenCertificates()
 {
-  if (TlsUtility::generateCertificate()) {
+  if (QMessageBox::question(
+          this, tr("Replace local identity"),
+          tr("Replacing this identity will stop sharing. Every peer must verify the new fingerprint. Remote trust "
+             "records will be preserved."),
+          QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel
+      ) != QMessageBox::Yes)
+    return;
+  if (TlsUtility::generateCertificate(ui->comboTlsKeyLength->currentText().toInt())) {
+    Q_EMIT localIdentityChanged();
     QMessageBox::information(this, tr("TLS Certificate Regenerated"), tr("TLS certificate regenerated successfully."));
     const auto certificate = Settings::value(Settings::Security::Certificate).toString();
     updateKeyLengthOnFile(certificate);
@@ -156,9 +169,8 @@ void SettingsDialog::regenCertificates()
 
 void SettingsDialog::browseCertificatePath()
 {
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Select a TLS certificate to use..."), ui->lineTlsCertPath->text(), "Cert (*.pem)", nullptr,
-      QFileDialog::DontConfirmOverwrite
+  QString fileName = QFileDialog::getOpenFileName(
+      this, tr("Select a TLS certificate to use..."), ui->lineTlsCertPath->text(), "Cert (*.pem)"
   );
 
   if (!fileName.isEmpty()) {
@@ -189,13 +201,7 @@ void SettingsDialog::setLogToFile(bool logToFile)
 
 void SettingsDialog::resetAllSettings()
 {
-  auto result = QMessageBox::question(
-      this, tr("%1 Clear Settings").arg(kAppName),
-      tr("<p>Are you sure you want to clear all settings and restart %1?</p> <p>This action cannot be undone.</p>")
-          .arg(kAppName)
-  );
-  if (result == QMessageBox::Yes)
-    Q_EMIT requestRemoveAllSettings();
+  Q_EMIT requestRemoveAllSettings();
 }
 
 void SettingsDialog::updateText()
@@ -220,6 +226,26 @@ void SettingsDialog::updateText()
 
 void SettingsDialog::accept()
 {
+  if ((ui->cbRunEnterCommand->isChecked() && ui->lineCommandEnter->text().trimmed().isEmpty()) ||
+      (ui->cbRunExitCommand->isChecked() && ui->lineCommandExit->text().trimmed().isEmpty())) {
+    QMessageBox::warning(this, tr("Empty command"), tr("Enter a command or turn off its execution."));
+    return;
+  }
+  if (Settings::value(Settings::Security::TlsEnabled).toBool() && !ui->groupSecurity->isChecked() &&
+      QMessageBox::warning(
+          this, tr("Disable encryption"),
+          tr("This compatibility mode sends input and clipboard data without TLS protection. Save this unencrypted "
+             "configuration?"),
+          QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel
+      ) != QMessageBox::Yes)
+    return;
+  if (ui->groupSecurity->isChecked() && Settings::value(Settings::Security::CheckPeers).toBool() &&
+      !ui->cbRequireClientCert->isChecked() &&
+      QMessageBox::warning(
+          this, tr("关闭接收端身份校验"), tr("保存后，下次应用将允许未核对证书的接收端连接。确定保存此兼容设置？"),
+          QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel
+      ) != QMessageBox::Yes)
+    return;
   Settings::setValue(Settings::Core::Port, ui->sbPort->value());
   Settings::setValue(Settings::Core::Interface, ui->comboInterface->currentData());
   Settings::setValue(Settings::Log::Level, ui->comboLogLevel->currentData());
@@ -250,7 +276,10 @@ void SettingsDialog::accept()
     mode = Settings::ProcessMode::Desktop;
   Settings::setValue(Settings::Core::ProcessMode, mode);
 
-  QDialog::accept();
+  if (m_embedded) {
+    Q_EMIT accepted();
+  } else
+    QDialog::accept();
 }
 
 void SettingsDialog::loadFromConfig()
@@ -409,7 +438,7 @@ void SettingsDialog::updateRequestedKeySize() const
 {
   if (ui->comboTlsKeyLength->currentText() == Settings::value(Settings::Security::KeySize).toString())
     return;
-  Settings::setValue(Settings::Security::KeySize, ui->comboTlsKeyLength->currentText());
+  // Key size stays in the draft until Save or explicit identity activation.
 }
 
 void SettingsDialog::logLevelChanged()
@@ -486,46 +515,17 @@ bool SettingsDialog::isDefault() const
 
 void SettingsDialog::resetToDefault()
 {
-  ui->sbPort->setValue(Settings::defaultValue(Settings::Core::Port).toInt());
-  ui->comboLogLevel->setCurrentIndex(
-      static_cast<int>(LogLevel::fromOption(Settings::defaultValue(Settings::Log::Level).toString()))
-  );
-  ui->groupLogToFile->setChecked(Settings::defaultValue(Settings::Log::ToFile).toBool());
-  ui->lineLogFilename->setText(Settings::defaultValue(Settings::Log::File).toString());
   ui->cbPreventSleep->setChecked(Settings::defaultValue(Settings::Core::PreventSleep).toBool());
-  ui->cbElevateDaemon->setChecked(Settings::defaultValue(Settings::Daemon::Elevate).toBool());
   ui->cbAutoUpdate->setChecked(Settings::defaultValue(Settings::Gui::AutoUpdateCheck).toBool());
-  ui->cbGuiDebug->setChecked(Settings::defaultValue(Settings::Log::GuiDebug).toBool());
   ui->cbShowVersion->setChecked(Settings::defaultValue(Settings::Gui::ShowVersionInTitle).toBool());
-  ui->cbRunEnterCommand->setChecked(Settings::defaultValue(Settings::Core::EnableEnterCommand).toBool());
-  ui->cbRunExitCommand->setChecked(Settings::defaultValue(Settings::Core::EnableExitCommand).toBool());
-  ui->lineCommandEnter->setText(Settings::defaultValue(Settings::Core::ComputerEnterCommand).toString());
-  ui->lineCommandExit->setText(Settings::defaultValue(Settings::Core::ComputerExitCommand).toString());
-
   const auto autoHide = Settings::defaultValue(Settings::Gui::Autohide).toBool();
-  ui->rbCloseToTray->setChecked(autoHide);
-  ui->rbExitOnClose->setChecked(!autoHide);
-
+  ui->rbAutoHide->setChecked(autoHide);
+  ui->rbShowOnStart->setChecked(!autoHide);
   const auto closeToTray = Settings::defaultValue(Settings::Gui::CloseToTray).toBool();
   ui->rbCloseToTray->setChecked(closeToTray);
   ui->rbExitOnClose->setChecked(!closeToTray);
-
-  const auto processMode = Settings::defaultValue(Settings::Core::ProcessMode).value<Settings::ProcessMode>();
-  ui->groupService->setChecked(processMode == Settings::ProcessMode::Service);
-
-  if (!deskflow::platform::isWindows())
-    ui->groupService->setVisible(false);
-
-  if (Settings::defaultValue(Settings::Gui::SymbolicTrayIcon).toBool())
-    ui->rbIconMono->setChecked(true);
-  else
-    ui->rbIconColorful->setChecked(true);
-
-  ui->lblDebugWarning->setVisible(false);
-
-  ui->comboInterface->setCurrentIndex(0);
-
-  qDebug() << "reset to default values";
+  ui->rbIconMono->setChecked(Settings::defaultValue(Settings::Gui::SymbolicTrayIcon).toBool());
+  ui->rbIconColorful->setChecked(!ui->rbIconMono->isChecked());
   updateControls();
   setButtonBoxEnabledButtons();
 }

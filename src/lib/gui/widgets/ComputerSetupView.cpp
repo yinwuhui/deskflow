@@ -15,6 +15,7 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QResizeEvent>
@@ -25,8 +26,8 @@ ComputerSetupView::ComputerSetupView(QWidget *parent) : QTableView(parent)
   setDragDropMode(DragDrop);
   setSelectionMode(SingleSelection);
 
-  setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+  setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
   setIconSize(QSize(96, 96));
   horizontalHeader()->hide();
@@ -36,6 +37,7 @@ ComputerSetupView::ComputerSetupView(QWidget *parent) : QTableView(parent)
 void ComputerSetupView::setModel(QAbstractItemModel *model)
 {
   QTableView::setModel(model);
+  connect(model, &QAbstractItemModel::modelReset, this, &ComputerSetupView::setTableSize);
   setTableSize();
 }
 
@@ -51,13 +53,24 @@ void ComputerSetupView::showComputerConfig(int col, int row)
   Q_EMIT model()->computersChanged();
 }
 
+void ComputerSetupView::setZoomPercent(int percent)
+{
+  m_zoomPercent = std::clamp(percent, 50, 200);
+  setIconSize(QSize(96, 96) * m_zoomPercent / 100);
+  setTableSize();
+}
+
 void ComputerSetupView::setTableSize()
 {
-  for (int i = 0; i < model()->columnCount(); i++)
-    setColumnWidth(i, width() / model()->columnCount());
-
-  for (int i = 0; i < model()->rowCount(); i++)
-    setRowHeight(i, height() / model()->rowCount());
+  if (!model())
+    return;
+  const auto cell = QSize(128, 120) * m_zoomPercent / 100;
+  horizontalHeader()->setDefaultSectionSize(cell.width());
+  verticalHeader()->setDefaultSectionSize(cell.height());
+  for (int i = 0; i < model()->columnCount(); ++i)
+    setColumnWidth(i, cell.width());
+  for (int i = 0; i < model()->rowCount(); ++i)
+    setRowHeight(i, cell.height());
 }
 
 void ComputerSetupView::resizeEvent(QResizeEvent *event)
@@ -72,7 +85,7 @@ void ComputerSetupView::mouseDoubleClickEvent(QMouseEvent *event)
     int col = columnAt(event->pos().x());
     int row = rowAt(event->pos().y());
 
-    if (!model()->computer(col, row).isNull()) {
+    if (col >= 0 && row >= 0 && !model()->computer(col, row).isNull()) {
       showComputerConfig(col, row);
     }
   } else
@@ -103,7 +116,7 @@ void ComputerSetupView::dragMoveEvent(QDragMoveEvent *event)
       int row = rowAt(point.y());
 
       // a drop from outside is not allowed if there's a computer already there.
-      if (!model()->computer(col, row).isNull())
+      if (col < 0 || row < 0 || !model()->computer(col, row).isNull())
         event->ignore();
       else {
         event->acceptProposedAction();
@@ -147,16 +160,44 @@ void ComputerSetupView::startDrag(Qt::DropActions)
 
 void ComputerSetupView::initViewItemOption(QStyleOptionViewItem *option) const
 {
-  // HACK make a basic widget and init from it
-  auto w = new QWidget();
-  option->initFrom(w);
-  w->deleteLater();
-  delete w;
-
-  option->decorationSize = QSize(96, 96);
+  option->initFrom(this);
+  option->decorationSize = iconSize();
   option->showDecorationSelected = true;
   option->decorationPosition = QStyleOptionViewItem::Top;
   option->decorationAlignment = Qt::AlignHCenter | Qt::AlignVCenter;
   option->displayAlignment = Qt::AlignTop | Qt::AlignHCenter;
   option->textElideMode = Qt::ElideMiddle;
+}
+
+void ComputerSetupView::keyPressEvent(QKeyEvent *event)
+{
+  auto selected = currentIndex();
+  if (selected.isValid() && event->modifiers().testFlag(Qt::AltModifier)) {
+    int column = selected.column(), row = selected.row();
+    if (event->key() == Qt::Key_Left)
+      --column;
+    else if (event->key() == Qt::Key_Right)
+      ++column;
+    else if (event->key() == Qt::Key_Up)
+      --row;
+    else if (event->key() == Qt::Key_Down)
+      ++row;
+    else {
+      QTableView::keyPressEvent(event);
+      return;
+    }
+    if (model()->moveComputer(selected.column(), selected.row(), column, row)) {
+      setCurrentIndex(model()->index(row, column));
+      scrollTo(currentIndex(), EnsureVisible);
+    }
+    event->accept();
+    return;
+  }
+  if (selected.isValid() && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) &&
+      !model()->computer(selected).isNull()) {
+    showComputerConfig(selected.column(), selected.row());
+    event->accept();
+    return;
+  }
+  QTableView::keyPressEvent(event);
 }

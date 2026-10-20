@@ -15,6 +15,16 @@ endif()
 
 add_library(${target} STATIC
   ${platform_sources}
+  workspace/SetupAssistant.cpp
+  workspace/SetupAssistant.h
+  workspace/DeviceCanvas.cpp
+  workspace/DeviceCanvas.h
+  workspace/DeviceWorkspace.cpp
+  workspace/DeviceWorkspace.h
+  workspace/WorkspaceUi.cpp
+  workspace/WorkspaceUi.h
+  workspace/SettingsWorkspace.cpp
+  workspace/SettingsWorkspace.h
   ComputerSetupModel.cpp
   ComputerSetupModel.h
   Diagnostic.cpp
@@ -23,6 +33,10 @@ add_library(${target} STATIC
   FileTail.h
   Logger.cpp
   Logger.h
+  MainWindowPages.cpp
+  MainWindowSetup.cpp
+  MainWindowSourceChange.cpp
+  MainWindowWorkspace.cpp
   MainWindow.cpp
   MainWindow.h
   MainWindow.ui
@@ -42,6 +56,12 @@ add_library(${target} STATIC
   config/ServerConfig.h
   core/CoreProcess.cpp
   core/CoreProcess.h
+  core/ConfigurationBackup.cpp
+  core/ConfigurationBackup.h
+  core/SourceChangeTransaction.cpp
+  core/SourceChangeTransaction.h
+  core/ApplicationState.cpp
+  core/ApplicationState.h
   core/NetworkMonitor.cpp
   core/NetworkMonitor.h
   dialogs/AboutDialog.cpp

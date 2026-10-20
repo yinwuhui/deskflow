@@ -15,6 +15,7 @@ class Hotkey;
 class Action;
 class ServerConfig;
 class KeySequenceWidget;
+class QPushButton;
 
 namespace Ui {
 class ActionDialog;
@@ -44,6 +45,8 @@ protected Q_SLOTS:
   void accept() override;
 
 private:
+  QPushButton *m_cancelRecording = nullptr;
+  void rebuildLayout();
   void updateSize();
   void keySequenceChanged();
   void itemToggled() const;

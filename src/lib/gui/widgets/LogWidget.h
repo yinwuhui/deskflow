@@ -11,17 +11,23 @@
 
 class QPlainTextEdit;
 class QTemporaryFile;
+class QTextDocument;
 
 class LogWidget : public QWidget
 {
   Q_OBJECT
 public:
-  explicit LogWidget(QWidget *parent = nullptr);
+  explicit LogWidget(QWidget *parent = nullptr, QTextDocument *document = nullptr);
+  QTextDocument *document() const;
   void appendLine(const QString &msg);
   void findNext(const QString &text);
   void findPrevious(const QString &text);
   void scrollToBottom() const;
 
+Q_SIGNALS:
+  void searchResult(int matches);
+
 private:
+  int countMatches(const QString &text) const;
   QPlainTextEdit *m_textLog = nullptr;
 };

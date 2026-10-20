@@ -17,10 +17,11 @@ class VersionChecker : public QObject
   Q_OBJECT
 public:
   explicit VersionChecker(QObject *parent = nullptr);
-  void checkLatest() const;
+  void checkLatest();
 public Q_SLOTS:
   void replyFinished(QNetworkReply *reply);
 Q_SIGNALS:
+  void checkFinished(bool success, const QString &newVersion, const QString &reason);
   void updateFound(const QString &version);
 
 private:
@@ -33,5 +34,6 @@ private:
    * more recent the version
    */
   static int getStageVersion(QString stage);
+  bool m_checking = false;
   QNetworkAccessManager *m_network = nullptr;
 };

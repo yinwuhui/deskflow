@@ -24,11 +24,14 @@ public:
   explicit ComputerSetupView(QWidget *parent);
   void setModel(QAbstractItemModel *model) override;
   ComputerSetupModel *model() const;
+  void setZoomPercent(int percent);
 
 private:
+  int m_zoomPercent = 100;
   void showComputerConfig(int col, int row);
 
 protected:
+  void keyPressEvent(QKeyEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *) override;
   void setTableSize();
   void resizeEvent(QResizeEvent *) override;
@@ -36,8 +39,8 @@ protected:
   void dragMoveEvent(QDragMoveEvent *event) override;
   void startDrag(Qt::DropActions supportedActions) override;
   void initViewItemOption(QStyleOptionViewItem *option) const override;
-  void scrollTo(const QModelIndex &, ScrollHint) override
+  void scrollTo(const QModelIndex &index, ScrollHint hint) override
   {
-    // do nothing
+    QTableView::scrollTo(index, hint);
   }
 };

@@ -48,10 +48,15 @@ void ClientConfigDialog::updateControls() const
   ui->sbYScrollScale->setEnabled(writable);
 }
 
-void ClientConfigDialog::initConnections() const
+void ClientConfigDialog::initConnections()
 {
   connect(m_buttonBox, &SettingsDialogButtonBox::accepted, this, &ClientConfigDialog::save);
-  connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(m_buttonBox, &SettingsDialogButtonBox::rejected, this, [this] {
+    if (m_embedded)
+      load();
+    else
+      reject();
+  });
   connect(m_buttonBox, &SettingsDialogButtonBox::reset, this, &ClientConfigDialog::load);
   connect(m_buttonBox, &SettingsDialogButtonBox::restoreDefault, this, &ClientConfigDialog::resetToDefault);
 
@@ -124,5 +129,8 @@ void ClientConfigDialog::save()
   Settings::setValue(Settings::Client::YScrollScale, ui->sbYScrollScale->value());
   Settings::setValue(Settings::Client::InvertXScroll, ui->cbXScrollInvert->isChecked());
   Settings::setValue(Settings::Client::XScrollScale, ui->sbXScrollScale->value());
-  QDialog::accept();
+  if (m_embedded) {
+    Q_EMIT accepted();
+  } else
+    QDialog::accept();
 }

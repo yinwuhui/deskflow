@@ -12,12 +12,14 @@ class LogWidget;
 class QLabel;
 class QPushButton;
 class SearchWidget;
+class QTextDocument;
 
 class LogDock : public QDockWidget
 {
   Q_OBJECT
 public:
   explicit LogDock(QWidget *parent = nullptr);
+  QTextDocument *document() const;
   void appendLine(const QString &msg);
   void setFloating(bool floating);
 

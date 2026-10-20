@@ -22,18 +22,33 @@ class SettingsDialog : public QDialog
   Q_OBJECT
 
 public:
+  void setEmbedded(bool embedded)
+  {
+    m_embedded = embedded;
+  }
+  void reloadSaved()
+  {
+    loadFromConfig();
+    updateTlsControls();
+  }
+  bool hasUnsavedChanges() const
+  {
+    return isModified();
+  }
   void extracted();
   SettingsDialog(QWidget *parent, const ServerConfig &serverConfig);
   ~SettingsDialog() override;
 
 Q_SIGNALS:
   void requestRemoveAllSettings();
+  void localIdentityChanged();
 
 protected:
   void changeEvent(QEvent *e) override;
 
 private:
-  void initConnections() const;
+  bool m_embedded = false;
+  void initConnections();
   void regenCertificates();
   void browseCertificatePath();
   void browseLogPath();

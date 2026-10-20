@@ -65,6 +65,7 @@ public:
     return m_BackupSequence;
   }
   void setKeySequence(const KeySequence &seq);
+  void cancelRecording();
 
   bool valid() const
   {

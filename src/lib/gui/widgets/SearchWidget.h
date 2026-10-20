@@ -10,6 +10,7 @@
 
 class QPushButton;
 class QLineEdit;
+class QLabel;
 
 class SearchWidget : public QWidget
 {
@@ -17,6 +18,7 @@ class SearchWidget : public QWidget
 public:
   explicit SearchWidget(QWidget *parent = nullptr);
   bool isExpanded() const;
+  void setSearchResult(int count);
 
 Q_SIGNALS:
   void findNext(const QString &text);
@@ -34,4 +36,5 @@ private:
   QPushButton *m_btnNext = nullptr;
   QPushButton *m_btnPrev = nullptr;
   QLineEdit *m_searchLine = nullptr;
+  QLabel *m_result = nullptr;
 };

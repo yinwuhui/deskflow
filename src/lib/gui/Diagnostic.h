@@ -5,9 +5,11 @@
  */
 
 #pragma once
+#include <QStringList>
 
 namespace deskflow::gui::diagnostic {
 
-void clearSettings(bool enableRestart);
+QStringList managedProfileFiles();
+bool clearSettings(bool enableRestart, QStringList *failedFiles = nullptr);
 
-}
+} // namespace deskflow::gui::diagnostic

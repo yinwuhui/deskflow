@@ -15,6 +15,8 @@
 #import <UserNotifications/UNUserNotificationCenter.h>
 #import <objc/runtime.h>
 
+#include <QObject>
+#include <QPointer>
 #import <QtGlobal>
 
 #pragma clang diagnostic push
@@ -101,6 +103,25 @@ bool isOSXInterfaceStyleDark()
   NSDictionary *dict = [[NSUserDefaults standardUserDefaults] persistentDomainForName:NSGlobalDomain];
   id style = [dict objectForKey:@"AppleInterfaceStyle"];
   return (style && [style isKindOfClass:[NSString class]] && NSOrderedSame == [style caseInsensitiveCompare:@"dark"]);
+}
+
+bool isOSXHighContrast()
+{
+  return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldIncreaseContrast];
+}
+
+void observeOSXAccessibilityChanges(QObject *context, std::function<void()> changed)
+{
+  const QPointer<QObject> guard(context);
+  auto *center = [[NSWorkspace sharedWorkspace] notificationCenter];
+  id observer = [center addObserverForName:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification
+                                    object:nil
+                                     queue:[NSOperationQueue mainQueue]
+                                usingBlock:^(NSNotification *) {
+                                  if (guard)
+                                    QMetaObject::invokeMethod(guard.data(), changed, Qt::QueuedConnection);
+                                }];
+  QObject::connect(context, &QObject::destroyed, [center, observer] { [center removeObserver:observer]; });
 }
 
 void forceAppActive()

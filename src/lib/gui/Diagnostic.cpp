@@ -10,6 +10,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QProcess>
 
 namespace deskflow::gui::diagnostic {
@@ -30,38 +31,66 @@ void restart()
   QCoreApplication::exit();
 }
 
-void clearSettings(bool enableRestart)
+QStringList managedProfileFiles()
 {
-  qDebug("clearing settings");
+  const auto root = QDir(Settings::settingsPath()).canonicalPath();
+  if (root.isEmpty())
+    return {};
+  QStringList candidates{
+      QDir(root).filePath(".workspace-state.json"),
+      Settings::settingsFile(),
+      Settings::settingsFile() + ".before-workspace",
+      Settings::defaultValue(Settings::Server::ExternalConfigFile).toString(),
+      Settings::tlsTrustedClientsDb(),
+      Settings::tlsTrustedServersDb(),
+      Settings::tlsRevokedDb(),
+      Settings::peerIdentityDb(),
+      Settings::value(Settings::Security::Certificate).toString(),
+      Settings::value(Settings::Log::File).toString()
+  };
+  const auto snapshots = QDir(root).entryList({".runtime-*.conf"}, QDir::Files | QDir::Hidden | QDir::NoSymLinks);
+  for (const auto &name : snapshots)
+    candidates.append(QDir(root).filePath(name));
+  QStringList files;
+  const auto external =
+      Settings::value(Settings::Server::ExternalConfig).toBool()
+          ? QFileInfo(Settings::value(Settings::Server::ExternalConfigFile).toString()).canonicalFilePath()
+          : QString();
+  for (const auto &path : candidates) {
+    const QFileInfo info(path);
+    const auto canonical = info.canonicalFilePath();
+    if (info.isFile() && !info.isSymLink() && canonical.startsWith(root + "/") && canonical != external)
+      files.append(canonical);
+  }
+  files.removeDuplicates();
+  files.sort();
+  return files;
+}
+
+bool clearSettings(bool enableRestart, QStringList *failedFiles)
+{
+  const auto files = managedProfileFiles();
   Settings::proxy().clear();
   Settings::clearState();
-
-  // save but do not emit saving signal which will prevent the current state of
-  // the app config and server configs from being applied.
   Settings::save(false);
-
-  auto profileDir = QDir(Settings::settingsPath());
-  qDebug("removing profile dir: %s", qPrintable(profileDir.absolutePath()));
-  profileDir.removeRecursively();
-
+  QStringList failed;
+  for (const auto &path : files)
+    if (QFile::exists(path) && !QFile::remove(path))
+      failed.append(path);
+  if (failedFiles)
+    *failedFiles = failed;
+  if (!failed.isEmpty())
+    return false;
 #ifdef Q_OS_WIN
   if (Settings::isPortableMode()) {
-    // make a new empty portable settings file
-    if (profileDir.mkpath(Settings::settingsPath())) {
-      QFile file(Settings::settingsFile());
-      std::ignore = file.open(QIODevice::WriteOnly);
-      file.write(" ", 1);
-      file.close();
-    }
+    QFile marker(Settings::settingsFile());
+    if (!marker.open(QIODevice::WriteOnly) || marker.write(" ") != 1)
+      return false;
   }
 #endif
-
-  if (enableRestart) {
-    qDebug("restarting");
+  if (enableRestart)
     restart();
-  } else {
-    qDebug("skipping restart");
-  }
+  return true;
 }
 
 } // namespace deskflow::gui::diagnostic

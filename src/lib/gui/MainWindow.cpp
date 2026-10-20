@@ -9,6 +9,9 @@
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+#include "workspace/DeviceWorkspace.h"
+#include "workspace/SettingsWorkspace.h"
+#include "workspace/SetupAssistant.h"
 
 #include "Diagnostic.h"
 #include "StyleUtils.h"
@@ -21,6 +24,7 @@
 #include "dialogs/ServerConfigDialog.h"
 #include "dialogs/SettingsDialog.h"
 
+#include "common/I18N.h"
 #include "common/PlatformInfo.h"
 #include "common/Settings.h"
 #include "common/UrlConstants.h"
@@ -31,12 +35,15 @@
 #include "gui/ipc/DaemonIpcClient.h"
 #include "gui/widgets/LogDock.h"
 #include "net/FingerprintDatabase.h"
+#include "net/PeerIdentityStore.h"
 #include "widgets/StatusBar.h"
 
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QListWidget>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
@@ -49,6 +56,7 @@
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QScrollBar>
+#include <QTabWidget>
 
 #include <memory>
 
@@ -58,7 +66,7 @@
 
 using namespace deskflow::gui;
 
-MainWindow::MainWindow()
+MainWindow::MainWindow(const QString &socketName)
     : ui{std::make_unique<Ui::MainWindow>()},
       m_coreProcess(m_serverConfig),
       m_trayIcon{new QSystemTrayIcon(this)},
@@ -126,8 +134,9 @@ MainWindow::MainWindow()
 
   // Setup the Instance Checking
   // In case of a previous crash remove first
-  QLocalServer::removeServer(m_guiSocketName);
-  m_guiDupeChecker->listen(m_guiSocketName);
+  const auto guiSocket = socketName.isEmpty() ? m_guiSocketName : socketName;
+  QLocalServer::removeServer(guiSocket);
+  m_guiDupeChecker->listen(guiSocket);
 
   createMenuBar();
   setupControls();
@@ -139,29 +148,23 @@ MainWindow::MainWindow()
 
   qDebug().noquote() << "active settings path:" << Settings::settingsPath();
 
-  // Force generation of a certificate on the host
-  if (TlsUtility::isEnabled()) {
-    if (Settings::value(Settings::Security::KeySize).toInt() < 2048) {
-      QMessageBox::information(
-          this, kAppName,
-          tr("Your current TLS key is smaller than the minimum allowed size, A new key 2048-bit key will be generated.")
-      );
-      Settings::setValue(Settings::Security::KeySize, 2048);
-    }
-    if (!TlsUtility::isCertValid()) {
-      generateCertificate();
-    } else {
-      m_fingerprint = {QCryptographicHash::Sha256, TlsUtility::certFingerprint()};
-    }
-  }
+  if (TlsUtility::isEnabled() && TlsUtility::isCertValid())
+    m_fingerprint = {QCryptographicHash::Sha256, TlsUtility::certFingerprint()};
 
+  m_activeSource = Settings::value(Settings::Client::RemoteHost).toString();
+  m_activeExternalConfig = Settings::value(Settings::Server::ExternalConfig).toBool();
+  m_coreProcess.setMode(Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>());
   applyConfig();
   m_statusBar->setSecurityIcon(TlsUtility::isEnabled());
   restoreWindow();
+  setupWorkspace();
 
 #ifdef Q_OS_MACOS
-  // Route native quits (Cmd+Q / Apple menu Quit / Dock "Quit") to the usual close-to-tray decision instead.
-  installQuitHandler([this] { return !maybeHideToTray(); });
+  // Native quit is explicit; only closing the window can hide it.
+  installQuitHandler([this] {
+    requestQuit();
+    return false;
+  });
 #endif
 }
 MainWindow::~MainWindow()
@@ -192,8 +195,10 @@ void MainWindow::restoreWindow()
     move(screenGeometry.center() - rect().center());
   }
 
-  if (!Settings::value(Settings::Gui::LogExpanded).toBool())
-    setFixedSize(size());
+  if (m_pages) {
+    setMinimumSize(800, 600);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+  }
 }
 
 void MainWindow::setupControls()
@@ -202,10 +207,6 @@ void MainWindow::setupControls()
 
   ui->btnConfigureServer->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
   ui->btnConfigureClient->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
-
-  if (Settings::value(Settings::Core::LastVersion).toString() != kVersion) {
-    Settings::setValue(Settings::Core::LastVersion, kVersion);
-  }
 
   if (!Settings::value(Settings::Gui::LogExpanded).toBool()) {
     m_logDock->hide();
@@ -260,8 +261,8 @@ void MainWindow::connectSlots()
   connect(m_actionAbout, &QAction::triggered, this, &MainWindow::openAboutDialog);
   connect(m_actionMinimize, &QAction::triggered, this, &MainWindow::hide);
 
-  connect(m_actionQuit, &QAction::triggered, this, &MainWindow::close);
-  connect(m_actionTrayQuit, &QAction::triggered, this, &MainWindow::close);
+  connect(m_actionQuit, &QAction::triggered, this, &MainWindow::requestQuit);
+  connect(m_actionTrayQuit, &QAction::triggered, this, &MainWindow::requestQuit);
   connect(m_actionRestore, &QAction::triggered, this, &MainWindow::showAndActivate);
   connect(m_actionSettings, &QAction::triggered, this, &MainWindow::openSettings);
   connect(m_actionStartCore, &QAction::triggered, this, &MainWindow::startCore);
@@ -278,6 +279,7 @@ void MainWindow::connectSlots()
   connect(&m_coreProcess, &CoreProcess::connectionRefused, this, &MainWindow::handleConnectionRefused);
   connect(&m_coreProcess, &CoreProcess::retryIn, this, &MainWindow::updateTimeoutDelay);
   connect(&m_coreProcess, &CoreProcess::peerFingerprint, this, &MainWindow::handlePeerFingerprint);
+  connect(&m_coreProcess, &CoreProcess::peerIdentityRequired, this, &MainWindow::handlePeerIdentity);
   connect(&m_coreProcess, &CoreProcess::missingKeyboardLayouts, this, &MainWindow::handleMissingKeyboardLayouts);
 
   if (Settings::value(Settings::Gui::AutoStartCore).toBool()) {
@@ -324,51 +326,20 @@ void MainWindow::toggleLogVisible(bool visible)
     return;
   }
 
-  setFixedSize(16777215, 16777215);
   Settings::setValue(Settings::Gui::LogExpanded, visible);
-  if (visible) {
-    if (m_logDock->isFloating()) {
-      adjustSize();
-      setFixedSize(size());
-    } else {
-      QTimer::singleShot(15, this, [&] { resize(m_expandedSize); });
-    }
-  } else {
-    if (!m_logDock->isFloating()) {
-      m_expandedSize = geometry().size();
-    }
-    m_logDock->hide();
-    if (!m_logDock->isFloating()) {
-      adjustSize();
-    }
-    setFixedSize(size());
-  }
-  Settings::setValue(Settings::Gui::WindowGeometry, geometry());
+  setMinimumSize(800, 600);
+  setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
 }
 
 void MainWindow::settingsChanged(const QString &key)
 {
-  if (key == Settings::Log::Level) {
-    m_coreProcess.applyLogLevel();
-    return;
-  }
-
+  if (key == Settings::Core::Language)
+    I18N::setLanguage(Settings::value(key).toString());
   if (key == Settings::Core::ComputerName)
     updateComputerName();
-
-  if ((key == Settings::Security::Certificate) || (key == Settings::Security::KeySize) ||
-      (key == Settings::Security::TlsEnabled) || (key == Settings::Security::CheckPeers)) {
-    if (TlsUtility::isEnabled()) {
-      if (!TlsUtility::isCertValid()) {
-        qWarning() << tr("invalid certificate, generating a new one");
-        TlsUtility::generateCertificate();
-      }
-      m_fingerprint = {QCryptographicHash::Sha256, TlsUtility::certFingerprint()};
-      updateFingerprintButton();
-    }
-    updateSecurityIcon(m_statusBar->securityIconVisible());
-    return;
-  }
+  // Runtime security/log changes are applied explicitly, never by a save signal.
+  if (key.startsWith("gui/"))
+    applyConfig();
 }
 
 void MainWindow::serverConfigSaving()
@@ -385,6 +356,14 @@ void MainWindow::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void MainWindow::coreProcessError(CoreProcess::Error error)
 {
+  if (m_sourceChange.active()) {
+    m_sourceChange.failed(m_sourceChange.attempt(), m_sourceChange.expectedSource(), tr("核心启动失败。"));
+    return;
+  }
+  if (m_applyingRevision) {
+    m_applicationState.finishApply(m_applyingRevision, false, tr("启动失败，配置未确认生效。请查看诊断。"));
+    m_applyingRevision = 0;
+  }
   if (error == CoreProcess::Error::AddressMissing) {
     QMessageBox::warning(
         this, tr("Address missing"), tr("Please enter the hostname or IP address of the other computer.")
@@ -407,19 +386,74 @@ void MainWindow::coreProcessError(CoreProcess::Error error)
 
 void MainWindow::startCore()
 {
+  if (m_identityRegenerating)
+    return;
+  ++m_trustGeneration;
+  m_pendingIdentities.clear();
+  m_pendingFingerprints.clear();
+  if (!persistConfiguration())
+    return;
+  m_trustResumeAllowed = true;
+  m_checkedServers.clear();
+  m_checkedClients.clear();
   // Save current IP state when server starts
   if (m_coreProcess.mode() == CoreMode::Server && Settings::value(Settings::Core::Interface).toString().isEmpty()) {
     m_serverStartIPs = NetworkMonitor::validAddresses();
     m_serverStartSuggestedIP = m_serverStartIPs.isEmpty() ? "" : m_serverStartIPs.first();
   }
 
+  if (!m_coreProcess.prepareConfiguration()) {
+    QMessageBox::warning(
+        this, tr("配置准备失败"),
+        tr("无法准备运行配置。原连接未受影响，请检查配置目录权限。\n%1").arg(m_coreProcess.configurationError())
+    );
+    return;
+  }
+  m_coreProcess.setMode(Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>());
+  m_coreProcess.setAddress(Settings::value(Settings::Client::RemoteHost).toString());
+#ifdef Q_OS_MACOS
+  if (!AXIsProcessTrusted()) {
+    if (m_navigation)
+      m_navigation->setCurrentRow(2);
+    QMessageBox::warning(this, tr("需要输入权限"), tr("请在系统设置允许辅助功能访问后，返回重新检测。"));
+    return;
+  }
+#endif
+  m_fingerprint = {QCryptographicHash::Sha256, TlsUtility::certFingerprint()};
+  updateFingerprintButton();
+  m_applicationState.persisted(configurationSnapshot());
+  m_activeSource = Settings::value(Settings::Client::RemoteHost).toString();
+  m_applyingExternalConfig = Settings::value(Settings::Server::ExternalConfig).toBool();
+  if (!m_applyingRevision)
+    m_applyingRevision = m_applicationState.beginApply();
   m_actionStartCore->setVisible(false);
   m_actionRestartCore->setVisible(true);
   m_coreProcess.start();
+  const auto revision = m_applyingRevision;
+  QTimer::singleShot(15000, this, [this, revision] {
+    if (revision && revision == m_applyingRevision && !m_sourceChange.active() && !m_verifyingIdentity) {
+      m_applicationState.finishApply(revision, false, tr("核心尚未确认启动配置，请检查诊断。"));
+      m_applyingRevision = 0;
+      persistWorkspaceState();
+    }
+  });
 }
 
 void MainWindow::stopCore()
 {
+  ++m_trustGeneration;
+  m_pendingIdentities.clear();
+  m_pendingFingerprints.clear();
+  m_setupStartedCore = false;
+  m_trustResumeAllowed = false;
+  m_sourceChange.abort(tr("已取消来源切换并请求停止全部共享。"));
+  if (m_applyingRevision) {
+    m_applicationState.finishApply(m_applyingRevision, false, tr("应用已取消，已请求停止共享。"));
+    m_applyingRevision = 0;
+    persistWorkspaceState();
+  }
+  if (m_setupAssistant && m_setupAssistant->active())
+    m_setupAssistant->cancel();
   qDebug() << "stopping core process";
   m_coreProcess.stop();
   m_actionStartCore->setVisible(true);
@@ -428,21 +462,61 @@ void MainWindow::stopCore()
 
 void MainWindow::clearSettings()
 {
-  qDebug() << "clearing settings";
-
+  if (m_identityRegenerating) {
+    QMessageBox::information(this, tr("身份更新中"), tr("请等待本机身份生成结束，再清除配置。"));
+    return;
+  }
+  if (!m_clearProfilePending) {
+    const auto files = diagnostic::managedProfileFiles();
+    QMessageBox preview(this);
+    preview.setWindowTitle(tr("清除当前配置"));
+    preview.setText(
+        tr("将清除当前应用的设备、规则、信任和身份等配置。外部配置文件和系统服务不会被删除。建议先导出配置备份。")
+    );
+    preview.setDetailedText(files.join("\n"));
+    auto *backup = preview.addButton(tr("先导出备份"), QMessageBox::ActionRole);
+    auto *clear = preview.addButton(tr("继续清除"), QMessageBox::DestructiveRole);
+    auto *cancel = preview.addButton(QMessageBox::Cancel);
+    preview.setDefaultButton(cancel);
+    preview.exec();
+    if (preview.clickedButton() == backup) {
+      exportConfigurationBackup();
+      return;
+    }
+    if (preview.clickedButton() != clear)
+      return;
+    bool accepted = false;
+    const auto confirmation = QInputDialog::getText(
+        this, tr("确认清除"), tr("输入 CLEAR 确认清除上述应用文件"), QLineEdit::Normal, {}, &accepted
+    );
+    if (!accepted || confirmation != "CLEAR")
+      return;
+    m_trustResumeAllowed = false;
+    m_sourceChange.abort(tr("为清除配置已取消来源切换。"));
+    m_clearProfilePending = true;
+  }
+  if (m_coreProcess.processState() != ProcessState::Stopped) {
+    m_coreProcess.stop();
+    QTimer::singleShot(22000, this, [this] {
+      if (!m_clearProfilePending)
+        return;
+      m_clearProfilePending = false;
+      QMessageBox::warning(this, tr("未执行清除"), tr("共享停止结果未确认，配置文件保持保留。"));
+    });
+    return;
+  }
   m_networkMonitor->stopMonitoring();
-
-  disconnect(&m_coreProcess, nullptr, this, nullptr);
-  disconnect(&m_versionChecker, nullptr, this, nullptr);
-  disconnect(m_guiDupeChecker, nullptr, this, nullptr);
-  disconnect(m_trayIcon, nullptr, this, nullptr);
-  disconnect(m_logDock->toggleViewAction(), nullptr, this, nullptr);
-
-  m_coreProcess.stop();
-  m_coreProcess.clearSettings();
-
+  QStringList failed;
   m_saveOnExit = false;
-  diagnostic::clearSettings(true);
+  if (!diagnostic::clearSettings(false, &failed)) {
+    m_clearProfilePending = false;
+    QMessageBox::warning(this, tr("清除未完成"), tr("以下文件未能清除，请检查权限后重试：\n%1").arg(failed.join("\n")));
+    return;
+  }
+  m_guiDupeChecker->close();
+  QLocalServer::removeServer(m_guiSocketName);
+  QProcess::startDetached(QCoreApplication::applicationFilePath(), QCoreApplication::arguments().mid(1));
+  QApplication::quit();
 }
 
 bool MainWindow::saveServerConfig()
@@ -470,24 +544,13 @@ void MainWindow::openGetNewVersionUrl() const
 
 void MainWindow::openSettings()
 {
-  auto dialog = SettingsDialog(this, m_serverConfig);
-
-  connect(&dialog, &SettingsDialog::requestRemoveAllSettings, this, &MainWindow::clearSettings, Qt::UniqueConnection);
-  if (dialog.exec() == QDialog::Accepted) {
-    Settings::save();
-    disconnect(&dialog, &SettingsDialog::requestRemoveAllSettings, nullptr, nullptr);
-
-    applyConfig();
-
-    if (m_coreProcess.isStarted()) {
-      m_coreProcess.restart();
-    }
-  }
+  if (m_navigation)
+    m_navigation->setCurrentRow(1);
 }
 
 void MainWindow::resetCore()
 {
-  m_coreProcess.restart();
+  applySavedConfiguration();
 }
 
 void MainWindow::showMyFingerprint()
@@ -513,19 +576,14 @@ void MainWindow::coreModeToggled(bool checked)
 
   qDebug() << QStringLiteral("change mode to: %1").arg(QVariant::fromValue(mode).toString());
 
-  if (m_coreProcess.isStarted() && m_coreProcess.mode() != mode)
-    m_coreProcess.stop();
-  m_coreProcess.setMode(mode);
-
   Settings::setValue(Settings::Core::CoreMode, mode);
-  Settings::save();
-
+  persistConfiguration();
   updateModeControls();
 }
 
 void MainWindow::updateModeControls()
 {
-  const auto mode = m_coreProcess.mode();
+  const auto mode = Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>();
   const bool isServer = mode == Settings::CoreMode::Server;
   const bool isClient = mode == Settings::CoreMode::Client;
 
@@ -611,10 +669,19 @@ void MainWindow::updateNetworkInfo()
 void MainWindow::serverConnectionConfigureClient(const QString &clientName)
 {
   m_serverConfigDialogVisible = true;
-  ServerConfigDialog dialog(this, m_serverConfig);
-  if (dialog.addClient(clientName) && dialog.exec() == QDialog::Accepted) {
-    m_coreProcess.restart();
-  }
+  m_setupArranging = true;
+  m_navigation->setCurrentRow(0);
+  m_deviceModes->setCurrentIndex(0);
+  m_devicesWorkspace->addDevice(clientName);
+  if (m_devicesWorkspace->hasUnsavedChanges()) {
+    if (m_devicesWorkspace->saveLayout()) {
+      applyAddedDeviceLayout();
+      m_setupArranging = false;
+      m_setupAssistant->waitForPeer();
+    }
+  } else
+    m_setupArranging = false;
+  refreshWorkspace();
   m_serverConfigDialogVisible = false;
 }
 
@@ -624,7 +691,7 @@ void MainWindow::serverConnectionConfigureClient(const QString &clientName)
 
 void MainWindow::open()
 {
-  if (!Settings::value(Settings::Gui::Autohide).toBool())
+  if (!QSystemTrayIcon::isSystemTrayAvailable() || !Settings::value(Settings::Gui::Autohide).toBool())
     showAndActivate();
   else if (deskflow::platform::isMac())
     // macOS to call hide after this function ends
@@ -643,7 +710,8 @@ void MainWindow::open()
   QTimer::singleShot(kCriticalDialogDelay, this, &messages::raiseCriticalDialog);
 
   if (!Settings::value(Settings::Gui::AutoUpdateCheck).isValid()) {
-    Settings::setValue(Settings::Gui::AutoUpdateCheck, messages::showUpdateCheckOption(this));
+    Settings::setValue(Settings::Gui::AutoUpdateCheck, false);
+    Settings::save(false);
   }
 
   if (Settings::value(Settings::Gui::AutoUpdateCheck).toBool()) {
@@ -652,9 +720,31 @@ void MainWindow::open()
     qDebug() << "skipping check for new version, disabled";
   }
 
-  const bool autoConnect = ui->rbModeClient->isChecked() &&
-                           Settings::value(Settings::Client::AutoConnect).toBool();
-  if (Settings::value(Settings::Gui::AutoStartCore).toBool() || autoConnect) {
+  const bool autoConnect = ui->rbModeClient->isChecked() && Settings::value(Settings::Client::AutoConnect).toBool();
+  const bool autoStart = Settings::value(Settings::Gui::AutoStartCore).toBool() || autoConnect;
+#ifdef Q_OS_WIN
+  if (Settings::value(Settings::Core::ProcessMode).value<Settings::ProcessMode>() == Settings::ProcessMode::Service) {
+    connect(
+        &m_coreProcess, &CoreProcess::serviceProbeFinished, this,
+        [this, autoStart](const QString &state) {
+          if (state == "stopped" && autoStart)
+            startCore();
+          else if (state == "unknown") {
+            m_lastOperationError = tr("后台服务状态未确认，未自动重启共享。请检查诊断后明确启动。");
+            refreshWorkspace();
+          }
+        },
+        Qt::SingleShotConnection
+    );
+    m_coreProcess.probeExistingService();
+    return;
+  }
+#endif
+  if (Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>() == CoreMode::None) {
+    showSetupAssistant();
+    return;
+  }
+  if (autoStart) {
     if (ui->rbModeClient->isChecked() && ui->lineHostname->text().isEmpty())
       return;
     startCore();
@@ -718,7 +808,7 @@ void MainWindow::applyConfig()
     m_serverStartSuggestedIP = ip;
   }
 
-  coreModeToggled(true);
+  updateModeControls();
 }
 
 void MainWindow::saveSettings() const
@@ -771,31 +861,28 @@ void MainWindow::handleLogLine(const QString &line)
 
 void MainWindow::handleUnrecognisedClient(const QString &clientName)
 {
-  if (m_ignoredClients.contains(clientName)) {
-    qDebug("ignoring %s:", qPrintable(clientName));
+  if (m_coreProcess.mode() != CoreMode::Server || m_ignoredClients.contains(clientName) ||
+      m_serverConfigDialogVisible || m_serverConfig.computerExists(clientName))
+    return;
+  if (m_activeExternalConfig) {
+    m_lastOperationError = tr("有电脑请求连接，但当前排列由外部文件管理。请先把连接标识加入文件并明确应用。");
+    refreshWorkspace();
     return;
   }
-
-  if (m_newClientPromptShowing || m_serverConfigDialogVisible)
-    return;
-
-  if (Settings::value(Settings::Server::ExternalConfig).toBool())
-    return;
-
-  if (m_serverConfig.isFull() || m_serverConfig.computerExists(clientName))
-    return;
-
-  m_newClientPromptShowing = true;
-
-  showAndActivate();
-
-  if (deskflow::gui::messages::showNewClientPrompt(this, clientName)) {
-    serverConnectionConfigureClient(clientName);
-  } else {
-    m_ignoredClients.insert(clientName);
+  if (!m_setupAssistant->active()) {
+    if (m_devicesWorkspace->hasUnsavedChanges() || m_settingsWorkspace->hasUnsavedChanges()) {
+      m_lastOperationError = tr("有新电脑请求连接，请先保存或取消当前草稿，再继续添加电脑。");
+      refreshWorkspace();
+      return;
+    }
+    beginSetupAssistant(false);
   }
-
-  m_newClientPromptShowing = false;
+  if (m_setupAssistant->showIncomingDevice(clientName)) {
+    m_setupArranging = false;
+    refreshWorkspace();
+    if (!isVisible() && m_trayIcon->isVisible() && QSystemTrayIcon::supportsMessages())
+      m_trayIcon->showMessage(tr("新电脑等待设置"), tr("请打开 Deskflow，在工作区中核对身份并保留位置。"));
+  }
 }
 
 void MainWindow::handleConnectionRefused(deskflow::core::ConnectionRefusal reason)
@@ -803,6 +890,12 @@ void MainWindow::handleConnectionRefused(deskflow::core::ConnectionRefusal reaso
   if (reason != deskflow::core::ConnectionRefusal::AlreadyConnected)
     return;
 
+  if (m_sourceChange.active()) {
+    m_sourceChange.failed(
+        m_sourceChange.attempt(), m_sourceChange.expectedSource(), tr("来源拒绝连接：此电脑标识已有连接。")
+    );
+    return;
+  }
   if (!isVisible() || m_clientErrorVisible)
     return;
 
@@ -845,17 +938,137 @@ void MainWindow::handleMissingKeyboardLayouts(const QString &layouts)
   }
 }
 
+void MainWindow::advanceIdentityQueue()
+{
+  QTimer::singleShot(0, this, [this] {
+    if (m_setupAssistant->identityPending())
+      return;
+    if (!m_pendingIdentities.isEmpty())
+      handlePeerIdentity(m_pendingIdentities.takeFirst());
+    else if (!m_pendingFingerprints.isEmpty())
+      handlePeerFingerprint(m_pendingFingerprints.takeFirst());
+  });
+}
+
+void MainWindow::handlePeerIdentity(const QJsonObject &identity)
+{
+  const auto role = identity.value("role").toString();
+  const auto key = identity.value("key").toString();
+  const auto identifier = identity.value("identifier").toString();
+  const auto hash = identity.value("fingerprint").toString().toLatin1();
+  const auto previous = identity.value("previous").toString().toLatin1();
+  if ((role != "client" && role != "server") || key.isEmpty() || hash.size() != 64 ||
+      QByteArray::fromHex(hash).toHex() != hash)
+    return;
+  if (!identity.value("available").toBool()) {
+    m_lastOperationError = tr("设备身份记录不可读，已阻止连接。请检查配置文件与权限，不能以重新确认覆盖损坏记录。");
+    refreshWorkspace();
+    return;
+  }
+  if (m_setupAssistant->identityPending()) {
+    if (m_pendingIdentities.size() < 16 && !m_pendingIdentities.contains(identity))
+      m_pendingIdentities.append(identity);
+    return;
+  }
+  PeerIdentityStore store(Settings::peerIdentityDb());
+  if (store.check(role, key, hash) == PeerIdentityStore::Status::Match)
+    return;
+  const bool receiver = role == "server";
+  if (!m_setupAssistant->active()) {
+    m_setupStartedCore = false;
+    m_setupAssistant->begin(
+        !receiver, false, m_connectedDevices, m_activeSource, Settings::value(Settings::Core::Port).toInt()
+    );
+  }
+  if (receiver) {
+    m_verifyingIdentity = true;
+    m_sourceChangeTimer.stop();
+    m_coreProcess.stop();
+  }
+  const auto source = m_activeSource;
+  const auto generation = m_trustGeneration;
+  m_setupAssistant->requestIdentity(
+      {QCryptographicHash::Sha256, QByteArray::fromHex(hash)}, m_fingerprint,
+      [this, role, key, identifier, hash, previous, receiver, source, generation](bool accepted) {
+        m_verifyingIdentity = false;
+        if (m_sourceChange.active())
+          m_sourceChangeTimer.start(45000);
+        bool saved = false;
+        if (accepted && Settings::isWritable()) {
+          const Fingerprint fp{QCryptographicHash::Sha256, QByteArray::fromHex(hash)};
+          FingerprintDatabase revoked;
+          revoked.read(Settings::tlsRevokedDb());
+          FingerprintDatabase trusted;
+          trusted.read(receiver ? Settings::tlsTrustedServersDb() : Settings::tlsTrustedClientsDb());
+          PeerIdentityStore store(Settings::peerIdentityDb());
+          saved = !revoked.isTrusted(fp) && trusted.isTrusted(fp) &&
+                  store.accept({role, key, identifier, {}, hash}, previous);
+          if (!saved)
+            m_lastOperationError =
+                tr("设备身份绑定未能保存，连接保持阻断。记录可能已变化或配置不可写，请重新发起核对。");
+        }
+        if (saved && receiver && m_trustResumeAllowed && source == m_activeSource) {
+          m_sourcePhaseStarted = false;
+          auto resume = [this, source, generation] {
+            if (m_trustResumeAllowed && source == m_activeSource && generation == m_trustGeneration)
+              m_coreProcess.start();
+          };
+          if (m_coreProcess.processState() == ProcessState::Stopped)
+            QTimer::singleShot(0, this, resume);
+          else {
+            auto connection = std::make_shared<QMetaObject::Connection>();
+            *connection = connect(
+                &m_coreProcess, &CoreProcess::processStateChanged, this,
+                [this, connection, resume](ProcessState state) {
+                  if (state != ProcessState::Stopped)
+                    return;
+                  disconnect(*connection);
+                  QTimer::singleShot(0, this, resume);
+                }
+            );
+          }
+        } else if (!saved && receiver && m_sourceChange.active())
+          m_sourceChange.failed(
+              m_sourceChange.attempt(), m_sourceChange.expectedSource(),
+              accepted ? tr("设备身份绑定保存失败。") : tr("未接受来源设备身份。")
+          );
+        m_trustDigest.clear();
+        refreshWorkspace();
+        advanceIdentityQueue();
+        return saved;
+      }
+  );
+  m_setupAssistant->setIdentityContext(identifier, previous);
+  m_setupArranging = false;
+  m_navigation->setCurrentRow(0);
+  m_deviceModes->setCurrentIndex(2);
+}
+
 void MainWindow::handlePeerFingerprint(const QString &fingerprint)
 {
   const auto sha256Text = QString(fingerprint).remove(':');
   const Fingerprint sha256 = {QCryptographicHash::Sha256, QByteArray::fromHex(sha256Text.toLatin1())};
 
+  if (sha256.data.size() != 32 || sha256Text.size() != 64)
+    return;
+  if (m_setupAssistant->identityPending()) {
+    if (m_pendingFingerprints.size() < 16 && !m_pendingFingerprints.contains(fingerprint))
+      m_pendingFingerprints.append(fingerprint);
+    return;
+  }
   const bool isClient = m_coreProcess.mode() == CoreMode::Client;
   if ((isClient && m_checkedServers.contains(sha256Text)) || (!isClient && m_checkedClients.contains(sha256Text))) {
     qDebug("ignoring fingerprint, already handled");
     return;
   }
 
+  FingerprintDatabase revoked;
+  revoked.read(Settings::tlsRevokedDb());
+  if (revoked.isTrusted(sha256)) {
+    m_lastOperationError = tr("此身份已撤销。请在设备信任中主动重新核对后再连接。");
+    refreshWorkspace();
+    return;
+  }
   FingerprintDatabase db;
   db.read(trustedFingerprintDatabase());
 
@@ -865,34 +1078,85 @@ void MainWindow::handlePeerFingerprint(const QString &fingerprint)
   }
 
   if (isClient) {
+    m_verifyingIdentity = true;
+    m_sourceChangeTimer.stop();
     m_checkedServers.append(sha256Text);
     m_coreProcess.stop();
   } else {
     m_checkedClients.append(sha256Text);
   }
 
-  auto mode = isClient ? FingerprintDialogMode::Client : FingerprintDialogMode::Server;
-  FingerprintDialog fingerprintDialog(this, m_fingerprint, mode, sha256);
-
-  if (fingerprintDialog.exec() == QDialog::Accepted) {
-    db.addTrusted(sha256);
-    if (!db.write(trustedFingerprintDatabase())) {
-      qCritical().noquote() << "unable to write fingerprint to db:" << trustedFingerprintDatabase();
-      m_coreProcess.stop();
-      return;
-    }
-    if (isClient) {
-      m_checkedServers.removeAll(sha256Text);
-      m_coreProcess.start();
-    } else {
-      m_checkedClients.removeAll(sha256Text);
-    }
+  const auto databasePath = trustedFingerprintDatabase();
+  const auto source = m_activeSource;
+  const auto generation = m_trustGeneration;
+  if (!m_setupAssistant->active()) {
+    m_setupStartedCore = false;
+    m_setupAssistant->begin(
+        !isClient, false, m_connectedDevices, source, Settings::value(Settings::Core::Port).toInt()
+    );
   }
+  m_setupAssistant->requestIdentity(
+      sha256, m_fingerprint,
+      [this, isClient, sha256, sha256Text, databasePath, source, generation](bool accepted) {
+        m_verifyingIdentity = false;
+        if (m_sourceChange.active())
+          m_sourceChangeTimer.start(45000);
+        bool saved = false;
+        if (accepted) {
+          FingerprintDatabase current;
+          current.read(databasePath);
+          current.addTrusted(sha256);
+          saved = current.write(databasePath);
+          if (!saved) {
+            m_lastOperationError = tr("无法保存核对后的身份，未允许本次连接。请检查配置路径和权限。");
+            if (isClient)
+              m_coreProcess.stop();
+          }
+        }
+        if (isClient)
+          m_checkedServers.removeAll(sha256Text);
+        else
+          m_checkedClients.removeAll(sha256Text);
+        if (saved && isClient && m_trustResumeAllowed && source == m_activeSource) {
+          m_sourcePhaseStarted = false;
+          auto resume = [this, source, generation] {
+            if (m_trustResumeAllowed && source == m_activeSource && generation == m_trustGeneration)
+              m_coreProcess.start();
+          };
+          if (m_coreProcess.processState() == ProcessState::Stopped)
+            QTimer::singleShot(0, this, resume);
+          else {
+            auto connection = std::make_shared<QMetaObject::Connection>();
+            *connection = connect(
+                &m_coreProcess, &CoreProcess::processStateChanged, this,
+                [this, connection, resume](ProcessState state) {
+                  if (state != ProcessState::Stopped)
+                    return;
+                  disconnect(*connection);
+                  QTimer::singleShot(0, this, resume);
+                }
+            );
+          }
+        } else if (isClient && !saved && m_sourceChange.active()) {
+          m_sourceChange.failed(
+              m_sourceChange.attempt(), m_sourceChange.expectedSource(),
+              accepted ? tr("无法保存核对后的身份。") : tr("未接受来源身份。")
+          );
+        }
+        m_trustDigest.clear();
+        refreshWorkspace();
+        advanceIdentityQueue();
+        return saved;
+      }
+  );
+  m_navigation->setCurrentRow(0);
+  m_deviceModes->setCurrentIndex(2);
 }
 
 bool MainWindow::maybeHideToTray()
 {
-  if (!Settings::value(Settings::Gui::CloseToTray).toBool()) {
+  if (!Settings::value(Settings::Gui::CloseToTray).toBool() || !QSystemTrayIcon::isSystemTrayAvailable() ||
+      !m_trayIcon->isVisible()) {
     return false;
   }
 
@@ -908,11 +1172,70 @@ bool MainWindow::maybeHideToTray()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-  if (event->spontaneous() && maybeHideToTray()) {
+  if (m_identityRegenerating) {
+    m_explicitQuit = false;
+    event->ignore();
+    QMessageBox::information(this, tr("身份更新中"), tr("请等待本机身份生成结束后再退出。"));
+    return;
+  }
+  if (!m_explicitQuit && event->spontaneous() && maybeHideToTray()) {
     event->ignore();
     return;
   }
 
+  if (!m_discardDraftsOnQuit && m_settingsWorkspace &&
+      (m_settingsWorkspace->hasUnsavedChanges() || m_devicesWorkspace->hasUnsavedChanges()) &&
+      !qGuiApp->isSavingSession()) {
+    if (QMessageBox::question(
+            this, tr("未保存的修改"), tr("页面还有草稿。放弃草稿并退出，还是返回继续编辑？"),
+            QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Cancel
+        ) != QMessageBox::Discard) {
+      m_explicitQuit = false;
+      event->ignore();
+      return;
+    }
+    m_discardDraftsOnQuit = true;
+  }
+  if (m_coreProcess.serviceMode() && m_coreProcess.isStarted() && !m_quitWhenStopped && !m_detachUi &&
+      !qGuiApp->isSavingSession()) {
+    QMessageBox choice(this);
+    choice.setWindowTitle(tr("退出 Deskflow"));
+    choice.setText(tr("后台服务正在共享输入。请选择退出方式。"));
+    auto *stop = choice.addButton(tr("停止共享并退出"), QMessageBox::AcceptRole);
+    auto *detach = choice.addButton(tr("仅退出界面（共享继续）"), QMessageBox::DestructiveRole);
+    auto *cancel = choice.addButton(QMessageBox::Cancel);
+    choice.setDefaultButton(cancel);
+    choice.exec();
+    if (choice.clickedButton() == detach)
+      m_detachUi = true;
+    else if (choice.clickedButton() != stop) {
+      m_explicitQuit = false;
+      m_discardDraftsOnQuit = false;
+      event->ignore();
+      return;
+    }
+  }
+  if (!m_detachUi && m_coreProcess.processState() != ProcessState::Stopped && !m_quitWhenStopped) {
+    event->ignore();
+    m_trustResumeAllowed = false;
+    m_sourceChange.abort(tr("为退出应用已取消来源切换。"));
+    m_quitWhenStopped = true;
+    m_coreProcess.stop();
+    QTimer::singleShot(22000, this, [this] {
+      if (!m_quitWhenStopped)
+        return;
+      m_quitWhenStopped = false;
+      m_explicitQuit = false;
+      m_discardDraftsOnQuit = false;
+      showAndActivate();
+      QMessageBox::warning(this, tr("停止未确认"), tr("无法确认共享已停止。窗口保持打开，请检查诊断并重试。"));
+    });
+    return;
+  }
+  if (!m_detachUi && m_coreProcess.processState() != ProcessState::Stopped) {
+    event->ignore();
+    return;
+  }
   if (m_saveOnExit) {
     Settings::setValue(Settings::Gui::WindowGeometry, geometry());
     Settings::setValue(Settings::Gui::AutoStartCore, m_coreProcess.isStarted());
@@ -951,7 +1274,17 @@ void MainWindow::updateStatus()
 void MainWindow::coreProcessStateChanged(ProcessState state)
 {
   using enum ProcessState;
+  if (state != Started)
+    m_pauseRequest.clear();
   updateStatus();
+  if (m_sourceChange.active()) {
+    if (state == Started)
+      m_sourcePhaseStarted = true;
+    else if (state == Stopped && m_sourcePhaseStarted && !m_verifyingIdentity) {
+      m_sourcePhaseStarted = false;
+      m_sourceChange.failed(m_sourceChange.attempt(), m_sourceChange.expectedSource(), tr("会话核心已停止。"));
+    }
+  }
   if (state == Started) {
     qDebug() << "recording that core has started";
     Settings::setValue(Settings::Gui::AutoStartCore, true);
@@ -985,14 +1318,61 @@ void MainWindow::coreProcessStateChanged(ProcessState state)
     m_actionRestartCore->setVisible(false);
     m_actionStopCore->setEnabled(false);
   }
+  if (state == Stopped && m_clearProfilePending) {
+    QTimer::singleShot(0, this, &MainWindow::clearSettings);
+  }
+  if (state == Stopped && m_quitWhenStopped) {
+    m_quitWhenStopped = false;
+    QTimer::singleShot(0, this, &MainWindow::requestQuit);
+  }
+  if (state == Stopped) {
+    m_connectedDevices.clear();
+    m_applicationState.disconnectAll();
+  }
+  refreshWorkspace();
   updateModeControlLabels();
 }
 
 void MainWindow::coreConnectionStateChanged(ConnectionState state)
 {
   qDebug() << "core connection state changed:" << static_cast<int>(state);
+  if (state == ConnectionState::Connected) {
+    m_disconnectNotified = false;
+    m_lastOperationError.clear();
+  } else if (!m_disconnectNotified && !m_applicationState.sessions().isEmpty() &&
+             m_coreProcess.processState() == ProcessState::Started) {
+    bool hadConnection = false;
+    for (const auto &session : m_applicationState.sessions())
+      hadConnection = hadConnection || session.connected;
+    if (hadConnection) {
+      m_disconnectNotified = true;
+      m_lastOperationError = tr("连接已中断，请检查网络、权限和设备身份。安全要求保持不变。");
+      if (!isVisible() && m_trayIcon->isVisible() && QSystemTrayIcon::supportsMessages())
+        m_trayIcon->showMessage(tr("Deskflow 连接中断"), m_lastOperationError, QSystemTrayIcon::Warning);
+    }
+  }
 
+  if (m_coreProcess.mode() == CoreMode::Client) {
+    const auto name = m_activeSource;
+    if (!name.isEmpty()) {
+      auto session = m_applicationState.sessions().value(name);
+      if (session.attempt.isNull() || (!session.connected && state == ConnectionState::Connected)) {
+        m_applicationState.beginSession(name);
+        session = m_applicationState.sessions().value(name);
+      }
+      m_applicationState.sessionConnected(name, session.attempt, state == ConnectionState::Connected);
+      if (m_setupAssistant) {
+        if (state == ConnectionState::Connected)
+          m_setupAssistant->observeConnected(name);
+        else
+          m_setupAssistant->observeDisconnected(name);
+      }
+    }
+  }
+  if (m_sourceChange.active() && !m_verifyingIdentity)
+    m_sourceChange.connectionObserved(m_sourceChange.attempt(), m_activeSource, state == ConnectionState::Connected);
   updateStatus();
+  refreshWorkspace();
 
   // always assume connection is not secure when connection changes
   // to anything except connected. the only way the padlock shows is
@@ -1023,7 +1403,9 @@ void MainWindow::hide()
 void MainWindow::changeEvent(QEvent *e)
 {
   QMainWindow::changeEvent(e);
-  if (e->type() == QEvent::PaletteChange) {
+  if (e->type() == QEvent::PaletteChange || e->type() == QEvent::ApplicationPaletteChange) {
+    if (m_navigation)
+      refreshWorkspaceTheme();
     updateIconTheme();
     setWindowIcon(QIcon::fromTheme(kRevFqdnName));
     setTrayIcon();
@@ -1032,7 +1414,7 @@ void MainWindow::changeEvent(QEvent *e)
     updateModeControlLabels();
     updateNetworkInfo();
     updateStatus();
-    serverClientsChanged({});
+    serverClientsChanged(m_connectedDevices);
     updateText();
   }
 }
@@ -1088,19 +1470,18 @@ void MainWindow::updateText()
 
 void MainWindow::showConfigureServer(const QString &message)
 {
-  ServerConfigDialog dialog(this, serverConfig());
-  dialog.message(message);
-  if ((dialog.exec() == QDialog::Accepted) && m_coreProcess.isStarted()) {
-    m_coreProcess.restart();
-  }
+  if (!m_devicesWorkspace)
+    return;
+  m_navigation->setCurrentRow(0);
+  m_devicesWorkspace->beginEditing();
+  if (!message.isEmpty())
+    m_lastOperationError = message;
+  refreshWorkspace();
 }
 
 void MainWindow::showConfigureClient()
 {
-  ClientConfigDialog dialog(this);
-  if ((dialog.exec() == QDialog::Accepted) && m_coreProcess.isStarted()) {
-    m_coreProcess.restart();
-  }
+  navigateSettings("receiver");
 }
 
 void MainWindow::secureSocket(bool secureSocket)
@@ -1130,6 +1511,7 @@ void MainWindow::showAndActivate()
   m_actionMinimize->setVisible(true);
   if (!wasVisible)
     restoreWindow();
+  refreshWorkspace();
 }
 
 void MainWindow::showHostNameEditor()
@@ -1184,7 +1566,7 @@ void MainWindow::setHostName()
   Settings::setValue(Settings::Core::ComputerName, ui->lineEditName->text());
   if (isServer)
     serverConfig().updateServerName();
-  applyConfig();
+  persistConfiguration();
 }
 
 QString MainWindow::trustedFingerprintDatabase() const
@@ -1209,7 +1591,27 @@ void MainWindow::serverClientsChanged(const QStringList &clients)
 {
   if (m_coreProcess.mode() != CoreMode::Server || !m_coreProcess.isStarted())
     return;
+  for (const auto &name : m_connectedDevices) {
+    if (!clients.contains(name)) {
+      const auto session = m_applicationState.sessions().value(name);
+      m_applicationState.sessionConnected(name, session.attempt, false);
+      if (m_setupAssistant)
+        m_setupAssistant->observeDisconnected(name);
+    }
+  }
+  m_connectedDevices = clients;
+  for (const auto &name : clients) {
+    auto session = m_applicationState.sessions().value(name);
+    if (session.attempt.isNull() || !session.connected) {
+      m_applicationState.beginSession(name);
+      session = m_applicationState.sessions().value(name);
+    }
+    m_applicationState.sessionConnected(name, session.attempt, true);
+    if (m_setupAssistant)
+      m_setupAssistant->observeConnected(name);
+  }
   m_statusBar->setServerClients(clients);
+  refreshWorkspace();
 }
 
 void MainWindow::daemonIpcClientConnectionFailed()
@@ -1230,13 +1632,7 @@ void MainWindow::toggleCanRunCore(bool enableButtons)
 
 void MainWindow::remoteHostChanged(const QString &newRemoteHost)
 {
-  m_coreProcess.setAddress(newRemoteHost);
   toggleCanRunCore(!newRemoteHost.isEmpty() && ui->rbModeClient->isChecked());
-  if (newRemoteHost.isEmpty()) {
-    Settings::setValue(Settings::Client::RemoteHost);
-  } else {
-    Settings::setValue(Settings::Client::RemoteHost, newRemoteHost);
-  }
 }
 
 void MainWindow::browseServers()
@@ -1252,9 +1648,7 @@ void MainWindow::browseServers()
     if (!host.isEmpty()) {
       ui->lineHostname->setText(host);
       Settings::setValue(Settings::Client::AutoConnect, dialog.autoConnectRequested());
-      // Trigger a reconnect with the discovered host.
-      if (m_coreProcess.mode() == CoreMode::Client)
-        resetCore();
+      persistConfiguration();
     }
   }
 }
@@ -1268,7 +1662,8 @@ void MainWindow::updateIpLabel(const QStringList &addresses)
 
   static const auto colorText = QStringLiteral(R"(<span style="color:%1;">%2</span>)");
   const bool serverStarted = m_coreProcess.isStarted();
-  const bool fixedIP = !Settings::value(Settings::Core::Interface).toString().isEmpty();
+  const bool fixedIP =
+      !(serverStarted ? m_activeInterface : Settings::value(Settings::Core::Interface).toString()).isEmpty();
 
   if (!fixedIP && addresses.isEmpty() && !serverStarted || (serverStarted && m_serverStartSuggestedIP.isEmpty())) {
     ui->lblIpAddresses->setText(colorText.arg(palette().linkVisited().color().name(), tr("No IP Detected")));
@@ -1346,7 +1741,7 @@ void MainWindow::showHelpViewer() const
 
 bool MainWindow::canRunCore() const
 {
-  const auto mode = m_coreProcess.mode();
+  const auto mode = Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>();
   const bool isServer = mode == Settings::CoreMode::Server;
   const bool isClient = mode == Settings::CoreMode::Client;
   return ((isServer || isClient) && (isClient && !ui->lineHostname->text().isEmpty()) || isServer);

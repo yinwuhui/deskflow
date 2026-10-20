@@ -23,6 +23,18 @@ class ClientConfigDialog : public QDialog
   Q_OBJECT
 
 public:
+  void setEmbedded(bool embedded)
+  {
+    m_embedded = embedded;
+  }
+  void reloadSaved()
+  {
+    load();
+  }
+  bool hasUnsavedChanges() const
+  {
+    return isModified();
+  }
   explicit ClientConfigDialog(QWidget *parent = nullptr);
   ~ClientConfigDialog() override;
 
@@ -30,6 +42,7 @@ protected:
   void changeEvent(QEvent *e) override;
 
 private:
+  bool m_embedded = false;
   /**
    * @brief updateControls update widget enable state
    */
@@ -39,7 +52,7 @@ private:
    * @brief initConnections
    * Sets up all the connections
    */
-  void initConnections() const;
+  void initConnections();
 
   /**
    * @brief isModified

@@ -26,6 +26,19 @@ class ServerConfigDialog : public QDialog
   Q_OBJECT
 
 public:
+  void setEmbedded(bool embedded)
+  {
+    m_embedded = embedded;
+  }
+  void reloadSaved()
+  {
+    resetFromSettings();
+  }
+  void setActiveFileMode(bool active);
+  bool hasUnsavedChanges() const
+  {
+    return isGeneralConfigModified() || !(m_originalServerConfig == m_serverConfig);
+  }
   ServerConfigDialog(QWidget *parent, ServerConfig &config);
   ~ServerConfigDialog() override;
   bool addClient(const QString &clientName);
@@ -85,6 +98,8 @@ protected:
   }
 
 private:
+  bool m_embedded = false;
+  bool m_activeFileMode = false;
   void save();
   void cancel();
   void loadFromConfig();
@@ -112,11 +127,9 @@ private:
   bool m_relativeMouseMoves;
   bool m_enableSwitchDelay;
   bool m_enableSwitchDoubleTap;
-  bool m_originalServerConfigIsExternal;
   bool m_win32keepForeground;
   bool m_disableLockToComputer;
   bool m_defaultLockToComputerState;
-  QString m_originalServerConfigUsesExternalFile;
   ServerConfig m_serverConfig;
   ComputerSetupModel m_computerSetupModel;
   SettingsDialogButtonBox *m_buttonBox = nullptr;

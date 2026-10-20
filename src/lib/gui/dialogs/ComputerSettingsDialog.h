@@ -15,6 +15,7 @@ class QString;
 class Computer;
 class ComputerList;
 
+class QLineEdit;
 namespace Ui {
 class ComputerSettingsDialog;
 }
@@ -39,6 +40,8 @@ private Q_SLOTS:
   void aliasSelected();
 
 private:
+  void rebuildLayout();
+  QLineEdit *m_displayName = nullptr;
   std::unique_ptr<Ui::ComputerSettingsDialog> ui;
   Computer *m_computer;
 };

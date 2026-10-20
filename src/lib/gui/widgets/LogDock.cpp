@@ -22,6 +22,7 @@ LogDock::LogDock(QWidget *parent)
       m_lblTitle{new QLabel(tr("Log"), this)},
       m_searchWidget{new SearchWidget(this)}
 {
+  connect(m_textLog, &LogWidget::searchResult, m_searchWidget, &SearchWidget::setSearchResult);
   connect(m_searchWidget, &SearchWidget::findNext, m_textLog, &LogWidget::findNext);
   connect(m_searchWidget, &SearchWidget::findPrevious, m_textLog, &LogWidget::findPrevious);
 
@@ -61,6 +62,11 @@ LogDock::LogDock(QWidget *parent)
 
   setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
   setAllowedAreas(Qt::BottomDockWidgetArea);
+}
+
+QTextDocument *LogDock::document() const
+{
+  return m_textLog->document();
 }
 
 void LogDock::appendLine(const QString &msg)

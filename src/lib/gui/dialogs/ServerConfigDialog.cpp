@@ -19,18 +19,20 @@
 #include "gui/widgets/SettingsDialogButtonBox.h"
 
 #include <QFileDialog>
+#include <QLabel>
 #include <QMessageBox>
+#include <QSpinBox>
+#include <QTreeWidget>
+#include <QVBoxLayout>
 
 using enum ComputerConfig::SwitchCorner;
 
 ServerConfigDialog::ServerConfigDialog(QWidget *parent, ServerConfig &config)
     : QDialog(parent, Qt::WindowTitleHint | Qt::WindowSystemMenuHint),
       ui{std::make_unique<Ui::ServerConfigDialog>()},
-      m_columns{Settings::value(Settings::Server::GridWidth).toInt()},
-      m_rows{Settings::value(Settings::Server::GridHeight).toInt()},
+      m_columns{config.gridWidth()},
+      m_rows{config.gridHeight()},
       m_originalServerConfig(config),
-      m_originalServerConfigIsExternal(config.useExternalConfig()),
-      m_originalServerConfigUsesExternalFile(config.configFile()),
       m_serverConfig(config),
       m_computerSetupModel(m_serverConfig.computers(), m_columns, m_rows),
       m_buttonBox{new SettingsDialogButtonBox(this)}
@@ -40,6 +42,121 @@ ServerConfigDialog::ServerConfigDialog(QWidget *parent, ServerConfig &config)
   layout()->addWidget(m_buttonBox);
 
   loadFromConfig();
+  auto *gridControls = new QHBoxLayout;
+  auto *columns = new QSpinBox(this);
+  columns->setRange(1, 100);
+  columns->setValue(m_columns);
+  columns->setAccessibleName(tr("Grid columns"));
+  auto *rows = new QSpinBox(this);
+  rows->setRange(1, 100);
+  rows->setValue(m_rows);
+  rows->setAccessibleName(tr("Grid rows"));
+  auto *resize = new QPushButton(tr("Resize layout"), this);
+  resize->setProperty("graphEditor", true);
+  columns->setProperty("graphEditor", true);
+  rows->setProperty("graphEditor", true);
+  gridControls->addWidget(new QLabel(tr("Columns")));
+  gridControls->addWidget(columns);
+  gridControls->addWidget(new QLabel(tr("Rows")));
+  gridControls->addWidget(rows);
+  gridControls->addWidget(resize);
+  layout()->addItem(gridControls);
+  auto *zoom = new QSpinBox(this);
+  zoom->setRange(50, 200);
+  zoom->setSingleStep(10);
+  zoom->setSuffix("%");
+  zoom->setValue(100);
+  zoom->setAccessibleName(tr("排列缩放"));
+  gridControls->addWidget(new QLabel(tr("缩放")));
+  gridControls->addWidget(zoom);
+  connect(zoom, &QSpinBox::valueChanged, ui->computerSetupView, &ComputerSetupView::setZoomPercent);
+
+  connect(resize, &QPushButton::clicked, this, [this, columns, rows] {
+    if (!model().resizeGrid(columns->value(), rows->value())) {
+      QMessageBox::warning(
+          this, tr("Cannot resize"), tr("Move computers inside the requested bounds before shrinking the layout.")
+      );
+      return;
+    }
+    m_columns = columns->value();
+    m_rows = rows->value();
+    m_serverConfig.m_columns = m_columns;
+    m_serverConfig.m_rows = m_rows;
+    setButtonBoxEnabledButtons();
+  });
+  auto *actionOrder = new QHBoxLayout;
+  auto *up = new QPushButton(tr("Move selected action up"));
+  auto *down = new QPushButton(tr("Move selected action down"));
+  up->setProperty("graphEditor", true);
+  down->setProperty("graphEditor", true);
+  actionOrder->addWidget(up);
+  actionOrder->addWidget(down);
+  layout()->addItem(actionOrder);
+  auto moveAction = [this](int delta) {
+    const auto hotkeyIndex = ui->listHotkeys->currentRow();
+    const auto actionIndex = ui->listActions->currentRow();
+    if (hotkeyIndex < 0 || hotkeyIndex >= m_serverConfig.hotkeys().size())
+      return;
+    auto &hotkey = m_serverConfig.hotkeys()[hotkeyIndex];
+    const auto target = actionIndex + delta;
+    if (actionIndex < 0 || target < 0 || target >= hotkey.actions().size())
+      return;
+    std::swap(hotkey.actionAt(actionIndex), hotkey.actionAt(target));
+    ui->listActions->clear();
+    for (const auto &action : hotkey.actions())
+      ui->listActions->addItem(action.text());
+    ui->listActions->setCurrentRow(target);
+    setButtonBoxEnabledButtons();
+  };
+  connect(up, &QPushButton::clicked, this, [moveAction] { moveAction(-1); });
+  connect(down, &QPushButton::clicked, this, [moveAction] { moveAction(1); });
+  auto *positions = new QTreeWidget(this);
+  positions->setMaximumHeight(150);
+  positions->setHeaderLabels({tr("Computer"), tr("Column"), tr("Row")});
+  layout()->addWidget(positions);
+  auto *coordinates = new QHBoxLayout;
+  auto *targetColumn = new QSpinBox;
+  auto *targetRow = new QSpinBox;
+  targetColumn->setRange(0, 99);
+  targetRow->setRange(0, 99);
+  targetColumn->setAccessibleName(tr("目标列，从零开始"));
+  targetRow->setAccessibleName(tr("目标行，从零开始"));
+  auto *move = new QPushButton(tr("移动所选电脑（占用位置将交换）"));
+  move->setProperty("graphEditor", true);
+  coordinates->addWidget(new QLabel(tr("目标列")));
+  coordinates->addWidget(targetColumn);
+  coordinates->addWidget(new QLabel(tr("目标行")));
+  coordinates->addWidget(targetRow);
+  coordinates->addWidget(move);
+  layout()->addItem(coordinates);
+  connect(move, &QPushButton::clicked, this, [this, targetColumn, targetRow] {
+    const auto selected = ui->computerSetupView->currentIndex();
+    if (!selected.isValid() ||
+        !model().moveComputer(selected.column(), selected.row(), targetColumn->value(), targetRow->value())) {
+      QMessageBox::information(this, tr("无法移动"), tr("请先在排列或位置列表选择电脑，并填写当前网格内的坐标。"));
+      return;
+    }
+    const auto destination = model().index(targetRow->value(), targetColumn->value());
+    ui->computerSetupView->setCurrentIndex(destination);
+    static_cast<QTableView *>(ui->computerSetupView)->scrollTo(destination, QAbstractItemView::PositionAtCenter);
+  });
+  auto populate = [this, positions] {
+    positions->clear();
+    for (int row = 0; row < model().rowCount(); ++row)
+      for (int column = 0; column < model().columnCount(); ++column) {
+        const auto name = model().data(model().index(row, column), Qt::DisplayRole).toString();
+        if (!name.isEmpty())
+          new QTreeWidgetItem(positions, {name, QString::number(column), QString::number(row)});
+      }
+  };
+  populate();
+  connect(&m_computerSetupModel, &ComputerSetupModel::computersChanged, this, populate);
+  connect(positions, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem *item) {
+    const auto index = model().index(item->text(2).toInt(), item->text(1).toInt());
+    ui->computerSetupView->setCurrentIndex(index);
+    static_cast<QTableView *>(ui->computerSetupView)->scrollTo(index);
+    ui->computerSetupView->setFocus();
+  });
 
   ui->lblRemoveComputer->setPixmap(QIcon::fromTheme("user-trash").pixmap(QSize(64, 64)));
   ui->lblNewComputer->setEnabled(!model().isFull());
@@ -69,6 +186,93 @@ void ServerConfigDialog::save()
     if (selectedButton != QMessageBox::Ok || !browseConfigFile()) {
       return;
     }
+  }
+  QSet<QString> identifiers;
+  for (const auto &computer : std::as_const(m_serverConfig).computers()) {
+    if (computer.isNull())
+      continue;
+    auto names = computer.aliases();
+    names.prepend(computer.name());
+    for (const auto &name : names) {
+      const auto key = name.toCaseFolded();
+      if (identifiers.contains(key)) {
+        QMessageBox::warning(
+            this, tr("Duplicate identifier"),
+            tr("Computer identifiers and aliases must be globally unique: %1").arg(name)
+        );
+        return;
+      }
+      identifiers.insert(key);
+    }
+  }
+  if (!ui->groupExternalConfig->isChecked()) {
+    const auto unreachable = m_serverConfig.unreachableComputers();
+    if (!unreachable.isEmpty() &&
+        QMessageBox::question(
+            this, tr("部分电脑没有边缘通路"),
+            tr("以下电脑无法从本机沿相邻边缘到达：\n%1\n如果计划使用快捷键或其他路由，可以明确保留。继续保存？")
+                .arg(unreachable.join(", ")),
+            QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel
+        ) != QMessageBox::Yes)
+      return;
+  }
+  QSet<QString> shortcuts;
+  for (const auto &hotkey : std::as_const(m_serverConfig).hotkeys()) {
+    const auto combination = hotkey.keySequence().toString();
+    if (shortcuts.contains(combination)) {
+      QMessageBox::warning(
+          this, tr("快捷键冲突"), tr("重复的快捷键：%1。请合并动作或更改组合后保存。").arg(combination)
+      );
+      return;
+    }
+    shortcuts.insert(combination);
+  }
+  QMap<QString, QString> renames;
+  const auto originals = std::as_const(m_originalServerConfig).computers();
+  for (const auto &oldComputer : originals) {
+    if (oldComputer.isNull())
+      continue;
+    for (const auto &newComputer : std::as_const(m_serverConfig).computers()) {
+      if (oldComputer.stableId() == newComputer.stableId() && !newComputer.isNull() &&
+          oldComputer.name() != newComputer.name())
+        renames.insert(oldComputer.name(), newComputer.name());
+    }
+  }
+  for (auto &hotkey : m_serverConfig.hotkeys()) {
+    for (int index = 0; index < hotkey.actions().size(); ++index) {
+      auto &action = hotkey.actionAt(index);
+      if (renames.contains(action.switchComputerName()))
+        action.setSwitchComputerName(renames.value(action.switchComputerName()));
+      const auto targets = action.typeComputerNames();
+      for (const auto &target : targets)
+        if (renames.contains(target)) {
+          action.removeComputer(target);
+          action.addComputer(renames.value(target));
+        }
+    }
+  }
+  for (const auto &hotkey : std::as_const(m_serverConfig).hotkeys())
+    for (const auto &action : hotkey.actions()) {
+      auto targets = action.typeComputerNames();
+      if (!action.switchComputerName().isEmpty())
+        targets.append(action.switchComputerName());
+      for (const auto &target : targets)
+        if (target != "*" && !identifiers.contains(target.toCaseFolded())) {
+          QMessageBox::warning(
+              this, tr("Referenced computer removed"),
+              tr("A shortcut still references %1. Reassign or remove that action before saving.").arg(target)
+          );
+          return;
+        }
+    }
+  Settings::setValue(Settings::Server::GridWidth, m_columns);
+  Settings::setValue(Settings::Server::GridHeight, m_rows);
+  auto &profile = Settings::proxy().get();
+  for (auto rename = renames.cbegin(); rename != renames.cend(); ++rename) {
+    const auto oldPrefix = "computer_" + rename.key() + "/", newPrefix = "computer_" + rename.value() + "/";
+    for (const auto &key : profile.allKeys())
+      if (key.startsWith(oldPrefix))
+        profile.setValue(newPrefix + key.mid(oldPrefix.size()), profile.value(key));
   }
   // now that the dialog has been accepted, copy the new server config to the
   // original one, which is a reference to the one in MainWindow.
@@ -103,15 +307,27 @@ void ServerConfigDialog::save()
     Settings::setValue(Settings::Computer::Aliases.arg(computerName), computer.aliases());
     Settings::setValue(Settings::Computer::Name.arg(computerName), computerName);
   }
-  Settings::removeUnknownComputers(computerNames);
-  QDialog::accept();
+  // Remove only explicitly deleted/renamed objects from this edit session.
+  // Unknown and non-rendered legacy device groups must survive an unrelated save.
+  for (const auto &oldComputer : originals) {
+    if (!oldComputer.isNull() && !computerNames.contains("computer_" + oldComputer.name()))
+      profile.remove("computer_" + oldComputer.name());
+  }
+  if (m_embedded) {
+    Q_EMIT accepted();
+  } else
+    QDialog::accept();
 }
 
 void ServerConfigDialog::cancel()
 {
-  serverConfig().setUseExternalConfig(m_originalServerConfigIsExternal);
-  serverConfig().setConfigFile(m_originalServerConfigUsesExternalFile);
-  QDialog::reject();
+  // Cancel must not write Settings.
+  if (m_embedded) {
+    m_serverConfig = m_originalServerConfig;
+    resetFromSettings();
+    loadFromConfig();
+  } else
+    QDialog::reject();
 }
 
 void ServerConfigDialog::addHotkey()
@@ -359,9 +575,8 @@ void ServerConfigDialog::onComputerRemoved()
 void ServerConfigDialog::toggleExternalConfig(bool checked)
 {
   ui->widgetExternalConfigControls->setEnabled(checked);
-  ui->tabWidget->setTabEnabled(0, !checked);
-  ui->tabWidget->setTabEnabled(1, !checked);
-  serverConfig().setUseExternalConfig(checked);
+  // A saved file-mode draft does not take ownership of the active graph.
+  // Draft only; external mode takes ownership after explicit application.
   setButtonBoxEnabledButtons();
 }
 
@@ -428,8 +643,10 @@ void ServerConfigDialog::loadFromConfig()
 void ServerConfigDialog::resetFromSettings()
 {
   m_serverConfig = m_originalServerConfig;
-  m_serverConfig.setConfigFile(m_originalServerConfigUsesExternalFile);
-  m_serverConfig.setUseExternalConfig(m_originalServerConfigIsExternal);
+  m_columns = m_originalServerConfig.gridWidth();
+  m_rows = m_originalServerConfig.gridHeight();
+  m_computerSetupModel.resetGrid(m_columns, m_rows);
+  // File mode and path are drafts in the controls.
   loadFromConfig();
   if (ui->tabWidget->currentWidget() == ui->tabComputers) {
     ui->computerSetupView->reset();
@@ -536,6 +753,14 @@ void ServerConfigDialog::updateControls() const
   ui->sbSwitchDoubleTap->setEnabled(writable && ui->cbSwitchDoubleTap->isChecked());
   ui->sbSwitchDelay->setEnabled(writable && ui->cbSwitchDelay->isChecked());
   ui->groupExternalConfig->setEnabled(writable);
+  ui->tabComputers->setEnabled(writable && !m_activeFileMode);
+  ui->tabHotkeys->setEnabled(writable && !m_activeFileMode);
+  ui->groupMisc->setEnabled(writable && !m_activeFileMode);
+  ui->groupSwitch->setEnabled(writable && !m_activeFileMode);
+  ui->groupNetwork->setEnabled(writable && !m_activeFileMode);
+  for (auto *widget : findChildren<QWidget *>())
+    if (widget->property("graphEditor").toBool())
+      widget->setEnabled(writable && !m_activeFileMode);
   setButtonBoxEnabledButtons();
 }
 
@@ -569,7 +794,7 @@ void ServerConfigDialog::setServerConfig()
     m_buttonBox->enableSave(false);
     return;
   }
-  serverConfig().setConfigFile(configFile);
+  // Draft path remains in the line edit until Save.
   setButtonBoxEnabledButtons();
 }
 
@@ -590,8 +815,8 @@ bool ServerConfigDialog::addComputer(const QString &clientName, bool doSilent)
 
 bool ServerConfigDialog::isGeneralConfigModified() const
 {
-  return m_originalServerConfigIsExternal != Settings::value(Settings::Server::ExternalConfig).toBool() ||
-         m_originalServerConfigUsesExternalFile != Settings::value(Settings::Server::ExternalConfigFile).toString() ||
+  return ui->groupExternalConfig->isChecked() != Settings::value(Settings::Server::ExternalConfig).toBool() ||
+         ui->lineConfigFile->text() != Settings::value(Settings::Server::ExternalConfigFile).toString() ||
          m_protocol != Settings::networkProtocol() ||
          m_enableClipboard != Settings::value(Settings::Server::EnableClipboard).toBool() ||
          m_clipboardSize != Settings::value(Settings::Server::ClipboardSize).toUInt() ||
@@ -632,4 +857,12 @@ void ServerConfigDialog::setButtonBoxEnabledButtons() const
   m_buttonBox->enableSave(writable && (isGeneralConfigModified() || !(m_originalServerConfig == m_serverConfig)));
   m_buttonBox->enableReset(writable && (isGeneralConfigModified() || !(m_originalServerConfig == m_serverConfig)));
   m_buttonBox->enableRestoreDefaults(writable && !isGeneralConfigDefault() && ui->tabWidget->currentIndex() == 2);
+}
+
+void ServerConfigDialog::setActiveFileMode(bool active)
+{
+  if (m_activeFileMode == active)
+    return;
+  m_activeFileMode = active;
+  updateControls();
 }

@@ -11,10 +11,13 @@
 
 #include <QPlainTextEdit>
 #include <QScrollBar>
+#include <QTextBlock>
 #include <QVBoxLayout>
 
-LogWidget::LogWidget(QWidget *parent) : QWidget{parent}, m_textLog{new QPlainTextEdit(this)}
+LogWidget::LogWidget(QWidget *parent, QTextDocument *shared) : QWidget{parent}, m_textLog{new QPlainTextEdit(this)}
 {
+  if (shared)
+    m_textLog->setDocument(shared);
   m_textLog->setReadOnly(true);
   m_textLog->setMaximumBlockCount(10000);
   m_textLog->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -26,18 +29,34 @@ LogWidget::LogWidget(QWidget *parent) : QWidget{parent}, m_textLog{new QPlainTex
 
   setLayout(layout);
 
-  connect(
-      deskflow::gui::Logger::instance(), &deskflow::gui::Logger::newLine, m_textLog, &QPlainTextEdit::appendPlainText
-  );
+  if (!shared)
+    connect(deskflow::gui::Logger::instance(), &deskflow::gui::Logger::newLine, this, &LogWidget::appendLine);
+}
+
+QTextDocument *LogWidget::document() const
+{
+  return m_textLog->document();
 }
 
 void LogWidget::appendLine(const QString &msg)
 {
-  m_textLog->appendPlainText(msg);
+  constexpr qsizetype lineLimit = 16384, documentLimit = 2 * 1024 * 1024;
+  m_textLog->appendPlainText(msg.size() <= lineLimit ? msg : msg.left(lineLimit) + tr("…（此行过长，已截断）"));
+  auto *doc = m_textLog->document();
+  if (doc->characterCount() > documentLimit) {
+    auto block = doc->findBlock(doc->characterCount() - documentLimit);
+    if (block.isValid())
+      block = block.next();
+    QTextCursor cursor(doc);
+    cursor.setPosition(block.isValid() ? block.position() : doc->characterCount() - documentLimit);
+    cursor.setPosition(0, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
+  }
 }
 
 void LogWidget::findNext(const QString &text)
 {
+  Q_EMIT searchResult(countMatches(text));
   if (text.isEmpty())
     return;
 
@@ -49,6 +68,7 @@ void LogWidget::findNext(const QString &text)
 
 void LogWidget::findPrevious(const QString &text)
 {
+  Q_EMIT searchResult(countMatches(text));
   if (text.isEmpty())
     return;
 
@@ -62,4 +82,15 @@ void LogWidget::scrollToBottom() const
 {
   auto sb = m_textLog->verticalScrollBar();
   sb->setValue(sb->maximum());
+}
+
+int LogWidget::countMatches(const QString &text) const
+{
+  if (text.isEmpty())
+    return 0;
+  int matches = 0;
+  QTextCursor cursor(m_textLog->document());
+  while (!(cursor = m_textLog->document()->find(text, cursor)).isNull())
+    ++matches;
+  return matches;
 }

@@ -14,7 +14,9 @@
 #include "common/KeySequence.h"
 #include "config/ServerConfig.h"
 
+#include "gui/workspace/WorkspaceUi.h"
 #include <QTimer>
+#include <QVBoxLayout>
 
 ActionDialog::ActionDialog(QWidget *parent, const ServerConfig &config, Hotkey &hotkey, Action &action)
     : QDialog(parent, Qt::WindowTitleHint | Qt::WindowSystemMenuHint),
@@ -43,7 +45,9 @@ ActionDialog::ActionDialog(QWidget *parent, const ServerConfig &config, Hotkey &
   for (const Computer &computer : config.computers()) {
     if (computer.isNull())
       continue;
-    auto *newListItem = new QListWidgetItem(computer.name());
+    auto *newListItem = new QListWidgetItem(computer.displayName());
+    newListItem->setData(Qt::UserRole, computer.name());
+    newListItem->setToolTip(computer.name());
     newListItem->setCheckState(Qt::Checked);
     if ((m_action.typeComputerNames().indexOf(computer.name()) == -1) &&
         (m_action.haveComputers() && !m_action.typeComputerNames().isEmpty()))
@@ -51,7 +55,7 @@ ActionDialog::ActionDialog(QWidget *parent, const ServerConfig &config, Hotkey &
 
     ui->listComputers->addItem(newListItem);
 
-    ui->comboSwitchToComputer->addItem(tr("Switch to %1").arg(computer.name()), computer.name());
+    ui->comboSwitchToComputer->addItem(tr("%1（%2）").arg(computer.displayName(), computer.name()), computer.name());
     if (computer.name() == m_action.switchComputerName())
       ui->comboSwitchToComputer->setCurrentIndex(ui->comboSwitchToComputer->count() - 1);
   }
@@ -63,6 +67,7 @@ ActionDialog::ActionDialog(QWidget *parent, const ServerConfig &config, Hotkey &
   ui->comboSwitchInDirection->setVisible(false);
   ui->comboLockCursorToComputer->setVisible(false);
 
+  rebuildLayout();
   actionTypeChanged(ui->comboActionType->currentIndex());
 }
 
@@ -80,10 +85,11 @@ void ActionDialog::accept()
 
   for (int i = 0; i < ui->listComputers->count(); i++) {
     const auto &item = ui->listComputers->item(i);
-    m_action.addComputer(item->text());
+    const auto identifier = item->data(Qt::UserRole).toString();
+    m_action.addComputer(identifier);
     if (item->checkState() == Qt::Unchecked) {
       computerCount--;
-      m_action.removeComputer(item->text());
+      m_action.removeComputer(identifier);
     }
   }
 
@@ -101,12 +107,60 @@ void ActionDialog::accept()
   QDialog::accept();
 }
 
+void ActionDialog::rebuildLayout()
+{
+  using namespace deskflow::gui::workspace;
+  delete layout();
+  setObjectName("workspaceRoot");
+  setWindowTitle(tr("编辑快捷键动作"));
+  resize(640, 540);
+  setMinimumSize(540, 420);
+  auto *layout = new QVBoxLayout(this);
+  layout->setContentsMargins(24, 24, 24, 20);
+  layout->setSpacing(18);
+  layout->addWidget(label(tr("编辑动作"), "title"));
+  layout->addWidget(label(tr("设置触发时机、动作与目标。保留到规则后，仍需保存快捷键配置；这里不会执行动作。"), "muted")
+  );
+  ui->comboTriggerOn->setItemText(0, tr("组合按下时"));
+  ui->comboTriggerOn->setItemText(1, tr("组合释放时"));
+  const QStringList types{tr("按下按键"),   tr("释放按键"),         tr("按下并释放按键"), tr("切换到指定电脑"),
+                          tr("按方向切换"), tr("切换到下一台电脑"), tr("更改光标锁定"),   tr("重启来源端")};
+  for (int i = 0; i < types.size(); ++i)
+    ui->comboActionType->setItemText(i, types[i]);
+  const QStringList directions{tr("左侧"), tr("右侧"), tr("上方"), tr("下方")};
+  for (int i = 0; i < directions.size(); ++i)
+    ui->comboSwitchInDirection->setItemText(i, directions[i]);
+  const QStringList locks{tr("切换锁定状态"), tr("锁定在当前电脑"), tr("解除光标锁定")};
+  for (int i = 0; i < locks.size(); ++i)
+    ui->comboLockCursorToComputer->setItemText(i, locks[i]);
+  layout->addWidget(row(tr("触发时机"), tr("按下与释放事件独立保留"), ui->comboTriggerOn));
+  layout->addWidget(row(tr("动作类型"), tr("同一规则可按顺序组合多个动作"), ui->comboActionType));
+  auto *parameters = new QVBoxLayout;
+  parameters->setSpacing(12);
+  parameters->addWidget(ui->comboSwitchToComputer);
+  parameters->addWidget(ui->comboSwitchInDirection);
+  parameters->addWidget(ui->comboLockCursorToComputer);
+  auto *record = new QHBoxLayout;
+  record->addWidget(ui->keySequenceWidget, 1);
+  auto *cancel = m_cancelRecording = button(tr("取消录制"));
+  record->addWidget(cancel);
+  connect(cancel, &QPushButton::clicked, ui->keySequenceWidget, &KeySequenceWidget::cancelRecording);
+  parameters->addLayout(record);
+  layout->addLayout(parameters);
+  ui->groupComputers->setTitle(tr("接收此按键事件的电脑"));
+  ui->listComputers->setMinimumHeight(100);
+  layout->addWidget(ui->groupComputers, 1);
+  auto *notice = label(tr("重启动作会中断共享；保存前会再次说明影响。"), "muted");
+  layout->addWidget(notice);
+  layout->addWidget(ui->buttonBox);
+  ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("保留到规则"));
+  ui->buttonBox->button(QDialogButtonBox::Ok)->setProperty("primary", true);
+  ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("取消"));
+  applyTheme(this);
+}
 void ActionDialog::updateSize()
 {
-  setMaximumSize(QSize(16777215, 1677215));
-  adjustSize();
-  if (!isKeyAction(ui->comboActionType->currentIndex()))
-    setMaximumSize(size());
+  updateGeometry();
 }
 
 void ActionDialog::keySequenceChanged()
@@ -124,6 +178,8 @@ void ActionDialog::actionTypeChanged(int index)
 {
   ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(canSave());
   ui->keySequenceWidget->setVisible(isKeyAction(index));
+  if (m_cancelRecording)
+    m_cancelRecording->setVisible(isKeyAction(index));
   ui->groupComputers->setVisible(isKeyAction(index));
   ui->listComputers->setEnabled(!ui->keySequenceWidget->keySequence().isMouseButton());
   ui->comboSwitchToComputer->setVisible(index == ActionTypes::SwitchTo);
