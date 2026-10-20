@@ -1,0 +1,19 @@
+********* Start testing of WorkspaceTests *********
+Config: Using QtTest library 6.8.3, Qt 6.8.3 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 15.0.0 (clang-1500.3.9.4)), macos 27.0
+PASS   : WorkspaceTests::initTestCase()
+QINFO  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() initial settings file: /private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/deskflow-unit-tests/Deskflow/Deskflow.conf
+QINFO  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() settings file changed: /private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/WorkspaceTests-rREyQT/Deskflow.conf
+QDEBUG : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() recalling server config
+QDEBUG : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() committing server config
+QDEBUG : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() recalling server config
+QCRITICAL: WorkspaceTests::navigationDoesNotChangeRoleOrProfile() core server binary does not exist
+QWARN  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() QSystemTrayIcon::setVisible: No Icon set
+QDEBUG : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() active settings path: /private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/WorkspaceTests-rREyQT
+QINFO  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() no app translations found
+QINFO  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() no qt translations found
+QDEBUG : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() "failed to read key from certificate file: /private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/WorkspaceTests-rREyQT/tls/deskflow.pem"
+QINFO  : WorkspaceTests::navigationDoesNotChangeRoleOrProfile() cleaning up core process
+PASS   : WorkspaceTests::navigationDoesNotChangeRoleOrProfile()
+PASS   : WorkspaceTests::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 2819ms
+********* Finished testing of WorkspaceTests *********

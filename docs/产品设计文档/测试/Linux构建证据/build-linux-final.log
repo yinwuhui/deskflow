@@ -1,0 +1,125 @@
+[0/2] Re-checking globbed directories...
+[1/113] Generating .lupdate/deskflow_es.ts.stamp
+[2/113] Generating .lupdate/deskflow_it.ts.stamp
+[3/113] Generating .lupdate/deskflow_en.ts.stamp
+[4/113] Generating .lupdate/deskflow_ja.ts.stamp
+[5/113] Generating .lupdate/deskflow_ko.ts.stamp
+[6/113] Generating .lupdate/deskflow_ru.ts.stamp
+[7/113] Generating deskflow_en.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_en.qm'...
+    Generated 1 translation(s) (1 finished and 0 unfinished)
+    Ignored 1 untranslated source text(s)
+[8/113] Running utility command for docs
+[9/113] Generating deskflow_es.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_es.qm'...
+    Generated 309 translation(s) (12 finished and 297 unfinished)
+    Ignored 800 untranslated source text(s)
+[10/113] Generating deskflow_it.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_it.qm'...
+    Generated 309 translation(s) (202 finished and 107 unfinished)
+    Ignored 800 untranslated source text(s)
+[11/113] Generating deskflow_ja.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ja.qm'...
+    Generated 312 translation(s) (265 finished and 47 unfinished)
+    Ignored 797 untranslated source text(s)
+[12/113] Generating deskflow_ko.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ko.qm'...
+    Generated 309 translation(s) (211 finished and 98 unfinished)
+    Ignored 800 untranslated source text(s)
+[13/113] Generating deskflow_ru.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ru.qm'...
+    Generated 309 translation(s) (214 finished and 95 unfinished)
+    Ignored 800 untranslated source text(s)
+[14/113] Automatic MOC and UIC for target common
+[15/113] Generating .lupdate/deskflow_zh_CN.ts.stamp
+[16/113] Generating deskflow_zh_CN.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_zh_CN.qm'...
+    Generated 310 translation(s) (203 finished and 107 unfinished)
+    Ignored 799 untranslated source text(s)
+[17/113] Building CXX object src/lib/common/CMakeFiles/common.dir/CoreControl.cpp.o
+[18/113] Building CXX object src/lib/common/CMakeFiles/common.dir/common_autogen/mocs_compilation.cpp.o
+[19/113] Building CXX object src/lib/common/CMakeFiles/common.dir/I18N.cpp.o
+[20/113] Linking CXX static library src/lib/common/libcommon.a
+[21/113] Linking CXX executable src/unittests/base/StringTests
+[22/113] Linking CXX executable src/unittests/arch/ArchTests
+[23/113] Linking CXX executable src/unittests/base/UnicodeTests
+[24/113] Automatic MOC and UIC for target I18NTests
+[25/113] Linking CXX executable src/unittests/base/LogTests
+[26/113] Automatic MOC and UIC for target app
+[27/113] Linking CXX executable src/unittests/base/FileLogOutputterTests
+[28/113] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/app_autogen/mocs_compilation.cpp.o
+[29/113] Building CXX object src/unittests/common/CMakeFiles/I18NTests.dir/I18NTests_autogen/mocs_compilation.cpp.o
+[30/113] Building CXX object src/unittests/common/CMakeFiles/I18NTests.dir/I18NTests.cpp.o
+[31/113] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/App.cpp.o
+[32/113] Linking CXX executable src/unittests/base/BaseExceptionTests
+[33/113] Linking CXX executable src/unittests/base/EventQueueTests
+[34/113] Linking CXX executable src/unittests/common/SettingsTests
+[35/113] Linking CXX executable src/unittests/common/LogLevelTests
+[36/113] Linking CXX executable src/unittests/common/I18NTests
+[37/113] Linking CXX executable src/unittests/common/KeySequenceTests
+[38/113] Linking CXX executable src/unittests/net/SecureUtilsTests
+[39/113] Linking CXX executable src/unittests/net/FingerprintTests
+[40/113] Linking CXX executable src/unittests/net/FingerprintDatabaseTests
+[41/113] Linking CXX executable src/unittests/net/MdnsLifecycleTests
+[42/113] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/IpcServer.cpp.o
+[43/113] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/CoreIpcServer.cpp.o
+[44/113] Linking CXX static library src/lib/deskflow/libapp.a
+[45/113] Automatic MOC and UIC for target ClipboardChunksTests
+[46/112] Automatic MOC and UIC for target ClipboardTests
+[47/111] Automatic MOC and UIC for target IKeyStateTests
+[48/110] Automatic MOC and UIC for target KeyMapTests
+[49/109] Automatic MOC and UIC for target KeyboardLayoutManagerTests
+[50/108] Automatic MOC and UIC for target KeyStateTests
+[51/107] Automatic MOC and UIC for target XkbLayoutParserTests
+[52/106] Automatic MOC and UIC for target gui
+[53/106] Linking CXX executable src/unittests/client/ServerProxyTests
+[54/106] Automatic MOC and UIC for target IpcServerTests
+[55/106] Linking CXX executable bin/deskflow-core
+[56/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/DeviceCanvas.cpp.o
+[57/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/SetupAssistant.cpp.o
+[58/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/gui_autogen/mocs_compilation.cpp.o
+[59/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/DeviceWorkspace.cpp.o
+[60/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/WorkspaceUi.cpp.o
+[61/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/SettingsWorkspace.cpp.o
+[62/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowSourceChange.cpp.o
+[63/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowSetup.cpp.o
+[64/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowPages.cpp.o
+[65/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ActionDialog.cpp.o
+[66/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ComputerSettingsDialog.cpp.o
+[67/106] Building CXX object src/unittests/deskflow/CMakeFiles/IpcServerTests.dir/IpcServerTests_autogen/mocs_compilation.cpp.o
+[68/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowWorkspace.cpp.o
+[69/106] Linking CXX executable src/unittests/deskflow/ClipboardTests
+[70/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindow.cpp.o
+[71/106] Linking CXX executable src/unittests/deskflow/ClipboardChunksTests
+[72/106] Linking CXX executable src/unittests/deskflow/IKeyStateTests
+[73/106] Linking CXX executable src/unittests/deskflow/KeyMapTests
+[74/106] Linking CXX executable src/unittests/deskflow/KeyStateTests
+[75/106] Linking CXX executable src/unittests/deskflow/KeyboardLayoutManagerTests
+[76/106] Linking CXX executable src/unittests/deskflow/XkbLayoutParserTests
+[77/106] Linking CXX executable src/unittests/platform/XWindowsClipboardTests
+[78/106] Linking CXX executable src/unittests/platform/EiKeyStateTests
+[79/106] Linking CXX executable src/unittests/server/ServerConfigTests
+[80/106] Linking CXX executable src/unittests/server/ServerTests
+[81/106] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/SettingsDialog.cpp.o
+[82/106] Linking CXX executable src/unittests/server/ClientProxyTests
+[83/106] Linking CXX static library src/lib/gui/libgui.a
+[84/106] Automatic MOC and UIC for target CoreValidationTests
+[85/105] Automatic MOC and UIC for target WorkspaceTests
+[86/104] Building CXX object src/unittests/deskflow/CMakeFiles/IpcServerTests.dir/IpcServerTests.cpp.o
+[87/104] Linking CXX executable src/unittests/deskflow/IpcServerTests
+[88/104] Linking CXX executable src/unittests/gui/LoggerTests
+[89/104] Linking CXX executable src/unittests/gui/VersionCheckerTests
+[90/104] Building CXX object src/apps/deskflow-gui/CMakeFiles/deskflow.dir/deskflow-gui.cpp.o
+[91/104] Linking CXX executable src/unittests/gui/config/ComputerTests
+[92/104] Linking CXX executable bin/deskflow
+[93/104] Linking CXX executable src/unittests/gui/core/NetworkMonitorTests
+[94/104] Linking CXX executable src/unittests/gui/core/ConfigurationBackupTests
+[95/104] Linking CXX executable src/unittests/gui/core/IdentityTests
+[96/104] Linking CXX executable src/unittests/gui/core/ApplicationStateTests
+[97/104] Linking CXX executable src/unittests/gui/core/MaintenanceTests
+[98/104] Linking CXX executable src/unittests/gui/core/SourceChangeTransactionTests
+[99/104] Building CXX object src/unittests/gui/core/CMakeFiles/CoreValidationTests.dir/CoreValidationTests.cpp.o
+[100/104] Linking CXX executable src/unittests/gui/core/LayoutMigrationTests
+[101/104] Building CXX object src/unittests/gui/CMakeFiles/WorkspaceTests.dir/WorkspaceTests.cpp.o
+[102/104] Linking CXX executable src/unittests/gui/core/CoreValidationTests
+[103/104] Linking CXX executable src/unittests/gui/WorkspaceTests

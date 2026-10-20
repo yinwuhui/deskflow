@@ -1,0 +1,79 @@
+Test project /tmp/deskflow-build/src/unittests
+      Start  1: ArchTests
+ 1/37 Test  #1: ArchTests ........................   Passed    0.05 sec
+      Start  2: StringTests
+ 2/37 Test  #2: StringTests ......................   Passed    0.01 sec
+      Start  3: UnicodeTests
+ 3/37 Test  #3: UnicodeTests .....................   Passed    0.01 sec
+      Start  4: LogTests
+ 4/37 Test  #4: LogTests .........................   Passed    0.02 sec
+      Start  5: FileLogOutputterTests
+ 5/37 Test  #5: FileLogOutputterTests ............   Passed    0.02 sec
+      Start  6: BaseExceptionTests
+ 6/37 Test  #6: BaseExceptionTests ...............   Passed    0.01 sec
+      Start  7: EventQueueTests
+ 7/37 Test  #7: EventQueueTests ..................   Passed    0.01 sec
+      Start  8: ServerProxyTests
+ 8/37 Test  #8: ServerProxyTests .................   Passed    0.45 sec
+      Start  9: SettingsTests
+ 9/37 Test  #9: SettingsTests ....................   Passed    0.06 sec
+      Start 10: LogLevelTests
+10/37 Test #10: LogLevelTests ....................   Passed    0.02 sec
+      Start 11: I18NTests
+11/37 Test #11: I18NTests ........................   Passed    0.03 sec
+      Start 12: KeySequenceTests
+12/37 Test #12: KeySequenceTests .................   Passed    0.01 sec
+      Start 13: ClipboardTests
+13/37 Test #13: ClipboardTests ...................   Passed    0.36 sec
+      Start 14: ClipboardChunksTests
+14/37 Test #14: ClipboardChunksTests .............   Passed    0.93 sec
+      Start 15: IKeyStateTests
+15/37 Test #15: IKeyStateTests ...................   Passed    0.40 sec
+      Start 16: KeyMapTests
+16/37 Test #16: KeyMapTests ......................   Passed    0.42 sec
+      Start 17: KeyStateTests
+17/37 Test #17: KeyStateTests ....................   Passed    0.40 sec
+      Start 18: KeyboardLayoutManagerTests
+18/37 Test #18: KeyboardLayoutManagerTests .......   Passed    0.37 sec
+      Start 19: IpcServerTests
+19/37 Test #19: IpcServerTests ...................   Passed    0.11 sec
+      Start 20: LoggerTests
+20/37 Test #20: LoggerTests ......................   Passed    0.61 sec
+      Start 21: WorkspaceTests
+21/37 Test #21: WorkspaceTests ...................   Passed    7.97 sec
+      Start 22: VersionCheckerTests
+22/37 Test #22: VersionCheckerTests ..............   Passed    0.57 sec
+      Start 23: ComputerTests
+23/37 Test #23: ComputerTests ....................   Passed    0.43 sec
+      Start 24: NetworkMonitorTests
+24/37 Test #24: NetworkMonitorTests ..............   Passed    0.58 sec
+      Start 25: ApplicationStateTests
+25/37 Test #25: ApplicationStateTests ............   Passed    0.60 sec
+      Start 26: ConfigurationBackupTests
+26/37 Test #26: ConfigurationBackupTests .........   Passed    0.40 sec
+      Start 27: IdentityTests
+27/37 Test #27: IdentityTests ....................   Passed    0.63 sec
+      Start 28: CoreValidationTests
+28/37 Test #28: CoreValidationTests ..............   Passed    0.82 sec
+      Start 29: MaintenanceTests
+29/37 Test #29: MaintenanceTests .................   Passed    0.42 sec
+      Start 30: SourceChangeTransactionTests
+30/37 Test #30: SourceChangeTransactionTests .....   Passed    0.58 sec
+      Start 31: LayoutMigrationTests
+31/37 Test #31: LayoutMigrationTests .............   Passed    0.57 sec
+      Start 32: SecureUtilsTests
+32/37 Test #32: SecureUtilsTests .................   Passed    0.01 sec
+      Start 33: FingerprintTests
+33/37 Test #33: FingerprintTests .................   Passed    0.01 sec
+      Start 34: FingerprintDatabaseTests
+34/37 Test #34: FingerprintDatabaseTests .........   Passed    0.01 sec
+      Start 35: ServerConfigTests
+35/37 Test #35: ServerConfigTests ................   Passed    0.43 sec
+      Start 36: ServerTests
+36/37 Test #36: ServerTests ......................   Passed    0.34 sec
+      Start 37: ClientProxyTests
+37/37 Test #37: ClientProxyTests .................   Passed    0.99 sec
+
+100% tests passed out of 37
+
+Total Test time (real) =  19.70 sec

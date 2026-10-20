@@ -1,0 +1,305 @@
+[0/2] Re-checking globbed directories...
+[1/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/platform_autogen/mocs_compilation.cpp.o
+[2/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XDGKeyUtil.cpp.o
+[3/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardAnyBitmapConverter.cpp.o
+[4/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardBMPConverter.cpp.o
+[5/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardHTMLConverter.cpp.o
+[6/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XDGPowerManager.cpp.o
+[7/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardTextConverter.cpp.o
+[8/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboard.cpp.o
+[9/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardUCS2Converter.cpp.o
+[10/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsClipboardUTF8Converter.cpp.o
+[11/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsEventQueueBuffer.cpp.o
+[12/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsUtil.cpp.o
+[13/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsScreenSaver.cpp.o
+[14/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsComputer.cpp.o
+[15/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/XWindowsKeyState.cpp.o
+[16/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/EiClipboard.cpp.o
+[17/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/EiEventQueueBuffer.cpp.o
+[18/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/EiComputer.cpp.o
+[19/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/EiKeyState.cpp.o
+[20/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/PortalInputCapture.cpp.o
+[21/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/app_autogen/mocs_compilation.cpp.o
+[22/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/PortalRemoteDesktop.cpp.o
+[23/284] Building CXX object src/lib/platform/CMakeFiles/platform.dir/PortalClipboard.cpp.o
+[24/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/unix/AppUtilUnix.cpp.o
+[25/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/unix/DeskflowXkbKeyboard.cpp.o
+[26/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/Chunk.cpp.o
+[27/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/unix/XkbLayoutsParser.cpp.o
+[28/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/AppUtil.cpp.o
+[29/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/App.cpp.o
+[30/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/Clipboard.cpp.o
+[31/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ClipboardChunk.cpp.o
+[32/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ClientApp.cpp.o
+[33/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/DeskflowException.cpp.o
+[34/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/DisplayException.cpp.o
+[35/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/IPrimaryComputer.cpp.o
+[36/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/KeyTypes.cpp.o
+[37/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/Computer.cpp.o
+[38/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/IKeyState.cpp.o
+[39/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/PacketStreamFilter.cpp.o
+[40/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/IClipboard.cpp.o
+[41/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ProtocolTypes.cpp.o
+[42/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/KeyState.cpp.o
+[43/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/KeyMap.cpp.o
+[44/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ProtocolUtil.cpp.o
+[45/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/PlatformComputer.cpp.o
+[46/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/StreamChunker.cpp.o
+[47/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/KeyboardLayoutManager.cpp.o
+[48/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/IpcServer.cpp.o
+[49/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ServerApp.cpp.o
+[50/284] Linking CXX static library src/lib/platform/libplatform.a
+[51/284] Automatic MOC and UIC for target MdnsLifecycleTests
+[52/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/DaemonIpcServer.cpp.o
+[53/284] Generating .lupdate/deskflow_en.ts.stamp
+[54/284] Generating .lupdate/deskflow_es.ts.stamp
+[55/284] Generating .lupdate/deskflow_it.ts.stamp
+[56/284] Generating .lupdate/deskflow_ja.ts.stamp
+[57/284] Generating .lupdate/deskflow_ko.ts.stamp
+[58/284] Generating .lupdate/deskflow_ru.ts.stamp
+[59/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/CoreIpc.cpp.o
+[60/284] Generating .lupdate/deskflow_zh_CN.ts.stamp
+[61/284] Building CXX object src/lib/deskflow/CMakeFiles/app.dir/ipc/CoreIpcServer.cpp.o
+[62/284] Linking CXX static library src/lib/deskflow/libapp.a
+[63/284] Building CXX object src/unittests/base/CMakeFiles/UnicodeTests.dir/UnicodeTests.cpp.o
+[64/284] Automatic MOC and UIC for target deskflow-core
+[65/284] Building CXX object src/apps/deskflow-core/CMakeFiles/deskflow-core.dir/deskflow-core_autogen/mocs_compilation.cpp.o
+[66/284] Building CXX object src/unittests/base/CMakeFiles/UnicodeTests.dir/UnicodeTests_autogen/mocs_compilation.cpp.o
+[67/284] Building CXX object src/unittests/base/CMakeFiles/LogTests.dir/LogTests_autogen/mocs_compilation.cpp.o
+[68/284] Automatic MOC and UIC for target ServerProxyTests
+[69/284] Automatic MOC and UIC for target ClipboardTests
+[70/284] Automatic MOC and UIC for target ClipboardChunksTests
+[71/284] Automatic MOC and UIC for target IKeyStateTests
+[72/284] Automatic MOC and UIC for target KeyMapTests
+[73/284] Automatic MOC and UIC for target gui
+[74/284] Automatic MOC and UIC for target KeyStateTests
+[75/284] Building CXX object src/apps/deskflow-core/CMakeFiles/deskflow-core.dir/CoreArgParser.cpp.o
+[76/284] Building CXX object src/apps/deskflow-core/CMakeFiles/deskflow-core.dir/deskflow-core.cpp.o
+[77/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/DeviceCanvas.cpp.o
+[78/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/SetupAssistant.cpp.o
+[79/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/gui_autogen/mocs_compilation.cpp.o
+[80/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/WorkspaceUi.cpp.o
+[81/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/DeviceWorkspace.cpp.o
+[82/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/ComputerSetupModel.cpp.o
+[83/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/FileTail.cpp.o
+[84/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/SettingsWorkspace.cpp.o
+[85/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/Diagnostic.cpp.o
+[86/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/Logger.cpp.o
+[87/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowSourceChange.cpp.o
+[88/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowSetup.cpp.o
+[89/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowPages.cpp.o
+[90/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/Messages.cpp.o
+[91/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/TlsUtility.cpp.o
+[92/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowWorkspace.cpp.o
+[93/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindow.cpp.o
+[94/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/VersionChecker.cpp.o
+[95/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/config/ComputerList.cpp.o
+[96/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/config/Computer.cpp.o
+[97/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/core/SourceChangeTransaction.cpp.o
+[98/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/config/ServerConfig.cpp.o
+[99/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/core/ConfigurationBackup.cpp.o
+[100/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/core/CoreProcess.cpp.o
+[101/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/core/ApplicationState.cpp.o
+[102/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/core/NetworkMonitor.cpp.o
+[103/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/AboutDialog.cpp.o
+[104/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ActionDialog.cpp.o
+[105/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ClientConfigDialog.cpp.o
+[106/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/FingerprintDialog.cpp.o
+[107/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ComputerSettingsDialog.cpp.o
+[108/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/HelpDialog.cpp.o
+[109/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/HotkeyDialog.cpp.o
+[110/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/ipc/IpcClient.cpp.o
+[111/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ServerBrowserDialog.cpp.o
+[112/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/ServerConfigDialog.cpp.o
+[113/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/dialogs/SettingsDialog.cpp.o
+[114/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/ipc/DaemonIpcClient.cpp.o
+[115/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/ipc/CoreIpcClient.cpp.o
+[116/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/AliasValidator.cpp.o
+[117/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/ComputerDuplicationsValidator.cpp.o
+[118/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/EmptyStringValidator.cpp.o
+[119/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/ComputerLineNameValidator.cpp.o
+[120/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/ComputerNameValidator.cpp.o
+[121/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/IStringValidator.cpp.o
+[122/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/SpacesValidator.cpp.o
+[123/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/IpAddressValidator.cpp.o
+[124/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/LineEditValidator.cpp.o
+[125/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/validators/ValidationError.cpp.o
+[126/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/ComputerSetupView.cpp.o
+[127/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/KeySequenceWidget.cpp.o
+[128/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/FingerprintPreview.cpp.o
+[129/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/LogDock.cpp.o
+[130/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/LogWidget.cpp.o
+[131/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/SearchWidget.cpp.o
+[132/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/RemoveComputerWidget.cpp.o
+[133/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/NewComputerWidget.cpp.o
+[134/284] Automatic MOC and UIC for target KeyboardLayoutManagerTests
+[135/284] Automatic MOC and UIC for target XkbLayoutParserTests
+[136/284] Linking CXX executable bin/deskflow-core
+[137/284] Automatic MOC and UIC for target EiKeyStateTests
+[138/284] Automatic MOC and UIC for target XWindowsClipboardTests
+[139/284] Automatic MOC and UIC for target ServerConfigTests
+[140/284] Automatic MOC and UIC for target ServerTests
+[141/284] Automatic MOC and UIC for target ClientProxyTests
+[142/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/StatusBar.cpp.o
+[143/284] Building CXX object src/lib/gui/CMakeFiles/gui.dir/widgets/SettingsDialogButtonBox.cpp.o
+[144/284] Linking CXX static library src/lib/gui/libgui.a
+[145/284] Automatic MOC and UIC for target deskflow
+[146/284] Automatic RCC for ../res/deskflow.qrc
+[147/284] Automatic MOC and UIC for target LoggerTests
+[148/284] Building CXX object src/unittests/base/CMakeFiles/FileLogOutputterTests.dir/FileLogOutputterTests_autogen/mocs_compilation.cpp.o
+[149/284] Automatic MOC and UIC for target WorkspaceTests
+[150/284] Building CXX object src/unittests/base/CMakeFiles/LogTests.dir/LogTests.cpp.o
+[151/284] Automatic MOC and UIC for target VersionCheckerTests
+[152/284] Automatic MOC and UIC for target ComputerTests
+[153/284] Automatic MOC and UIC for target NetworkMonitorTests
+[154/284] Building CXX object src/unittests/base/CMakeFiles/FileLogOutputterTests.dir/FileLogOutputterTests.cpp.o
+[155/284] Automatic MOC and UIC for target ApplicationStateTests
+[156/284] Automatic MOC and UIC for target ConfigurationBackupTests
+[157/284] Automatic MOC and UIC for target IdentityTests
+[158/284] Automatic MOC and UIC for target CoreValidationTests
+[159/284] Building CXX object src/apps/deskflow-gui/CMakeFiles/deskflow.dir/deskflow_autogen/mocs_compilation.cpp.o
+[160/284] Automatic MOC and UIC for target MaintenanceTests
+[161/284] Building CXX object src/apps/deskflow-gui/CMakeFiles/deskflow.dir/deskflow_autogen/WG5ICXO7IL/qrc_deskflow.cpp.o
+[162/284] Automatic MOC and UIC for target LayoutMigrationTests
+[163/284] Automatic MOC and UIC for target SourceChangeTransactionTests
+[164/284] Building CXX object src/unittests/base/CMakeFiles/EventQueueTests.dir/EventQueueTests_autogen/mocs_compilation.cpp.o
+[165/284] Building CXX object src/unittests/base/CMakeFiles/BaseExceptionTests.dir/BaseExceptionTests_autogen/mocs_compilation.cpp.o
+[166/284] Building CXX object src/unittests/base/CMakeFiles/BaseExceptionTests.dir/BaseExceptionTests.cpp.o
+[167/284] Building CXX object src/apps/deskflow-gui/CMakeFiles/deskflow.dir/deskflow-gui.cpp.o
+[168/284] Building CXX object src/unittests/client/CMakeFiles/ServerProxyTests.dir/ServerProxyTests_autogen/mocs_compilation.cpp.o
+[169/284] Building CXX object src/unittests/base/CMakeFiles/EventQueueTests.dir/EventQueueTests.cpp.o
+[170/284] Building CXX object src/unittests/client/CMakeFiles/ServerProxyTests.dir/ServerProxyTests.cpp.o
+[171/284] Building CXX object src/unittests/common/CMakeFiles/SettingsTests.dir/SettingsTests_autogen/mocs_compilation.cpp.o
+[172/284] Building CXX object src/unittests/common/CMakeFiles/LogLevelTests.dir/LogLevelTests_autogen/mocs_compilation.cpp.o
+[173/284] Building CXX object src/unittests/common/CMakeFiles/SettingsTests.dir/SettingsTests.cpp.o
+[174/284] Building CXX object src/unittests/common/CMakeFiles/LogLevelTests.dir/LogLevelTests.cpp.o
+[175/284] Building CXX object src/unittests/common/CMakeFiles/I18NTests.dir/I18NTests_autogen/mocs_compilation.cpp.o
+[176/284] Building CXX object src/unittests/common/CMakeFiles/KeySequenceTests.dir/KeySequenceTests_autogen/mocs_compilation.cpp.o
+[177/284] Building CXX object src/unittests/common/CMakeFiles/I18NTests.dir/I18NTests.cpp.o
+[178/284] Building CXX object src/unittests/common/CMakeFiles/KeySequenceTests.dir/KeySequenceTests.cpp.o
+[179/284] Building CXX object src/unittests/deskflow/CMakeFiles/ClipboardTests.dir/ClipboardTests_autogen/mocs_compilation.cpp.o
+[180/284] Building CXX object src/unittests/deskflow/CMakeFiles/ClipboardTests.dir/ClipboardTests.cpp.o
+[181/284] Building CXX object src/unittests/deskflow/CMakeFiles/ClipboardChunksTests.dir/ClipboardChunksTests_autogen/mocs_compilation.cpp.o
+[182/284] Building CXX object src/unittests/deskflow/CMakeFiles/ClipboardChunksTests.dir/ClipboardChunksTests.cpp.o
+[183/284] Building CXX object src/unittests/deskflow/CMakeFiles/IKeyStateTests.dir/IKeyStateTests_autogen/mocs_compilation.cpp.o
+[184/284] Building CXX object src/unittests/deskflow/CMakeFiles/IKeyStateTests.dir/IKeyStateTests.cpp.o
+[185/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyMapTests.dir/KeyMapTests_autogen/mocs_compilation.cpp.o
+[186/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyMapTests.dir/KeyMapTests.cpp.o
+[187/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyStateTests.dir/KeyStateTests_autogen/mocs_compilation.cpp.o
+[188/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyboardLayoutManagerTests.dir/KeyboardLayoutManagerTests_autogen/mocs_compilation.cpp.o
+[189/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyStateTests.dir/KeyStateTests.cpp.o
+[190/284] Building CXX object src/unittests/deskflow/CMakeFiles/KeyboardLayoutManagerTests.dir/KeyboardLayoutManagerTests.cpp.o
+[191/284] Building CXX object src/unittests/deskflow/CMakeFiles/XkbLayoutParserTests.dir/XkbLayoutParserTests_autogen/mocs_compilation.cpp.o
+[192/284] Building CXX object src/unittests/gui/CMakeFiles/WorkspaceTests.dir/WorkspaceTests_autogen/mocs_compilation.cpp.o
+[193/284] Building CXX object src/unittests/deskflow/CMakeFiles/XkbLayoutParserTests.dir/XkbLayoutParserTests.cpp.o
+[194/284] Building CXX object src/unittests/gui/CMakeFiles/VersionCheckerTests.dir/VersionCheckerTests_autogen/mocs_compilation.cpp.o
+[195/284] Building CXX object src/unittests/gui/CMakeFiles/LoggerTests.dir/LoggerTests_autogen/mocs_compilation.cpp.o
+[196/284] Building CXX object src/unittests/gui/CMakeFiles/LoggerTests.dir/LoggerTests.cpp.o
+[197/284] Building CXX object src/unittests/gui/config/CMakeFiles/ComputerTests.dir/ComputerTests_autogen/mocs_compilation.cpp.o
+[198/284] Building CXX object src/unittests/gui/CMakeFiles/VersionCheckerTests.dir/VersionCheckerTests.cpp.o
+[199/284] Building CXX object src/unittests/gui/CMakeFiles/WorkspaceTests.dir/WorkspaceTests.cpp.o
+[200/284] Building CXX object src/unittests/gui/core/CMakeFiles/ApplicationStateTests.dir/ApplicationStateTests_autogen/mocs_compilation.cpp.o
+[201/284] Building CXX object src/unittests/gui/config/CMakeFiles/ComputerTests.dir/ComputerTests.cpp.o
+[202/284] Building CXX object src/unittests/gui/core/CMakeFiles/ConfigurationBackupTests.dir/ConfigurationBackupTests_autogen/mocs_compilation.cpp.o
+[203/284] Building CXX object src/unittests/gui/core/CMakeFiles/NetworkMonitorTests.dir/NetworkMonitorTests_autogen/mocs_compilation.cpp.o
+[204/284] Building CXX object src/unittests/gui/core/CMakeFiles/IdentityTests.dir/IdentityTests_autogen/mocs_compilation.cpp.o
+[205/284] Building CXX object src/unittests/gui/core/CMakeFiles/NetworkMonitorTests.dir/NetworkMonitorTests.cpp.o
+[206/284] Building CXX object src/unittests/gui/core/CMakeFiles/CoreValidationTests.dir/CoreValidationTests_autogen/mocs_compilation.cpp.o
+[207/284] Building CXX object src/unittests/gui/core/CMakeFiles/ApplicationStateTests.dir/ApplicationStateTests.cpp.o
+[208/284] Building CXX object src/unittests/gui/core/CMakeFiles/MaintenanceTests.dir/MaintenanceTests_autogen/mocs_compilation.cpp.o
+[209/284] Building CXX object src/unittests/gui/core/CMakeFiles/ConfigurationBackupTests.dir/ConfigurationBackupTests.cpp.o
+[210/284] Building CXX object src/unittests/gui/core/CMakeFiles/SourceChangeTransactionTests.dir/SourceChangeTransactionTests_autogen/mocs_compilation.cpp.o
+[211/284] Building CXX object src/unittests/gui/core/CMakeFiles/IdentityTests.dir/IdentityTests.cpp.o
+[212/284] Building CXX object src/unittests/gui/core/CMakeFiles/LayoutMigrationTests.dir/LayoutMigrationTests_autogen/mocs_compilation.cpp.o
+[213/284] Building CXX object src/unittests/gui/core/CMakeFiles/CoreValidationTests.dir/CoreValidationTests.cpp.o
+[214/284] Building CXX object src/unittests/gui/core/CMakeFiles/MaintenanceTests.dir/MaintenanceTests.cpp.o
+[215/284] Building CXX object src/unittests/gui/core/CMakeFiles/SourceChangeTransactionTests.dir/SourceChangeTransactionTests.cpp.o
+[216/284] Building CXX object src/unittests/net/CMakeFiles/SecureUtilsTests.dir/SecureUtilsTests_autogen/mocs_compilation.cpp.o
+[217/284] Building CXX object src/unittests/net/CMakeFiles/SecureUtilsTests.dir/SecureUtilsTests.cpp.o
+[218/284] Building CXX object src/unittests/gui/core/CMakeFiles/LayoutMigrationTests.dir/LayoutMigrationTests.cpp.o
+[219/284] Building CXX object src/unittests/net/CMakeFiles/FingerprintTests.dir/FingerprintTests_autogen/mocs_compilation.cpp.o
+[220/284] Building CXX object src/unittests/net/CMakeFiles/MdnsLifecycleTests.dir/MdnsLifecycleTests_autogen/mocs_compilation.cpp.o
+[221/284] Building CXX object src/unittests/net/CMakeFiles/FingerprintTests.dir/FingerprintTests.cpp.o
+[222/284] Building CXX object src/unittests/net/CMakeFiles/FingerprintDatabaseTests.dir/FingerprintDatabaseTests_autogen/mocs_compilation.cpp.o
+[223/284] Building CXX object src/unittests/net/CMakeFiles/FingerprintDatabaseTests.dir/FingerprintDatabaseTests.cpp.o
+[224/284] Building CXX object src/unittests/net/CMakeFiles/MdnsLifecycleTests.dir/MdnsLifecycleTests.cpp.o
+[225/284] Building CXX object src/unittests/platform/CMakeFiles/EiKeyStateTests.dir/EiKeyStateTests_autogen/mocs_compilation.cpp.o
+[226/284] Building CXX object src/unittests/platform/CMakeFiles/XWindowsClipboardTests.dir/XWindowsClipboardTests_autogen/mocs_compilation.cpp.o
+[227/284] Building CXX object src/unittests/platform/CMakeFiles/EiKeyStateTests.dir/EiKeyStateTests.cpp.o
+[228/284] Building CXX object src/unittests/platform/CMakeFiles/XWindowsClipboardTests.dir/XWindowsClipboardTests.cpp.o
+[229/284] Building CXX object src/unittests/server/CMakeFiles/ServerConfigTests.dir/ServerConfigTests_autogen/mocs_compilation.cpp.o
+[230/284] Building CXX object src/unittests/server/CMakeFiles/ServerTests.dir/ServerTests_autogen/mocs_compilation.cpp.o
+[231/284] Building CXX object src/unittests/server/CMakeFiles/ServerConfigTests.dir/ServerConfigTests.cpp.o
+[232/284] Running utility command for docs
+[233/284] Generating deskflow_en.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_en.qm'...
+    Generated 1 translation(s) (1 finished and 0 unfinished)
+    Ignored 1 untranslated source text(s)
+[234/284] Generating deskflow_es.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_es.qm'...
+    Generated 309 translation(s) (12 finished and 297 unfinished)
+    Ignored 798 untranslated source text(s)
+[235/284] Generating deskflow_it.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_it.qm'...
+    Generated 309 translation(s) (202 finished and 107 unfinished)
+    Ignored 798 untranslated source text(s)
+[236/284] Generating deskflow_ja.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ja.qm'...
+    Generated 312 translation(s) (265 finished and 47 unfinished)
+    Ignored 795 untranslated source text(s)
+[237/284] Generating deskflow_ko.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ko.qm'...
+    Generated 309 translation(s) (211 finished and 98 unfinished)
+    Ignored 798 untranslated source text(s)
+[238/284] Generating deskflow_ru.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ru.qm'...
+    Generated 309 translation(s) (214 finished and 95 unfinished)
+    Ignored 798 untranslated source text(s)
+[239/284] Generating deskflow_zh_CN.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_zh_CN.qm'...
+    Generated 310 translation(s) (203 finished and 107 unfinished)
+    Ignored 797 untranslated source text(s)
+[240/284] Building CXX object src/unittests/server/CMakeFiles/ClientProxyTests.dir/ClientProxyTests_autogen/mocs_compilation.cpp.o
+[241/284] Building CXX object src/unittests/server/CMakeFiles/ServerTests.dir/ServerTests.cpp.o
+[242/284] Linking CXX executable src/unittests/arch/ArchTests
+[243/284] Linking CXX executable src/unittests/base/StringTests
+[244/284] Linking CXX executable src/unittests/base/UnicodeTests
+[245/284] Linking CXX executable src/unittests/base/LogTests
+[246/284] Linking CXX executable src/unittests/base/FileLogOutputterTests
+[247/284] Linking CXX executable bin/deskflow
+[248/284] Linking CXX executable src/unittests/base/BaseExceptionTests
+[249/284] Linking CXX executable src/unittests/base/EventQueueTests
+[250/284] Linking CXX executable src/unittests/common/SettingsTests
+[251/284] Linking CXX executable src/unittests/common/LogLevelTests
+[252/284] Linking CXX executable src/unittests/common/I18NTests
+[253/284] Linking CXX executable src/unittests/common/KeySequenceTests
+[254/284] Linking CXX executable src/unittests/client/ServerProxyTests
+[255/284] Linking CXX executable src/unittests/deskflow/ClipboardTests
+[256/284] Linking CXX executable src/unittests/deskflow/ClipboardChunksTests
+[257/284] Linking CXX executable src/unittests/deskflow/IKeyStateTests
+[258/284] Linking CXX executable src/unittests/deskflow/KeyMapTests
+[259/284] Linking CXX executable src/unittests/deskflow/KeyboardLayoutManagerTests
+[260/284] Linking CXX executable src/unittests/deskflow/KeyStateTests
+[261/284] Linking CXX executable src/unittests/deskflow/XkbLayoutParserTests
+[262/284] Building CXX object src/unittests/server/CMakeFiles/ClientProxyTests.dir/ClientProxyTests.cpp.o
+[263/284] Linking CXX executable src/unittests/gui/LoggerTests
+[264/284] Linking CXX executable src/unittests/gui/WorkspaceTests
+[265/284] Linking CXX executable src/unittests/gui/VersionCheckerTests
+[266/284] Linking CXX executable src/unittests/gui/config/ComputerTests
+[267/284] Linking CXX executable src/unittests/gui/core/ConfigurationBackupTests
+[268/284] Linking CXX executable src/unittests/gui/core/IdentityTests
+[269/284] Linking CXX executable src/unittests/gui/core/NetworkMonitorTests
+[270/284] Linking CXX executable src/unittests/gui/core/ApplicationStateTests
+[271/284] Linking CXX executable src/unittests/gui/core/MaintenanceTests
+[272/284] Linking CXX executable src/unittests/net/SecureUtilsTests
+[273/284] Linking CXX executable src/unittests/net/FingerprintTests
+[274/284] Linking CXX executable src/unittests/net/FingerprintDatabaseTests
+[275/284] Linking CXX executable src/unittests/gui/core/CoreValidationTests
+[276/284] Linking CXX executable src/unittests/net/MdnsLifecycleTests
+[277/284] Linking CXX executable src/unittests/platform/XWindowsClipboardTests
+[278/284] Linking CXX executable src/unittests/gui/core/SourceChangeTransactionTests
+[279/284] Linking CXX executable src/unittests/gui/core/LayoutMigrationTests
+[280/284] Linking CXX executable src/unittests/platform/EiKeyStateTests
+[281/284] Linking CXX executable src/unittests/server/ServerTests
+[282/284] Linking CXX executable src/unittests/server/ServerConfigTests
+[283/284] Linking CXX executable src/unittests/server/ClientProxyTests

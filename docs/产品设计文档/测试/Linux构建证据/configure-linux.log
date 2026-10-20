@@ -1,0 +1,16 @@
+-- Building deskflow-1.27.0.0
+-- Qt version: 6.10.2
+-- xkbcommon version: 1.13.1
+-- xkbregistry version: 1.13.1
+-- libei version: 1.5.0
+-- libportal version: 0.10.0
+-- Looking for xdp_input_capture_session_get_restore_token
+-- Looking for xdp_input_capture_session_get_restore_token - found
+-- Looking for xdp_session_request_clipboard
+-- Looking for xdp_session_request_clipboard - found
+-- Looking for xdp_global_shortcut_new
+-- Looking for xdp_global_shortcut_new - not found
+-- Man page tool (help2man) not found, man pages will not be generated
+-- Configuring done (1.8s)
+-- Generating done (0.5s)
+-- Build files have been written to: /home/ywh/deskflow-review-20261020/build-linux-review

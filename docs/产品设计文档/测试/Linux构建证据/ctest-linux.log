@@ -1,0 +1,83 @@
+Test project /home/ywh/deskflow-review-20261020/build-linux-review/src/unittests
+      Start  1: ArchTests
+ 1/39 Test  #1: ArchTests ........................   Passed    0.03 sec
+      Start  2: StringTests
+ 2/39 Test  #2: StringTests ......................   Passed    0.01 sec
+      Start  3: UnicodeTests
+ 3/39 Test  #3: UnicodeTests .....................   Passed    0.01 sec
+      Start  4: LogTests
+ 4/39 Test  #4: LogTests .........................   Passed    0.01 sec
+      Start  5: FileLogOutputterTests
+ 5/39 Test  #5: FileLogOutputterTests ............   Passed    0.02 sec
+      Start  6: BaseExceptionTests
+ 6/39 Test  #6: BaseExceptionTests ...............   Passed    0.01 sec
+      Start  7: EventQueueTests
+ 7/39 Test  #7: EventQueueTests ..................   Passed    0.01 sec
+      Start  8: ServerProxyTests
+ 8/39 Test  #8: ServerProxyTests .................   Passed    0.03 sec
+      Start  9: SettingsTests
+ 9/39 Test  #9: SettingsTests ....................   Passed    0.54 sec
+      Start 10: LogLevelTests
+10/39 Test #10: LogLevelTests ....................   Passed    0.01 sec
+      Start 11: I18NTests
+11/39 Test #11: I18NTests ........................   Passed    0.08 sec
+      Start 12: KeySequenceTests
+12/39 Test #12: KeySequenceTests .................   Passed    0.01 sec
+      Start 13: ClipboardTests
+13/39 Test #13: ClipboardTests ...................   Passed    0.01 sec
+      Start 14: ClipboardChunksTests
+14/39 Test #14: ClipboardChunksTests .............   Passed    0.01 sec
+      Start 15: IKeyStateTests
+15/39 Test #15: IKeyStateTests ...................   Passed    0.01 sec
+      Start 16: KeyMapTests
+16/39 Test #16: KeyMapTests ......................   Passed    0.01 sec
+      Start 17: KeyStateTests
+17/39 Test #17: KeyStateTests ....................   Passed    0.01 sec
+      Start 18: KeyboardLayoutManagerTests
+18/39 Test #18: KeyboardLayoutManagerTests .......   Passed    0.01 sec
+      Start 19: XkbLayoutParserTests
+19/39 Test #19: XkbLayoutParserTests .............   Passed    0.03 sec
+      Start 20: LoggerTests
+20/39 Test #20: LoggerTests ......................   Passed    0.08 sec
+      Start 21: WorkspaceTests
+21/39 Test #21: WorkspaceTests ...................   Passed   13.97 sec
+      Start 22: VersionCheckerTests
+22/39 Test #22: VersionCheckerTests ..............   Passed    0.05 sec
+      Start 23: ComputerTests
+23/39 Test #23: ComputerTests ....................   Passed    0.12 sec
+      Start 24: NetworkMonitorTests
+24/39 Test #24: NetworkMonitorTests ..............   Passed    0.05 sec
+      Start 25: ApplicationStateTests
+25/39 Test #25: ApplicationStateTests ............   Passed    0.05 sec
+      Start 26: ConfigurationBackupTests
+26/39 Test #26: ConfigurationBackupTests .........   Passed    0.03 sec
+      Start 27: IdentityTests
+27/39 Test #27: IdentityTests ....................   Passed    0.27 sec
+      Start 28: CoreValidationTests
+28/39 Test #28: CoreValidationTests ..............   Passed    1.40 sec
+      Start 29: MaintenanceTests
+29/39 Test #29: MaintenanceTests .................   Passed    0.05 sec
+      Start 30: SourceChangeTransactionTests
+30/39 Test #30: SourceChangeTransactionTests .....   Passed    0.05 sec
+      Start 31: LayoutMigrationTests
+31/39 Test #31: LayoutMigrationTests .............   Passed    0.34 sec
+      Start 32: SecureUtilsTests
+32/39 Test #32: SecureUtilsTests .................   Passed    0.01 sec
+      Start 33: FingerprintTests
+33/39 Test #33: FingerprintTests .................   Passed    0.01 sec
+      Start 34: FingerprintDatabaseTests
+34/39 Test #34: FingerprintDatabaseTests .........   Passed    0.01 sec
+      Start 35: EiKeyStateTests
+35/39 Test #35: EiKeyStateTests ..................   Passed    0.03 sec
+      Start 36: XWindowsClipboardTests
+36/39 Test #36: XWindowsClipboardTests ...........   Passed    0.01 sec
+      Start 37: ServerConfigTests
+37/39 Test #37: ServerConfigTests ................   Passed    0.01 sec
+      Start 38: ServerTests
+38/39 Test #38: ServerTests ......................   Passed    0.01 sec
+      Start 39: ClientProxyTests
+39/39 Test #39: ClientProxyTests .................   Passed    0.03 sec
+
+100% tests passed, 0 tests failed out of 39
+
+Total Test time (real) =  17.43 sec

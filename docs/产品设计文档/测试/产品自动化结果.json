@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-20",
+  "baseCommit": "d1af826cb9de6bc837a246af34712643ef899641",
+  "source": "working-tree-uncommitted",
+  "environment": {
+    "os": "macOS 27.0.1",
+    "architecture": "arm64",
+    "qt": "6.8.3",
+    "compiler": "AppleClang 21.0.0",
+    "sdk": "macOS 15.2",
+    "buildType": "Debug"
+  },
+  "build": "PASS",
+  "ctest": {
+    "passed": 37,
+    "failed": 0,
+    "elapsedSeconds": 19.7,
+    "excluded": [
+      "OSXClipboardTests",
+      "OSXKeyStateTests",
+      "MdnsLifecycleTests"
+    ],
+    "includes": [
+      "IpcServerTests",
+      "CoreValidationTests",
+      "WorkspaceTests",
+      "I18NTests"
+    ]
+  },
+  "clangFormat": "PASS (20.1.0)",
+  "diffWhitespace": "PASS",
+  "documentConsistency": "PASS",
+  "nativeBundle": {
+    "signature": "ad-hoc; strict verification PASS",
+    "guiCocoaVersionSmoke": "PASS",
+    "coreVersionSmoke": "PASS",
+    "buildInfo": "dist/build-info.json"
+  },
+  "notValidated": [
+    "two-computer input/clipboard and source recovery",
+    "macOS permission lifecycle/readers/scaling",
+    "Windows build and service runtime",
+    "Linux X11/Wayland build and runtime",
+    "all 106 controls behavioral matrix",
+    "Windows service hot-add without restart",
+    "all locales dynamic retranslation",
+    "VoiceOver and system high contrast"
+  ],
+  "nativeUI": {
+    "platform": "cocoa",
+    "case": "WorkspaceTests::navigationDoesNotChangeRoleOrProfile",
+    "passed": 3,
+    "failed": 0,
+    "elapsedMs": 2819,
+    "devicePixelRatio": 2,
+    "evidence": "原生界面截图/原型重构-2026-10-20",
+    "realPeerSessions": 0
+  },
+  "sourceTreeSha256": "ab86710c223269074cb7135252963451d8fee0d57259cad68fea6fdf5e9e1689",
+  "linux": {
+    "os": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "desktop": "GNOME 50.1 / Wayland",
+    "qt": "6.10.2",
+    "gcc": "15.2.0",
+    "portalSystem": "0.9.1",
+    "portalTestPrefix": "0.10.0 (isolated)",
+    "earlierSnapshotCtest": {
+      "passed": 39,
+      "failed": 0,
+      "elapsedSeconds": 17.43,
+      "warning": "before final development fixes; not final source regression"
+    },
+    "twoHostTesting": "stopped at user request; no sharing sessions changed",
+    "evidence": "Linux构建证据",
+    "finalSourceBuild": "PASS (GUI, core and test executables); tests not rerun after user stopped testing"
+  }
+}

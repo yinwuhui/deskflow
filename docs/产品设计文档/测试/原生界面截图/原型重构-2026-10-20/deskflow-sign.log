@@ -1,0 +1,33 @@
+dist/Deskflow.app: replacing existing signature
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqgif.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqopensslbackend.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqgif.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqopensslbackend.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqcertonlybackend.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqico.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqico.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqcertonlybackend.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/networkinformation/libqscnetworkreachability.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/networkinformation/libqscnetworkreachability.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/styles/libqmacstyle.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/styles/libqmacstyle.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/platforms/libqcocoa.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/platforms/libqcocoa.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqsecuretransportbackend.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/tls/libqsecuretransportbackend.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqjpeg.dylib
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/PlugIns/imageformats/libqjpeg.dylib
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtDBus.framework/Versions/Current/.
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtDBus.framework/Versions/Current/.
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtCore.framework/Versions/Current/.
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/MacOS/deskflow-core
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/MacOS/deskflow-core
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtWidgets.framework/Versions/Current/.
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtCore.framework/Versions/Current/.
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtWidgets.framework/Versions/Current/.
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtGui.framework/Versions/Current/.
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtGui.framework/Versions/Current/.
+--prepared:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtNetwork.framework/Versions/Current/.
+--validated:/Volumes/KINGSTON 250G/Code/deskflow/dist/Deskflow.app/Contents/Frameworks/QtNetwork.framework/Versions/Current/.
+dist/Deskflow.app: valid on disk
+dist/Deskflow.app: satisfies its Designated Requirement

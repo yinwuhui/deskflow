@@ -1,0 +1,56 @@
+[0/2] Re-checking globbed directories...
+[1/36] Automatic MOC and UIC for target gui
+[2/35] Generating .lupdate/deskflow_it.ts.stamp
+[3/35] Generating .lupdate/deskflow_es.ts.stamp
+[4/35] Generating .lupdate/deskflow_en.ts.stamp
+[5/35] Building CXX object src/lib/gui/CMakeFiles/gui.dir/workspace/SetupAssistant.cpp.o
+[6/35] Generating .lupdate/deskflow_ja.ts.stamp
+[7/35] Generating .lupdate/deskflow_ko.ts.stamp
+[8/35] Generating .lupdate/deskflow_ru.ts.stamp
+[9/35] Generating .lupdate/deskflow_zh_CN.ts.stamp
+[10/35] Running utility command for docs
+[11/35] Generating deskflow_en.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_en.qm'...
+    Generated 1 translation(s) (1 finished and 0 unfinished)
+    Ignored 1 untranslated source text(s)
+[12/35] Generating deskflow_es.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_es.qm'...
+    Generated 309 translation(s) (12 finished and 297 unfinished)
+    Ignored 799 untranslated source text(s)
+[13/35] Generating deskflow_it.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_it.qm'...
+    Generated 309 translation(s) (202 finished and 107 unfinished)
+    Ignored 799 untranslated source text(s)
+[14/35] Generating deskflow_ja.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ja.qm'...
+    Generated 312 translation(s) (265 finished and 47 unfinished)
+    Ignored 796 untranslated source text(s)
+[15/35] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowSetup.cpp.o
+[16/35] Generating deskflow_ko.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ko.qm'...
+    Generated 309 translation(s) (211 finished and 98 unfinished)
+    Ignored 799 untranslated source text(s)
+[17/35] Generating deskflow_zh_CN.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_zh_CN.qm'...
+    Generated 310 translation(s) (203 finished and 107 unfinished)
+    Ignored 798 untranslated source text(s)
+[18/35] Generating deskflow_ru.qm
+Updating '/home/ywh/deskflow-review-20261020/build-linux-review/translations/deskflow_ru.qm'...
+    Generated 309 translation(s) (214 finished and 95 unfinished)
+    Ignored 799 untranslated source text(s)
+[19/35] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindowWorkspace.cpp.o
+[20/35] Building CXX object src/lib/gui/CMakeFiles/gui.dir/MainWindow.cpp.o
+[21/35] Linking CXX static library src/lib/gui/libgui.a
+[22/35] Linking CXX executable src/unittests/gui/LoggerTests
+[23/35] Linking CXX executable src/unittests/gui/VersionCheckerTests
+[24/35] Linking CXX executable src/unittests/gui/WorkspaceTests
+[25/35] Linking CXX executable bin/deskflow
+[26/35] Linking CXX executable src/unittests/gui/config/ComputerTests
+[27/35] Linking CXX executable src/unittests/gui/core/ConfigurationBackupTests
+[28/35] Linking CXX executable src/unittests/gui/core/IdentityTests
+[29/35] Linking CXX executable src/unittests/gui/core/NetworkMonitorTests
+[30/35] Linking CXX executable src/unittests/gui/core/ApplicationStateTests
+[31/35] Linking CXX executable src/unittests/gui/core/MaintenanceTests
+[32/35] Linking CXX executable src/unittests/gui/core/CoreValidationTests
+[33/35] Linking CXX executable src/unittests/gui/core/SourceChangeTransactionTests
+[34/35] Linking CXX executable src/unittests/gui/core/LayoutMigrationTests
