@@ -15,6 +15,8 @@
 #include "net/NetworkAddress.h"
 #include "server/InputFilter.h"
 
+#include <QMap>
+#include <QVariant>
 #include <iosfwd>
 #include <map>
 #include <set>
@@ -192,7 +194,9 @@ public:
     internal_const_iterator m_i;
   };
 
-  explicit Config(IEventQueue *events);
+  explicit Config(IEventQueue *events, QMap<QString, QVariant> profile = {});
+  QString deviceStableId(const QString &identifier) const;
+  void applyLayoutFrom(const Config &candidate);
   virtual ~Config() = default;
 
   //! @name manipulators
@@ -410,6 +414,8 @@ private:
   void parseComputers(const ConfigReadContext &, const std::string_view &, std::set<std::string> &computers) const;
 
 private:
+  QVariant settingValue(const QString &key) const;
+  QMap<QString, QVariant> m_profile;
   CellMap m_map;
   NameMap m_nameToCanonicalName;
   NetworkAddress m_deskflowAddress;

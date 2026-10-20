@@ -238,5 +238,7 @@ enum class EventTypes : uint32_t
 
   /// Stop libei
   EISessionClosed,
+  /// Local UI commands, dispatched on the core event thread.
+  AppControl,
 };
 } // namespace deskflow

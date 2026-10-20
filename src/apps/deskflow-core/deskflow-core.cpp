@@ -16,6 +16,11 @@
 #include "deskflow/ClientApp.h"
 #include "deskflow/ServerApp.h"
 #include "deskflow/ipc/CoreIpcServer.h"
+#include "server/Config.h"
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <sstream>
 
 #if defined(Q_OS_WIN)
 #include "arch/win32/ArchMiscWindows.h"
@@ -73,8 +78,19 @@ int main(int argc, char **argv)
   ArchMiscWindows::setInstanceWin32(GetModuleHandle(nullptr));
 #endif
 
-  QApplication::setApplicationName(QStringLiteral("%1 Core").arg(kAppName));
-  QApplication app(argc, argv);
+  QCoreApplication::setApplicationName(QStringLiteral("%1 Core").arg(kAppName));
+  // Validation and CLI information must work without a display server, input
+  // permission or platform plugin. Normal sharing still uses QApplication.
+  QStringList arguments;
+  for (int i = 0; i < argc; ++i)
+    arguments.append(QString::fromLocal8Bit(argv[i]));
+  const bool commandLineOnly = arguments.contains("--validate-config") || arguments.contains("--version") ||
+                               arguments.contains("--help") || arguments.contains("-h") || arguments.contains("-v");
+  std::unique_ptr<QCoreApplication> app;
+  if (commandLineOnly)
+    app = std::make_unique<QCoreApplication>(argc, argv);
+  else
+    app = std::make_unique<QApplication>(argc, argv);
 
   Arch arch;
   arch.init();
@@ -99,6 +115,35 @@ int main(int argc, char **argv)
     return s_exitSuccess;
   }
 
+  if (parser.validateOnly()) {
+    parser.parse();
+    try {
+      EventQueue events;
+      if (parser.serverMode()) {
+        QFile file(Settings::serverConfigFile());
+        if (!file.open(QIODevice::ReadOnly))
+          throw std::runtime_error("Cannot read server configuration");
+        std::istringstream stream(file.readAll().toStdString());
+        deskflow::server::Config config(&events);
+        deskflow::server::ConfigReadContext context(stream);
+        config.read(context);
+        if (!config.isComputer(Settings::value(Settings::Core::ComputerName).toString().toStdString()))
+          throw std::runtime_error("Local computer is absent from configuration");
+      } else {
+        ClientApp candidate(&events);
+        candidate.parseArgs();
+      }
+      QTextStream(stdout) << QJsonDocument(QJsonObject{{"success", true}}).toJson(QJsonDocument::Compact) << "\n";
+      return s_exitSuccess;
+    } catch (const std::exception &error) {
+      QTextStream(stdout) << QJsonDocument(
+                                 QJsonObject{{"success", false}, {"reason", QString::fromUtf8(error.what())}}
+                             ).toJson(QJsonDocument::Compact)
+                          << "\n";
+      return s_exitFailed;
+    }
+  }
+
   // Before we check any more args we need to check for a duplicate process.
   // Create a shared memory segment with a unique key
   // This is to prevent a new instance from running if one is already running
@@ -121,17 +166,17 @@ int main(int argc, char **argv)
 
   App *coreApp = createApp(parser, events, processName);
 
-  const auto ipcServer = new deskflow::core::ipc::CoreIpcServer(&app); // NOSONAR - Qt managed
+  const auto ipcServer = new deskflow::core::ipc::CoreIpcServer(app.get()); // NOSONAR - Qt managed
   QObject::connect(
       ipcServer, &deskflow::core::ipc::IpcServer::stopProcessRequested, coreApp, &App::quit, Qt::DirectConnection
   );
   ipcServer->listen();
 
   QThread coreThread;
-  QObject::connect(&coreThread, &QThread::finished, &app, &QApplication::quit);
+  QObject::connect(&coreThread, &QThread::finished, app.get(), &QCoreApplication::quit);
   coreApp->run(coreThread);
 
-  int exitCode = QApplication::exec();
+  int exitCode = QCoreApplication::exec();
   coreThread.wait();
 
   if (exitCode == s_exitSuccess) {

@@ -11,6 +11,10 @@
 
 #include <QLocalServer>
 #include <QLocalSocket>
+#ifndef Q_OS_WIN
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 namespace deskflow::core::ipc {
 
@@ -30,8 +34,13 @@ IpcServer::~IpcServer()
 
 void IpcServer::listen()
 {
-  // IPC server normally runs as system, but GUI runs as regular user, so we need to allow world access.
+#ifdef Q_OS_WIN
+  // The Windows daemon/core may run as system and must accept the desktop GUI.
   m_server->setSocketOptions(QLocalServer::WorldAccessOption);
+#else
+  // Unix desktop cores run as the user. Other accounts must not control sharing.
+  m_server->setSocketOptions(QLocalServer::UserAccessOption);
+#endif
 
   connect(m_server, &QLocalServer::newConnection, this, &IpcServer::handleNewConnection);
   QLocalServer::removeServer(m_serverName);
@@ -50,6 +59,26 @@ void IpcServer::handleNewConnection()
     return;
   }
 
+#ifndef Q_OS_WIN
+  // macOS does not enforce Unix socket filesystem permissions; validate the peer too.
+  const int descriptor = static_cast<int>(clientSocket->socketDescriptor());
+  uid_t peerUser;
+#if defined(Q_OS_LINUX)
+  struct ucred credentials{};
+  socklen_t length = sizeof(credentials);
+  const bool identified = getsockopt(descriptor, SOL_SOCKET, SO_PEERCRED, &credentials, &length) == 0;
+  peerUser = identified ? credentials.uid : static_cast<uid_t>(-1);
+#else
+  gid_t peerGroup;
+  const bool identified = getpeereid(descriptor, &peerUser, &peerGroup) == 0;
+#endif
+  if (!identified || peerUser != geteuid()) {
+    LOG_WARN("%s ipc server rejected a different or unidentified user", m_typeName.constData());
+    clientSocket->disconnectFromServer();
+    clientSocket->deleteLater();
+    return;
+  }
+#endif
   LOG_DEBUG("%s ipc server got new connection", m_typeName.constData());
   m_clients.insert(clientSocket);
 
@@ -63,15 +92,9 @@ void IpcServer::handleReadyRead()
   const auto clientSocket = qobject_cast<QLocalSocket *>(sender());
   LOG_VERBOSE("%s ipc server ready to read data", m_typeName.constData());
 
-  QByteArray data = clientSocket->readAll();
-  if (data.isEmpty()) {
-    LOG_WARN("%s ipc server got empty message", m_typeName.constData());
-    return;
-  }
-
-  // we don't handle incomplete messages yet; each socket read must have delimiters.
-  if (!data.contains('\n')) {
-    LOG_WARN("%s ipc server got incomplete message: %s", m_typeName.constData(), data.constData());
+  auto data = m_readBuffers.take(clientSocket) + clientSocket->readAll();
+  if (data.size() > 1024 * 1024) {
+    clientSocket->disconnectFromServer();
     return;
   }
 
@@ -83,12 +106,15 @@ void IpcServer::handleReadyRead()
     QString message = QString::fromUtf8(messageData);
     processMessage(clientSocket, message);
   }
+  if (!data.isEmpty())
+    m_readBuffers.insert(clientSocket, data);
 }
 
 void IpcServer::handleDisconnected()
 {
   const auto clientSocket = qobject_cast<QLocalSocket *>(sender());
   LOG_DEBUG("%s ipc server client disconnected", m_typeName.constData());
+  m_readBuffers.remove(clientSocket);
   m_clients.remove(clientSocket);
   clientSocket->deleteLater();
 }
@@ -102,6 +128,7 @@ void IpcServer::handleErrorOccurred()
     LOG_ERR("%s ipc server client error: %s", m_typeName.constData(), clientSocket->errorString().toUtf8().constData());
   }
 
+  m_readBuffers.remove(clientSocket);
   m_clients.remove(clientSocket);
   clientSocket->deleteLater();
 }
@@ -167,6 +194,8 @@ void IpcServer::broadcastCommand(const QString &command, const QString &args)
     LOG_VERBOSE(
         "%s ipc server has no clients, message queued: %s", m_typeName.constData(), message.toUtf8().constData()
     );
+    if (m_pendingMessages.size() >= 256)
+      m_pendingMessages.removeFirst();
     m_pendingMessages.append(message);
     return;
   }

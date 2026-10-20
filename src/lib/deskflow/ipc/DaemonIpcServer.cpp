@@ -25,7 +25,9 @@ DaemonIpcServer::DaemonIpcServer(QObject *parent, const QString &logFilename)
 
 void DaemonIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
-  if (command == QStringLiteral("logLevel")) {
+  if (command == "processState" && parts.size() == 2) {
+    Q_EMIT processStateRequested(parts.at(1));
+  } else if (command == QStringLiteral("logLevel")) {
     processLogLevel(clientSocket, parts);
   } else if (command == QStringLiteral("configFile")) {
     processConfigFile(clientSocket, parts);

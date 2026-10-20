@@ -546,3 +546,16 @@ void MSWindowsWatchdog::sasLoop(const void *) // NOSONAR - Thread entry point si
     }
   }
 }
+
+std::optional<bool> MSWindowsWatchdog::processRunningSnapshot()
+{
+  std::unique_lock lock(m_processStateMutex, std::try_to_lock);
+  if (!lock.owns_lock())
+    return std::nullopt;
+  if (!m_process)
+    return m_processState == ProcessState::Idle ? std::optional<bool>(false) : std::nullopt;
+  DWORD exitCode = 0;
+  if (!GetExitCodeProcess(m_process->info().hProcess, &exitCode))
+    return std::nullopt;
+  return exitCode == STILL_ACTIVE;
+}

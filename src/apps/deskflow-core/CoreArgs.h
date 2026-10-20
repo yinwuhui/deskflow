@@ -20,5 +20,7 @@ struct CoreArgs
   inline static const auto configOption =
       QCommandLineOption({"s", "settings"}, "override configuration file to use", "configFile");
 
-  inline static const auto options = {helpOption, versionOption, multiInstanceOption, configOption};
+  inline static const auto validateOption =
+      QCommandLineOption("validate-config", "Validate settings without capturing or injecting input");
+  inline static const auto options = {helpOption, versionOption, multiInstanceOption, configOption, validateOption};
 };

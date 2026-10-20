@@ -64,6 +64,7 @@ Client::Client(
       m_useSecureNetwork(Settings::value(Settings::Security::TlsEnabled).toBool())
 {
   assert(m_socketFactory != nullptr);
+  m_paused = Settings::value(Settings::Core::SharingPaused).toBool();
   assert(m_computer != nullptr);
 
   // register suspend/resume event handlers
@@ -169,7 +170,8 @@ void Client::refuseConnection(deskflow::core::ConnectionRefusal reason, const ch
 void Client::handshakeComplete()
 {
   m_ready = true;
-  m_computer->enable();
+  if (!m_paused)
+    m_computer->enable();
   if (m_relativeMouseMoves && !m_hasRelativeRestorePosition) {
     saveRelativeRestorePosition();
   }
@@ -219,6 +221,8 @@ void Client::getCursorPos(int32_t &x, int32_t &y) const
 void Client::enter(int32_t xAbs, int32_t yAbs, uint32_t, KeyModifierMask mask, bool)
 {
   m_active = true;
+  if (m_paused)
+    return;
   if (m_relativeMouseMoves && m_hasRelativeRestorePosition) {
     xAbs = m_relativeRestoreX;
     yAbs = m_relativeRestoreY;
@@ -234,6 +238,8 @@ bool Client::leave()
     saveRelativeRestorePosition();
   }
   m_active = false;
+  if (m_paused)
+    return true;
 
   m_computer->leave();
 
@@ -251,6 +257,8 @@ bool Client::leave()
 
 void Client::setClipboard(ClipboardID id, const IClipboard *clipboard)
 {
+  if (m_paused)
+    return;
   m_computer->setClipboard(id, clipboard);
   m_ownClipboard[id] = false;
   m_sentClipboard[id] = false;
@@ -258,6 +266,8 @@ void Client::setClipboard(ClipboardID id, const IClipboard *clipboard)
 
 void Client::grabClipboard(ClipboardID id)
 {
+  if (m_paused)
+    return;
   m_computer->grabClipboard(id);
   m_ownClipboard[id] = false;
   m_sentClipboard[id] = false;
@@ -270,41 +280,57 @@ void Client::setClipboardDirty(ClipboardID, bool)
 
 void Client::keyDown(KeyID id, KeyModifierMask mask, KeyButton button, const std::string &lang)
 {
+  if (m_paused)
+    return;
   m_computer->keyDown(id, mask, button, lang);
 }
 
 void Client::keyRepeat(KeyID id, KeyModifierMask mask, int32_t count, KeyButton button, const std::string &lang)
 {
+  if (m_paused)
+    return;
   m_computer->keyRepeat(id, mask, count, button, lang);
 }
 
 void Client::keyUp(KeyID id, KeyModifierMask mask, KeyButton button)
 {
+  if (m_paused)
+    return;
   m_computer->keyUp(id, mask, button);
 }
 
 void Client::mouseDown(ButtonID id)
 {
+  if (m_paused)
+    return;
   m_computer->mouseDown(id);
 }
 
 void Client::mouseUp(ButtonID id)
 {
+  if (m_paused)
+    return;
   m_computer->mouseUp(id);
 }
 
 void Client::mouseMove(int32_t x, int32_t y)
 {
+  if (m_paused)
+    return;
   m_computer->mouseMove(x, y);
 }
 
 void Client::mouseRelativeMove(int32_t dx, int32_t dy)
 {
+  if (m_paused)
+    return;
   m_computer->mouseRelativeMove(dx, dy);
 }
 
 void Client::mouseWheel(int32_t xDelta, int32_t yDelta)
 {
+  if (m_paused)
+    return;
   m_computer->mouseWheel(xDelta, yDelta);
 }
 
@@ -375,6 +401,8 @@ std::string Client::getName() const
 
 void Client::sendClipboard(ClipboardID id)
 {
+  if (m_paused)
+    return;
   // note -- m_mutex must be locked on entry
   assert(m_computer != nullptr);
   assert(m_server != nullptr);
@@ -541,7 +569,8 @@ void Client::cleanupComputer()
 {
   if (m_server != nullptr) {
     if (m_ready) {
-      m_computer->disable();
+      if (!m_paused)
+        m_computer->disable();
       m_ready = false;
     }
     m_events->removeHandler(EventTypes::ComputerShapeChanged, getEventTarget());
@@ -766,4 +795,36 @@ void Client::bindNetworkInterface(IDataSocket *socket) const
   bindAddress.resolve();
 
   socket->bind(bindAddress);
+}
+
+void Client::setPaused(bool paused)
+{
+  if (m_paused == paused)
+    return;
+  m_paused = paused;
+  if (m_ready) {
+    if (paused)
+      m_computer->disable();
+    else {
+      m_computer->enable();
+      if (m_active)
+        m_computer->enter(0);
+    }
+  }
+}
+
+bool Client::disconnectFingerprint(const QByteArray &fingerprint)
+{
+  auto *stream = m_stream;
+  while (auto *filter = dynamic_cast<StreamFilter *>(stream))
+    stream = filter->getStream();
+  const auto *socket = dynamic_cast<SecureSocket *>(stream);
+  if (!stream)
+    return true;
+  if (!socket || socket->peerFingerprint().isEmpty())
+    return false;
+  if (socket->peerFingerprint() != fingerprint)
+    return true;
+  refuseConnection(deskflow::core::ConnectionRefusal::ProtocolError, "Peer trust revoked locally");
+  return true;
 }

@@ -20,6 +20,7 @@
 #include "deskflow/unix/AppUtilUnix.h"
 #endif
 
+#include <QJsonObject>
 #include <QObject>
 #include <QThread>
 
@@ -37,6 +38,22 @@ class SocketMultiplexer;
 class App : public QObject, private IApp
 {
 public:
+  class ControlRequest : public EventData
+  {
+  public:
+    explicit ControlRequest(const QJsonObject &value) : value(value)
+    {
+    }
+    QJsonObject value;
+  };
+  virtual bool control(const QString &, const QString &)
+  {
+    return false;
+  }
+  virtual QJsonObject controlState() const
+  {
+    return {};
+  }
   class XNoEiSupport : public std::runtime_error
   {
   public:

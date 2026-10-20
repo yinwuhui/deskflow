@@ -39,6 +39,11 @@ void DaemonIpcClient::sendClearSettings()
   sendMessage(QStringLiteral("clearSettings"));
 }
 
+void DaemonIpcClient::requestProcessState(const QString &id)
+{
+  sendMessage("processState=" + id);
+}
+
 void DaemonIpcClient::requestLogPath()
 {
   sendMessage(QStringLiteral("logPath"));
@@ -46,6 +51,12 @@ void DaemonIpcClient::requestLogPath()
 
 void DaemonIpcClient::processCommand(const QString &command, const QStringList &parts)
 {
+  if (command == "processState" && parts.size() == 2) {
+    const auto fields = parts.at(1).split(',');
+    if (fields.size() == 2)
+      Q_EMIT processStateReceived(fields.at(0), fields.at(1));
+    return;
+  }
   if (command == QStringLiteral("logPath") && parts.size() == 2) {
     Q_EMIT logPathReceived(parts.at(1));
   }

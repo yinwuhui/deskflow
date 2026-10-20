@@ -28,9 +28,33 @@ namespace deskflow::server {
 // Config
 //
 
-Config::Config(IEventQueue *events) : m_inputFilter(events), m_events(events)
+Config::Config(IEventQueue *events, QMap<QString, QVariant> profile)
+    : m_profile(std::move(profile)),
+      m_inputFilter(events),
+      m_events(events)
 {
   // do nothing
+}
+
+QVariant Config::settingValue(const QString &key) const
+{
+  return m_profile.isEmpty() ? Settings::value(key) : m_profile.value(key, Settings::defaultValue(key));
+}
+QString Config::deviceStableId(const QString &identifier) const
+{
+  return settingValue(QStringLiteral("computer_%1/stableId").arg(identifier)).toString();
+}
+
+void Config::applyLayoutFrom(const Config &candidate)
+{
+  // Copy first, then swap. Running shortcut conditions and held-key state
+  // remain attached to the original InputFilter throughout a layout update.
+  auto map = candidate.m_map;
+  auto names = candidate.m_nameToCanonicalName;
+  auto profile = candidate.m_profile;
+  m_map.swap(map);
+  m_nameToCanonicalName.swap(names);
+  m_profile.swap(profile);
 }
 
 bool Config::addComputer(const std::string &name)
@@ -48,72 +72,66 @@ bool Config::addComputer(const std::string &name)
 
   const auto computer = QString::fromStdString(name);
   // add aliases
-  const auto aliases = Settings::value(Settings::Computer::Aliases.arg(computer)).toStringList();
+  const auto aliases = settingValue(Settings::Computer::Aliases.arg(computer)).toStringList();
   for (const auto &alias : aliases)
     m_nameToCanonicalName.try_emplace(alias.toStdString(), name);
 
   addOption(
-      name, kOptionHalfDuplexCapsLock, Settings::value(Settings::Computer::HalfDuplexCapsLock.arg(computer)).toBool()
+      name, kOptionHalfDuplexCapsLock, settingValue(Settings::Computer::HalfDuplexCapsLock.arg(computer)).toBool()
+  );
+  addOption(name, kOptionHalfDuplexNumLock, settingValue(Settings::Computer::HalfDuplexNumLock.arg(computer)).toBool());
+  addOption(
+      name, kOptionHalfDuplexScrollLock, settingValue(Settings::Computer::HalfDuplexScrollLock.arg(computer)).toBool()
   );
   addOption(
-      name, kOptionHalfDuplexNumLock, Settings::value(Settings::Computer::HalfDuplexNumLock.arg(computer)).toBool()
+      name, kOptionXTestXineramaUnaware, settingValue(Settings::Computer::XtestIsXineramaUnaware.arg(computer)).toBool()
   );
   addOption(
-      name, kOptionHalfDuplexScrollLock,
-      Settings::value(Settings::Computer::HalfDuplexScrollLock.arg(computer)).toBool()
+      name, kOptionComputerSwitchCornerSize, settingValue(Settings::Computer::SwitchCornerSize.arg(computer)).toInt()
   );
-  addOption(
-      name, kOptionXTestXineramaUnaware,
-      Settings::value(Settings::Computer::XtestIsXineramaUnaware.arg(computer)).toBool()
-  );
-  addOption(
-      name, kOptionComputerSwitchCornerSize, Settings::value(Settings::Computer::SwitchCornerSize.arg(computer)).toInt()
-  );
-  addOption(
-      name, kOptionComputerX11WeakFocus, Settings::value(Settings::Computer::WeakX11Focus.arg(computer)).toBool()
-  );
+  addOption(name, kOptionComputerX11WeakFocus, settingValue(Settings::Computer::WeakX11Focus.arg(computer)).toBool());
 
   OptionValue cornerValue = s_noCornerMask;
-  if (Settings::value(Settings::Computer::SwitchCornerTopLeft.arg(computer)).toBool()) {
+  if (settingValue(Settings::Computer::SwitchCornerTopLeft.arg(computer)).toBool()) {
     cornerValue = cornerValue | s_topLeftCornerMask;
   }
-  if (Settings::value(Settings::Computer::SwitchCornerTopRight.arg(computer)).toBool()) {
+  if (settingValue(Settings::Computer::SwitchCornerTopRight.arg(computer)).toBool()) {
     cornerValue = cornerValue | s_topRightCornerMask;
   }
-  if (Settings::value(Settings::Computer::SwitchCornerBottomLeft.arg(computer)).toBool()) {
+  if (settingValue(Settings::Computer::SwitchCornerBottomLeft.arg(computer)).toBool()) {
     cornerValue = cornerValue | s_bottomLeftCornerMask;
   }
-  if (Settings::value(Settings::Computer::SwitchCornerBottomRight.arg(computer)).toBool()) {
+  if (settingValue(Settings::Computer::SwitchCornerBottomRight.arg(computer)).toBool()) {
     cornerValue = cornerValue | s_bottomRightCornerMask;
   }
   addOption(name, kOptionComputerSwitchCorners, cornerValue);
 
-  auto altModifier = Settings::value(Settings::Computer::ModifierAlt.arg(computer)).toString();
+  auto altModifier = settingValue(Settings::Computer::ModifierAlt.arg(computer)).toString();
   if (altModifier.isEmpty())
     altModifier = kModifierNameAlt;
   addOption(name, kOptionModifierMapForAlt, modifierIDValueFromString(altModifier));
 
-  auto altgrModifier = Settings::value(Settings::Computer::ModifierAltGr.arg(computer)).toString();
+  auto altgrModifier = settingValue(Settings::Computer::ModifierAltGr.arg(computer)).toString();
   if (altgrModifier.isEmpty())
     altgrModifier = kModifierNameAltGr;
   addOption(name, kOptionModifierMapForAltGr, modifierIDValueFromString(altgrModifier));
 
-  auto ctrlModifier = Settings::value(Settings::Computer::ModifierCtrl.arg(computer)).toString();
+  auto ctrlModifier = settingValue(Settings::Computer::ModifierCtrl.arg(computer)).toString();
   if (ctrlModifier.isEmpty())
     ctrlModifier = kModifierNameCtrl;
   addOption(name, kOptionModifierMapForControl, modifierIDValueFromString(ctrlModifier));
 
-  auto metaModifier = Settings::value(Settings::Computer::ModifierMeta.arg(computer)).toString();
+  auto metaModifier = settingValue(Settings::Computer::ModifierMeta.arg(computer)).toString();
   if (metaModifier.isEmpty())
     metaModifier = kModifierNameMeta;
   addOption(name, kOptionModifierMapForMeta, modifierIDValueFromString(metaModifier));
 
-  auto shiftModifier = Settings::value(Settings::Computer::ModifierShift.arg(computer)).toString();
+  auto shiftModifier = settingValue(Settings::Computer::ModifierShift.arg(computer)).toString();
   if (shiftModifier.isEmpty())
     shiftModifier = kModifierNameShift;
   addOption(name, kOptionModifierMapForShift, modifierIDValueFromString(shiftModifier));
 
-  auto superModifier = Settings::value(Settings::Computer::ModifierSuper.arg(computer)).toString();
+  auto superModifier = settingValue(Settings::Computer::ModifierSuper.arg(computer)).toString();
   if (superModifier.isEmpty())
     superModifier = kModifierNameSuper;
   addOption(name, kOptionModifierMapForSuper, modifierIDValueFromString(superModifier));
@@ -444,8 +462,14 @@ bool Config::operator==(const Config &x) const
 
 void Config::read(ConfigReadContext &context)
 {
-  Config tmp(m_events);
-  const auto computers = Settings::knownComputers();
+  Config tmp(m_events, m_profile);
+  QStringList computers;
+  if (m_profile.isEmpty())
+    computers = Settings::knownComputers();
+  else
+    for (auto it = m_profile.cbegin(); it != m_profile.cend(); ++it)
+      if (it.key().startsWith("computer_") && it.key().endsWith("/name"))
+        computers.append(it.value().toString());
   for (const auto &computer : computers) {
     if (computer.isEmpty())
       continue;
@@ -534,31 +558,29 @@ void Config::readSection(ConfigReadContext &s)
 
 void Config::readSectionOptions(ConfigReadContext &s)
 {
-  if (Settings::value(Settings::Server::EnableHeartbeat).toBool()) {
-    addOption("", kOptionHeartbeat, Settings::value(Settings::Server::Heartbeat).toInt());
+  if (settingValue(Settings::Server::EnableHeartbeat).toBool()) {
+    addOption("", kOptionHeartbeat, settingValue(Settings::Server::Heartbeat).toInt());
   }
 
-  if (Settings::value(Settings::Server::EnableSwitchDelay).toBool()) {
-    addOption("", kOptionComputerSwitchDelay, Settings::value(Settings::Server::SwitchDelay).toInt());
+  if (settingValue(Settings::Server::EnableSwitchDelay).toBool()) {
+    addOption("", kOptionComputerSwitchDelay, settingValue(Settings::Server::SwitchDelay).toInt());
   }
 
-  if (Settings::value(Settings::Server::EnableSwitchDoubleTap).toBool()) {
-    addOption("", kOptionComputerSwitchTwoTap, Settings::value(Settings::Server::SwitchDoubleTap).toInt());
+  if (settingValue(Settings::Server::EnableSwitchDoubleTap).toBool()) {
+    addOption("", kOptionComputerSwitchTwoTap, settingValue(Settings::Server::SwitchDoubleTap).toInt());
   }
 
-  addOption(
-      "", kOptionDefaultLockToComputerState, Settings::value(Settings::Server::DefaultLockToComputerState).toBool()
-  );
-  addOption("", kOptionDisableLockToComputer, Settings::value(Settings::Server::DisableLockToComputer).toBool());
-  addOption("", kOptionRelativeMouseMoves, Settings::value(Settings::Server::RelativeMouseMoves).toBool());
-  addOption("", kOptionWin32KeepForeground, Settings::value(Settings::Server::Win32KeepForeground).toBool());
-  addOption("", kOptionClipboardSharing, Settings::value(Settings::Server::EnableClipboard).toBool());
-  addOption("", kOptionClipboardSharingSize, Settings::value(Settings::Server::ClipboardSize).toUInt() * 1024);
+  addOption("", kOptionDefaultLockToComputerState, settingValue(Settings::Server::DefaultLockToComputerState).toBool());
+  addOption("", kOptionDisableLockToComputer, settingValue(Settings::Server::DisableLockToComputer).toBool());
+  addOption("", kOptionRelativeMouseMoves, settingValue(Settings::Server::RelativeMouseMoves).toBool());
+  addOption("", kOptionWin32KeepForeground, settingValue(Settings::Server::Win32KeepForeground).toBool());
+  addOption("", kOptionClipboardSharing, settingValue(Settings::Server::EnableClipboard).toBool());
+  addOption("", kOptionClipboardSharingSize, settingValue(Settings::Server::ClipboardSize).toUInt() * 1024);
 
-  if (const auto address = Settings::value(Settings::Core::Interface).toString(); !address.isEmpty()) {
-    m_deskflowAddress = NetworkAddress(address.toStdString(), Settings::value(Settings::Core::Port).toInt());
+  if (const auto address = settingValue(Settings::Core::Interface).toString(); !address.isEmpty()) {
+    m_deskflowAddress = NetworkAddress(address.toStdString(), settingValue(Settings::Core::Port).toInt());
   } else {
-    m_deskflowAddress = NetworkAddress(Settings::value(Settings::Core::Port).toInt());
+    m_deskflowAddress = NetworkAddress(settingValue(Settings::Core::Port).toInt());
   }
   try {
     m_deskflowAddress.resolve();

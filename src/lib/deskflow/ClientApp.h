@@ -34,6 +34,8 @@ public:
   //
 
   void parseArgs() override;
+  bool control(const QString &command, const QString &argument) override;
+  QJsonObject controlState() const override;
   const char *daemonName() const override;
   void loadConfig() override
   {

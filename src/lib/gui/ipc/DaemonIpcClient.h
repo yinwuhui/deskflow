@@ -24,8 +24,10 @@ public:
   void sendStopProcess();
   void sendClearSettings();
   void requestLogPath();
+  void requestProcessState(const QString &id);
 
 Q_SIGNALS:
+  void processStateReceived(const QString &id, const QString &state);
   void logPathReceived(const QString &logPath);
 
 protected:

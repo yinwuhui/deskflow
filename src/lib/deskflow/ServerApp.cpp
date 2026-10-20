@@ -12,6 +12,7 @@
 #include "base/IEventQueue.h"
 #include "base/Log.h"
 #include "common/ExitCodes.h"
+#include "common/LayoutReload.h"
 #include "common/PlatformInfo.h"
 #include "common/Settings.h"
 #include "deskflow/App.h"
@@ -29,9 +30,11 @@
 #include "server/Config.h"
 #include "server/PrimaryClient.h"
 #include "server/Server.h"
+#include <QSettings>
 
 // must be before computer header includes
 #include <QFileInfo>
+#include <QJsonArray>
 
 #if defined(Q_OS_WIN)
 #include "platform/MSWindowsComputer.h"
@@ -79,6 +82,74 @@ void ServerApp::parseArgs()
   }
 }
 
+QJsonObject ServerApp::controlState() const
+{
+  std::vector<std::string> clients;
+  if (m_server)
+    m_server->getClients(clients);
+  QJsonArray peers;
+  const auto local = Settings::value(Settings::Core::ComputerName).toString();
+  for (const auto &client : clients)
+    if (QString::fromStdString(client) != local)
+      peers.append(QString::fromStdString(client));
+  QJsonObject state{{"connectedClients", peers}, {"connectionState", peers.isEmpty() ? "Listening" : "Connected"}};
+  if (!m_activeLayoutSettings.isEmpty())
+    state["settingsFile"] = m_activeLayoutSettings;
+  return state;
+}
+
+bool ServerApp::control(const QString &command, const QString &argument)
+{
+  if (!m_server)
+    return false;
+  if (command == "ready")
+    return true;
+  if (command == "pause") {
+    m_server->setPaused(argument == "1");
+    Settings::setValue(Settings::Core::SharingPaused, argument == "1");
+    Settings::save(false);
+    return true;
+  }
+  if (command == "reloadLayout") {
+    QSettings candidateSettings(argument, QSettings::IniFormat);
+    QSettings activeSettings(
+        m_activeLayoutSettings.isEmpty() ? Settings::settingsFile() : m_activeLayoutSettings, QSettings::IniFormat
+    );
+    if (!QFileInfo(argument).isReadable() || !deskflow::permitsLayoutReload(activeSettings, candidateSettings))
+      return false;
+    QMap<QString, QVariant> profile;
+    for (const auto &key : candidateSettings.allKeys())
+      profile.insert(key, candidateSettings.value(key));
+    Config candidate(getEvents(), profile);
+    const auto graph = candidateSettings.value(Settings::Server::ExternalConfigFile).toString();
+    try {
+#if defined(Q_OS_WIN)
+      std::ifstream stream(graph.toStdWString());
+#else
+      std::ifstream stream(graph.toStdString());
+#endif
+      if (!stream.is_open())
+        return false;
+      stream >> candidate;
+    } catch (const std::exception &error) {
+      LOG_ERR("layout reload rejected: %s", error.what());
+      return false;
+    }
+    std::vector<std::string> clients;
+    m_server->getClients(clients);
+    for (const auto &name : clients)
+      if (!candidate.isCanonicalName(name))
+        return false;
+    if (!m_server->reloadLayout(candidate))
+      return false;
+    m_activeLayoutSettings = argument;
+    return true;
+  }
+  if (command == "revoke")
+    return m_server->disconnectFingerprint(argument.toLatin1());
+  return false;
+}
+
 void ServerApp::reloadSignalHandler(Arch::ThreadSignal, void *)
 {
   IEventQueue *events = App::instance().getEvents();
@@ -88,7 +159,10 @@ void ServerApp::reloadSignalHandler(Arch::ThreadSignal, void *)
 void ServerApp::reloadConfig()
 {
   LOG_DEBUG("reload configuration");
-  if (loadConfig(Settings::serverConfigFile())) {
+  QSettings active(m_activeLayoutSettings, QSettings::IniFormat);
+  const auto path = m_activeLayoutSettings.isEmpty() ? Settings::serverConfigFile()
+                                                     : active.value(Settings::Server::ExternalConfigFile).toString();
+  if (loadConfig(path)) {
     if (m_server != nullptr) {
       m_server->setConfig(*m_config);
     }
@@ -220,9 +294,8 @@ void ServerApp::startMdnsPublisher()
     return;
   const auto port = static_cast<int>(m_config->getDeskflowAddress().getPort());
   const QString name = QString::fromStdString(m_name);
-  const QString fingerprint = deskflow::localCertFingerprint(
-      Settings::value(Settings::Security::Certificate).toString()
-  );
+  const QString fingerprint =
+      deskflow::localCertFingerprint(Settings::value(Settings::Security::Certificate).toString());
   m_mdnsPublisher = std::make_unique<deskflow::mdns::MdnsPublisher>(name, port, fingerprint, nullptr);
   m_mdnsPublisher->start();
 }

@@ -11,8 +11,8 @@
 #include "arch/Arch.h"
 #include "arch/IArchMultithread.h"
 #include "deskflow/App.h"
-#include "net/NetworkAddress.h"
 #include "net/MdnsPublisher.h"
+#include "net/NetworkAddress.h"
 #include "server/Config.h"
 
 #include <memory>
@@ -54,6 +54,8 @@ public:
   //
 
   void parseArgs() override;
+  bool control(const QString &command, const QString &argument) override;
+  QJsonObject controlState() const override;
   const char *daemonName() const override;
   void loadConfig() override;
   bool loadConfig(const QString &filename) override;
@@ -109,6 +111,7 @@ private:
   void startMdnsPublisher();
   void stopMdnsPublisher();
 
+  QString m_activeLayoutSettings;
   bool m_suspended = false;
   Server *m_server = nullptr;
   ServerState m_serverState = ServerState::Uninitialized;

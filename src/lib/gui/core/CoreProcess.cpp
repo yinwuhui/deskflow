@@ -8,6 +8,7 @@
 #include "CoreProcess.h"
 
 #include "common/ExitCodes.h"
+#include "gui/TlsUtility.h"
 #include "gui/ipc/CoreIpcClient.h"
 #include "gui/ipc/DaemonIpcClient.h"
 
@@ -23,14 +24,80 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QMetaEnum>
 #include <QMutexLocker>
 #include <QRegularExpression>
+#include <QSaveFile>
+#include <QTemporaryDir>
+#include <QTextStream>
+#include <QUuid>
+#include <memory>
 
 namespace deskflow::gui {
 
 const int kRetryDelay = 1000;
 const auto kLineSplitRegex = QRegularExpression("\r|\n|\r\n");
+
+void CoreProcess::validateExternalFile(const QString &path)
+{
+  const auto generation = ++m_fileValidationGeneration;
+  auto directory = std::make_shared<QTemporaryDir>();
+  if (!directory->isValid() || !QFileInfo(path).isReadable()) {
+    Q_EMIT fileValidationFinished(path, false, tr("文件不可读，请检查路径与权限。"));
+    return;
+  }
+  const auto snapshotPath = directory->filePath("validation.conf");
+  QSettings snapshot(snapshotPath, QSettings::IniFormat);
+  for (const auto &key : Settings::validKeys())
+    snapshot.setValue(key, Settings::value(key));
+  auto &profile = Settings::proxy().get();
+  for (const auto &key : profile.allKeys())
+    snapshot.setValue(key, profile.value(key));
+  snapshot.setValue(Settings::Core::CoreMode, QVariant::fromValue(Settings::CoreMode::Server));
+  snapshot.setValue(Settings::Server::ExternalConfig, true);
+  snapshot.setValue(Settings::Server::ExternalConfigFile, QFileInfo(path).absoluteFilePath());
+  snapshot.sync();
+  QFile::setPermissions(snapshotPath, QFile::ReadOwner | QFile::WriteOwner);
+  if (snapshot.status() != QSettings::NoError) {
+    Q_EMIT fileValidationFinished(path, false, tr("无法准备临时检查配置。"));
+    return;
+  }
+  auto *process = new QProcess(this);
+  auto *timeout = new QTimer(process);
+  timeout->setSingleShot(true);
+  auto delivered = std::make_shared<bool>(false);
+  auto finish = [this, process, timeout, directory, delivered, path, generation](bool success, const QString &reason) {
+    if (*delivered)
+      return;
+    *delivered = true;
+    timeout->stop();
+    if (generation == m_fileValidationGeneration)
+      Q_EMIT fileValidationFinished(path, success, reason);
+    process->deleteLater();
+  };
+  connect(process, &QProcess::finished, this, [process, finish](int code, QProcess::ExitStatus state) {
+    const auto output = process->readAllStandardOutput().trimmed().split('\n');
+    const auto result = QJsonDocument::fromJson(output.isEmpty() ? QByteArray() : output.last()).object();
+    const bool success = state == QProcess::NormalExit && code == 0 && result.value("success").toBool();
+    finish(
+        success, result.value("reason").toString(
+                     success ? tr("配置文件检查通过；尚未应用到共享。") : tr("核心未能完成配置检查。")
+                 )
+    );
+  });
+  connect(process, &QProcess::errorOccurred, this, [process, finish](QProcess::ProcessError error) {
+    if (error == QProcess::FailedToStart)
+      finish(false, tr("无法启动核心检查程序：%1").arg(process->errorString()));
+  });
+  connect(timeout, &QTimer::timeout, this, [process, finish] {
+    process->kill();
+    finish(false, tr("配置检查超时，当前共享保持不变。"));
+  });
+  process->start(m_appPath, {"server", "--validate-config", "--settings", snapshotPath});
+  timeout->start(5000);
+}
 
 QString CoreProcess::processModeToString(const Settings::ProcessMode mode)
 {
@@ -99,11 +166,12 @@ QString CoreProcess::wrapIpv6(const QString &address)
 // CoreProcess
 //
 
-CoreProcess::CoreProcess(const ServerConfig &serverConfig)
+CoreProcess::CoreProcess(const ServerConfig &serverConfig, const QString &executable)
     : m_serverConfig(serverConfig),
       m_daemonIpcClient{new ipc::DaemonIpcClient(this)}
 {
-  m_appPath = QStringLiteral("%1/%2").arg(QCoreApplication::applicationDirPath(), kCoreBinName);
+  m_appPath = executable.isEmpty() ? QStringLiteral("%1/%2").arg(QCoreApplication::applicationDirPath(), kCoreBinName)
+                                   : executable;
   if (!QFile::exists(m_appPath)) {
     qCritical("core server binary does not exist");
   }
@@ -114,6 +182,37 @@ CoreProcess::CoreProcess(const ServerConfig &serverConfig)
   );
   connect(m_daemonIpcClient, &ipc::DaemonIpcClient::logPathReceived, this, &CoreProcess::setupDaemonLogTail);
 
+  m_daemonStateTimer.setInterval(250);
+  connect(&m_daemonStateTimer, &QTimer::timeout, this, [this] {
+    if (m_daemonIpcClient->isConnected())
+      m_daemonIpcClient->requestProcessState(m_daemonStateRequest);
+  });
+  connect(
+      m_daemonIpcClient, &ipc::DaemonIpcClient::processStateReceived, this,
+      [this](const QString &id, const QString &state) {
+        if (id == m_serviceProbe && !m_serviceProbe.isEmpty()) {
+          m_serviceProbe.clear();
+          if (state == "running") {
+            m_lastProcessMode = m_runtimeProcessMode = ProcessMode::Service;
+            ++m_processGeneration;
+            m_attachingService = true;
+            setProcessState(ProcessState::Started);
+            connectCoreIpc();
+          }
+          Q_EMIT serviceProbeFinished(state);
+          return;
+        }
+        if (id != m_daemonStateRequest)
+          return;
+        if (m_processState == ProcessState::Stopping && state == "stopped") {
+          m_daemonStateTimer.stop();
+          setProcessState(ProcessState::Stopped);
+        } else if (m_processState == ProcessState::Starting && state == "running") {
+          m_daemonStateTimer.stop();
+          setProcessState(ProcessState::Started);
+        }
+      }
+  );
   connect(&m_retryTimer, &QTimer::timeout, this, [this] {
     if (m_processState == ProcessState::RetryPending) {
       start();
@@ -242,6 +341,25 @@ void CoreProcess::startForegroundProcess(const QStringList &args)
   }
 }
 
+void CoreProcess::watchDaemonState()
+{
+  m_daemonStateRequest = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  m_daemonStateTimer.start();
+  const auto request = m_daemonStateRequest;
+  QTimer::singleShot(20000, this, [this, request] {
+    if (request != m_daemonStateRequest || !m_daemonStateTimer.isActive())
+      return;
+    m_daemonStateTimer.stop();
+    Q_EMIT controlFinished(
+        QJsonObject{
+            {"command", "service"},
+            {"success", false},
+            {"reason", tr("The background service did not confirm its process state. Sharing state is unknown.")}
+        }
+    );
+  });
+}
+
 void CoreProcess::startProcessFromDaemon()
 {
   if (m_processState != ProcessState::Starting) {
@@ -249,13 +367,15 @@ void CoreProcess::startProcessFromDaemon()
     return;
   }
 
-  const auto configFile = Settings::settingsFile();
+  const auto configFile = m_runtimeSettings.isEmpty() ? Settings::settingsFile() : m_runtimeSettings;
   qInfo("sending start to daemon (config file: %s)", qPrintable(configFile));
 
-  auto sendStart = [this, configFile] {
+  auto sendStart = [this, configFile, generation = m_processGeneration] {
+    if (generation != m_processGeneration || m_processState != ProcessState::Starting)
+      return;
     m_daemonIpcClient->sendConfigFile(configFile);
     m_daemonIpcClient->sendStartProcess();
-    setProcessState(ProcessState::Started);
+    watchDaemonState();
   };
 
   if (m_daemonIpcClient->isConnected()) {
@@ -323,9 +443,11 @@ void CoreProcess::stopProcessFromDaemon()
     return;
   }
 
-  auto sendStop = [this] {
+  auto sendStop = [this, generation = m_processGeneration] {
+    if (generation != m_processGeneration || m_processState != ProcessState::Stopping)
+      return;
     m_daemonIpcClient->sendStopProcess();
-    setProcessState(ProcessState::Stopped);
+    watchDaemonState();
   };
 
   if (m_daemonIpcClient->isConnected()) {
@@ -374,10 +496,123 @@ void CoreProcess::handleLogLines(const QString &text)
   }
 }
 
+CoreProcess::RuntimeConfiguration CoreProcess::runtimeConfiguration() const
+{
+  if (m_runtimeSettings.isEmpty())
+    return {};
+  QSettings settings(m_runtimeSettings, QSettings::IniFormat);
+  return {
+      m_runtimeSettings, m_runtimeConfig, settings.value(Settings::Client::RemoteHost).toString(), m_runtimeProcessMode,
+      m_mode
+  };
+}
+bool CoreProcess::restoreRuntimeConfiguration(const RuntimeConfiguration &configuration)
+{
+  if (configuration.settingsFile.isEmpty() || !QFileInfo(configuration.settingsFile).isReadable() ||
+      configuration.role == Settings::CoreMode::None)
+    return false;
+  m_runtimeSettings = configuration.settingsFile;
+  m_runtimeConfig = configuration.serverFile;
+  m_runtimeProcessMode = configuration.processMode;
+  m_mode = configuration.role;
+  m_address = correctedAddress(configuration.source);
+  return true;
+}
+
+bool CoreProcess::prepareConfiguration()
+{
+  m_configurationError.clear();
+  if (!m_serverConfig.loadError().isEmpty()) {
+    m_configurationError = m_serverConfig.loadError();
+    return false;
+  }
+  // Freeze both files before stopping the old core. The profile directory is
+  // unchanged so certificate/trust defaults retain their original scope.
+  if (Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>() == Settings::CoreMode::None)
+    return false;
+  if (Settings::value(Settings::Security::TlsEnabled).toBool()) {
+    const auto certificate = Settings::value(Settings::Security::Certificate).toString();
+    if (!TlsUtility::isCertValid(certificate)) {
+      if (QFile::exists(certificate) || !TlsUtility::generateCertificate())
+        return false;
+    }
+  }
+  Settings::save();
+  Settings::proxy().sync();
+  if (Settings::proxy().get().status() != QSettings::NoError)
+    return false;
+  const auto stem = Settings::settingsPath() + "/.runtime-" + QUuid::createUuid().toString(QUuid::WithoutBraces);
+  const auto settingsPath = stem + ".conf";
+  const auto graphPath = stem + ".server.conf";
+  QByteArray graph;
+  if (Settings::value(Settings::Server::ExternalConfig).toBool()) {
+    QFile source(Settings::value(Settings::Server::ExternalConfigFile).toString());
+    if (!source.open(QIODevice::ReadOnly))
+      return false;
+    graph = source.readAll();
+  } else {
+    QString text;
+    QTextStream out(&text);
+    out << m_serverConfig;
+    out.flush();
+    graph = text.toUtf8();
+  }
+  QSaveFile graphFile(graphPath);
+  if (!graphFile.open(QIODevice::WriteOnly))
+    return false;
+  graphFile.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+  if (graphFile.write(graph) != graph.size() || !graphFile.commit())
+    return false;
+  QSettings snapshot(settingsPath, QSettings::IniFormat);
+  snapshot.setAtomicSyncRequired(true);
+  for (const auto &key : Settings::validKeys())
+    snapshot.setValue(key, Settings::value(key));
+  auto &profile = Settings::proxy().get();
+  for (const auto &key : profile.allKeys())
+    snapshot.setValue(key, profile.value(key));
+  snapshot.setValue(Settings::Server::ExternalConfig, true);
+  snapshot.setValue(Settings::Server::ExternalConfigFile, graphPath);
+  snapshot.sync();
+  if (snapshot.status() != QSettings::NoError) {
+    QFile::remove(graphPath);
+    QFile::remove(settingsPath);
+    return false;
+  }
+  QFile::setPermissions(settingsPath, QFile::ReadOwner | QFile::WriteOwner);
+  QProcess validator;
+  const auto role = Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>() == Settings::CoreMode::Server
+                        ? "server"
+                        : "client";
+  validator.start(m_appPath, {role, "--validate-config", "--settings", settingsPath});
+  if (!validator.waitForFinished(5000) || validator.exitStatus() != QProcess::NormalExit || validator.exitCode() != 0) {
+    validator.kill();
+    validator.waitForFinished(1000);
+    const auto output = validator.readAllStandardOutput();
+    const auto lines = output.trimmed().split('\n');
+    if (!lines.isEmpty())
+      m_configurationError = QJsonDocument::fromJson(lines.last()).object().value("reason").toString();
+    if (m_configurationError.isEmpty())
+      m_configurationError =
+          tr("The core could not validate the configuration. Check the executable and file permissions.");
+    qWarning() << "Configuration validation failed:" << m_configurationError;
+    QFile::remove(settingsPath);
+    QFile::remove(graphPath);
+    return false;
+  }
+  m_runtimeSettings = settingsPath;
+  m_runtimeConfig = graphPath;
+  m_runtimeProcessMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
+  return true;
+}
+
 void CoreProcess::start(std::optional<ProcessMode> processModeOption)
 {
-  if (m_processState == ProcessState::Started) {
-    qCritical("not starting core process, already started");
+  if (!m_serviceProbe.isEmpty()) {
+    qWarning("not starting core while background service state is being checked");
+    return;
+  }
+  if (m_processState != ProcessState::Stopped && m_processState != ProcessState::RetryPending) {
+    qCritical("not starting core process, previous process is not stopped");
     return;
   }
 
@@ -389,11 +624,13 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
   QMutexLocker locker(&m_processMutex);
 
   const auto currentMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
-  const auto processMode = processModeOption.value_or(currentMode);
+  const auto processMode = processModeOption.value_or(m_runtimeSettings.isEmpty() ? currentMode : m_runtimeProcessMode);
   const auto coreMode = QVariant::fromValue(m_mode).toString().toLower();
 
   qInfo().noquote() << QString("starting %1 process (%2 mode)").arg(coreMode, processModeToString(processMode));
 
+  ++m_processGeneration;
+  m_pendingControls.clear();
   setProcessState(ProcessState::Starting);
 
 #ifdef Q_OS_MACOS
@@ -416,6 +653,8 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
   }
 
   QStringList args = {coreMode};
+  if (!m_runtimeSettings.isEmpty())
+    args << "--settings" << m_runtimeSettings;
 
   if (m_mode == Settings::CoreMode::Server) {
     const auto [hasNeededPermissions, configFilename] = persistServerConfig();
@@ -443,54 +682,38 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
     qInfo().noquote() << "log file:" << logFile;
   }
 
-  // Wired before the start calls so it catches Started from both sync (desktop) and async (service) paths.
-  connect(
-      this, &CoreProcess::processStateChanged, this,
-      [this](ProcessState state) {
-        if (state != ProcessState::Started) {
-          return;
-        }
-
-        // Delay briefly to give the core process time to start its IPC server.
-        QTimer::singleShot(kRetryDelay, this, [this] {
-          if (m_processState != ProcessState::Started) {
+  // Connect only for this generation. An older delayed startup must not
+  // replace the IPC connection belonging to a newer source.
+  const auto generation = m_processGeneration;
+  auto attach = [this, generation] {
+    QTimer::singleShot(kRetryDelay, this, [this, generation] {
+      if (generation == m_processGeneration && m_processState == ProcessState::Started)
+        connectCoreIpc();
+    });
+  };
+  if (processMode == ProcessMode::Desktop) {
+    // Desktop startForegroundProcess synchronously reports Started.
+  } else {
+    auto connection = std::make_shared<QMetaObject::Connection>();
+    *connection = connect(
+        this, &CoreProcess::processStateChanged, this,
+        [this, generation, attach, connection](ProcessState state) {
+          if (generation != m_processGeneration || state == ProcessState::Stopped) {
+            disconnect(*connection);
             return;
           }
-
-          if (m_coreIpcClient) {
-            m_coreIpcClient->disconnectFromServer();
-            m_coreIpcClient->deleteLater();
-            m_coreIpcClient = nullptr;
+          if (state == ProcessState::Started) {
+            disconnect(*connection);
+            attach();
           }
-
-          m_coreIpcClient = new ipc::CoreIpcClient(this);
-
-          // queued so a modal dialog opened by a handler can't block readyRead and strand later messages
-          connect(
-              m_coreIpcClient, &ipc::CoreIpcClient::commandReceived, this, &CoreProcess::onCoreIpcMessageReceived,
-              Qt::QueuedConnection
-          );
-          connect(m_coreIpcClient, &ipc::CoreIpcClient::connected, this, [] {
-            qDebug("connected to core ipc server");
-          });
-          connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, [] {
-            qWarning("failed to establish core ipc connection");
-          });
-          connect(m_coreIpcClient, &ipc::CoreIpcClient::serverShutdown, this, [this, client = m_coreIpcClient] {
-            qDebug("core ipc server shut down cleanly");
-            client->deleteLater();
-            if (m_coreIpcClient == client)
-              m_coreIpcClient = nullptr;
-          });
-
-          m_coreIpcClient->connectToServer();
-        });
-      },
-      static_cast<Qt::ConnectionType>(Qt::SingleShotConnection | Qt::QueuedConnection)
-  );
+        }
+    );
+  }
 
   if (processMode == ProcessMode::Desktop) {
     startForegroundProcess(args);
+    if (m_processState == ProcessState::Started)
+      attach();
   } else if (processMode == ProcessMode::Service) {
     startProcessFromDaemon();
   }
@@ -498,13 +721,71 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
   m_lastProcessMode = processMode;
 }
 
+void CoreProcess::probeExistingService()
+{
+  if (m_processState != ProcessState::Stopped || !m_serviceProbe.isEmpty())
+    return;
+  m_serviceProbe = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  const auto id = m_serviceProbe;
+  auto query = [this, id] {
+    if (m_serviceProbe == id)
+      m_daemonIpcClient->requestProcessState(id);
+  };
+  if (m_daemonIpcClient->isConnected())
+    query();
+  else {
+    connect(m_daemonIpcClient, &ipc::DaemonIpcClient::connected, this, query, Qt::SingleShotConnection);
+    m_daemonIpcClient->connectToServer();
+  }
+  QTimer::singleShot(5000, this, [this, id] {
+    if (m_serviceProbe == id) {
+      m_serviceProbe.clear();
+      Q_EMIT serviceProbeFinished("unknown");
+    }
+  });
+}
+
+void CoreProcess::connectCoreIpc()
+{
+  if (m_coreIpcClient) {
+    m_coreIpcClient->disconnectFromServer();
+    m_coreIpcClient->deleteLater();
+  }
+  m_coreIpcClient = new ipc::CoreIpcClient(this);
+  connect(
+      m_coreIpcClient, &ipc::CoreIpcClient::commandReceived, this,
+      [this, generation = m_processGeneration](const QString &command, const QString &args) {
+        if (generation == m_processGeneration)
+          onCoreIpcMessageReceived(command, args);
+      },
+      Qt::QueuedConnection
+  );
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::connected, this, [this] { Q_EMIT ipcReady(); });
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, [] {
+    qWarning("failed to establish core ipc connection");
+  });
+  connect(m_coreIpcClient, &ipc::CoreIpcClient::serverShutdown, this, [this, client = m_coreIpcClient] {
+    client->deleteLater();
+    if (m_coreIpcClient == client)
+      m_coreIpcClient = nullptr;
+  });
+  m_coreIpcClient->connectToServer();
+}
+
 void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 {
   QMutexLocker locker(&m_processMutex);
+  ++m_restartGeneration;
+  disconnect(m_restartConnection);
+  m_retryTimer.stop();
 
   const auto currentMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
-  const auto processMode = processModeOption.value_or(currentMode);
+  const auto processMode = processModeOption.value_or(m_lastProcessMode.value_or(currentMode));
 
+  ++m_processGeneration;
+  m_pendingControls.clear();
+  m_serviceProbe.clear();
+  m_attachingService = false;
   qInfo("stopping core process (%s mode)", qPrintable(processModeToString(processMode)));
 
   if (m_coreIpcClient && processMode != ProcessMode::Desktop) {
@@ -515,6 +796,16 @@ void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 
   if (m_processState == ProcessState::Starting) {
     qDebug("core process is starting, cancelling");
+    if (processMode == ProcessMode::Service) {
+      setProcessState(ProcessState::Stopping);
+      stopProcessFromDaemon();
+    } else if (m_process && m_process->state() != QProcess::NotRunning) {
+      setProcessState(ProcessState::Stopping);
+      stopForegroundProcess();
+    } else
+      setProcessState(ProcessState::Stopped);
+  } else if (m_processState == ProcessState::RetryPending && processMode == ProcessMode::Desktop &&
+             (!m_process || m_process->state() == QProcess::NotRunning)) {
     setProcessState(ProcessState::Stopped);
   } else if (m_processState != ProcessState::Stopped) {
     setProcessState(ProcessState::Stopping);
@@ -534,40 +825,25 @@ void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 
 void CoreProcess::restart()
 {
-  qDebug("restarting core process");
-
-  const auto processMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
-
-  const bool waitForProcess = m_process && m_process->state() != QProcess::ProcessState::NotRunning;
-
-  if (waitForProcess) {
-    qInfo("waiting for current desktop core to exit before restarting");
-
-    connect(
-        m_process, &QProcess::finished, this,
-        [this](int, QProcess::ExitStatus) {
-          qInfo("desktop core exited, restarting");
-          start();
-        },
-        Qt::SingleShotConnection
-    );
-  }
-
-  if (m_lastProcessMode != std::nullopt && m_lastProcessMode != processMode) {
-    const auto debugMessage =
-        QStringLiteral("process mode changed to %1, stopping %2 process")
-            .arg(processModeToString(processMode), processModeToString(m_lastProcessMode.value()));
-    qDebug().noquote() << debugMessage;
-    stop(m_lastProcessMode);
+  // stop() cancels any older queued restart. A later explicit Stop must also
+  // invalidate this continuation, including the interval after process exit.
+  stop();
+  const auto generation = m_restartGeneration;
+  const auto resume = [this, generation] {
+    QTimer::singleShot(0, this, [this, generation] {
+      if (generation == m_restartGeneration && m_processState == ProcessState::Stopped)
+        start();
+    });
+  };
+  if (m_processState == ProcessState::Stopped) {
+    resume();
   } else {
-    // in service mode: though there is technically no need to stop the service
-    // before restarting it, it does make for cleaner process state tracking,
-    // especially if something goes wrong with starting the service.
-    stop();
-  }
-
-  if (!waitForProcess) {
-    start();
+    m_restartConnection = connect(this, &CoreProcess::processStateChanged, this, [this, resume](ProcessState state) {
+      if (state != ProcessState::Stopped)
+        return;
+      disconnect(m_restartConnection);
+      resume();
+    });
   }
 }
 
@@ -575,7 +851,7 @@ void CoreProcess::cleanup()
 {
   qInfo("cleaning up core process");
 
-  const auto isDesktop = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>() == ProcessMode::Desktop;
+  const auto isDesktop = !serviceMode();
   const auto isRunning = m_processState == ProcessState::Started;
   if (isDesktop && isRunning) {
     stop();
@@ -584,6 +860,8 @@ void CoreProcess::cleanup()
 
 QPair<bool, QString> CoreProcess::persistServerConfig() const
 {
+  if (!m_runtimeConfig.isEmpty())
+    return {QFileInfo(m_runtimeConfig).isReadable(), m_runtimeConfig};
   if (Settings::value(Settings::Server::ExternalConfig).toBool()) {
     return {Settings::isServerConfigFileReadable(), Settings::value(Settings::Server::ExternalConfigFile).toString()};
   }
@@ -626,6 +904,32 @@ void CoreProcess::setProcessState(ProcessState state)
 
 void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString &args)
 {
+  if (command == "controlResult") {
+    const auto result =
+        QJsonDocument::fromJson(QByteArray::fromBase64(args.toLatin1(), QByteArray::Base64UrlEncoding)).object();
+    if (m_pendingControls.remove(result.value("id").toString())) {
+      if (result.value("command").toString() == "ready" && result.value("success").toBool()) {
+        if (m_attachingService) {
+          m_attachingService = false;
+          m_mode = static_cast<Settings::CoreMode>(result.value("role").toInt());
+          m_runtimeSettings = result.value("settingsFile").toString();
+          QSettings runtime(m_runtimeSettings, QSettings::IniFormat);
+          m_runtimeConfig = runtime.value(Settings::Server::ExternalConfigFile).toString();
+          m_address = correctedAddress(result.value("source").toString());
+        }
+        Q_EMIT controlFinished(result);
+        onCoreIpcMessageReceived("connectionState", result.value("connectionState").toString());
+        if (result.contains("connectedClients")) {
+          QStringList peers;
+          for (const auto &peer : result.value("connectedClients").toArray())
+            peers.append(peer.toString());
+          Q_EMIT connectedClientsChanged(peers);
+        }
+      } else
+        Q_EMIT controlFinished(result);
+    }
+    return;
+  }
   if (command == "connectionState") {
     const auto metaEnum = QMetaEnum::fromType<ConnectionState>();
     bool ok = false;
@@ -658,11 +962,38 @@ void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString
     }
   } else if (command == "retryIn") {
     Q_EMIT retryIn(args.toInt());
+  } else if (command == "identityRevoked") {
+    Q_EMIT peerIdentityBlocked(args);
+  } else if (command == "peerIdentity") {
+    Q_EMIT peerIdentityRequired(QJsonDocument::fromJson(args.toUtf8()).object());
   } else if (command == "peerFingerprint") {
     Q_EMIT peerFingerprint(args);
   } else if (command == "missingKeyboardLayouts") {
     Q_EMIT missingKeyboardLayouts(args);
   }
+}
+
+QString CoreProcess::control(const QString &command, const QString &argument)
+{
+  const auto id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  m_pendingControls.insert(id);
+  if (m_coreIpcClient && m_coreIpcClient->isConnected()) {
+    m_coreIpcClient->sendControl(id, command, argument);
+  }
+  QTimer::singleShot(5000, this, [this, id, command, argument] {
+    if (!m_pendingControls.remove(id))
+      return;
+    Q_EMIT controlFinished(
+        QJsonObject{
+            {"id", id},
+            {"command", command},
+            {"argument", argument},
+            {"success", false},
+            {"reason", tr("The core did not confirm the operation. Check the connection and retry.")}
+        }
+    );
+  });
+  return id;
 }
 
 bool CoreProcess::checkSecureSocket(const QString &line)

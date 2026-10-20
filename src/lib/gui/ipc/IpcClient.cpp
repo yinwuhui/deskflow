@@ -43,6 +43,7 @@ void IpcClient::connectToServer()
     disconnectFromServer();
   }
 
+  m_readBuffer.clear();
   m_retryCount = 0;
   attemptConnection();
 }

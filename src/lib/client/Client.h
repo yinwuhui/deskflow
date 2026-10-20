@@ -118,6 +118,8 @@ public:
   Disconnects from the server with an optional error message.
   */
   void disconnect(const char *msg);
+  void setPaused(bool paused);
+  bool disconnectFingerprint(const QByteArray &fingerprint);
 
   //! Refuse connection
   /*!
@@ -227,6 +229,7 @@ private:
   deskflow::IStream *m_stream = nullptr;
   EventQueueTimer *m_timer = nullptr;
   ServerProxy *m_server = nullptr;
+  bool m_paused = false;
   bool m_ready = false;
   bool m_active = false;
   bool m_suspended = false;

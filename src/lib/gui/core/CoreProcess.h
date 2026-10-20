@@ -12,9 +12,11 @@
 #include "gui/FileTail.h"
 #include "gui/config/ServerConfig.h"
 
+#include <QJsonObject>
 #include <QMutex>
 #include <QObject>
 #include <QProcess>
+#include <QSet>
 #include <QTimer>
 
 namespace deskflow::gui {
@@ -38,15 +40,34 @@ public:
     StartFailed
   };
 
-  explicit CoreProcess(const ServerConfig &serverConfig);
+  struct RuntimeConfiguration
+  {
+    QString settingsFile, serverFile, source;
+    Settings::ProcessMode processMode = Settings::ProcessMode::Desktop;
+    Settings::CoreMode role = Settings::CoreMode::None;
+  };
+  RuntimeConfiguration runtimeConfiguration() const;
+  bool restoreRuntimeConfiguration(const RuntimeConfiguration &configuration);
+  explicit CoreProcess(const ServerConfig &serverConfig, const QString &executable = {});
 
   void start(std::optional<ProcessMode> processMode = std::nullopt);
   void stop(std::optional<ProcessMode> processMode = std::nullopt);
   void restart();
   void cleanup();
+  void probeExistingService();
   void applyLogLevel();
   void clearSettings();
   void retryDaemon();
+  bool prepareConfiguration();
+  QString runtimeSettingsFile() const
+  {
+    return m_runtimeSettings;
+  }
+  QString configurationError() const
+  {
+    return m_configurationError;
+  }
+  QString control(const QString &command, const QString &argument = {});
 
   // getters
   Settings::CoreMode mode() const
@@ -56,6 +77,10 @@ public:
   QString secureSocketVersion() const
   {
     return m_secureSocketVersion;
+  }
+  bool serviceMode() const
+  {
+    return m_lastProcessMode.value_or(m_runtimeProcessMode) == ProcessMode::Service;
   }
   bool isStarted() const
   {
@@ -70,6 +95,8 @@ public:
     return m_connectionState;
   }
 
+  void validateExternalFile(const QString &path);
+
   // setters
   void setAddress(const QString &address)
   {
@@ -81,6 +108,7 @@ public:
   }
 
 Q_SIGNALS:
+  void fileValidationFinished(const QString &path, bool success, const QString &reason);
   void error(deskflow::gui::CoreProcess::Error error);
   void logLine(const QString &line);
   void connectionStateChanged(deskflow::core::ConnectionState state);
@@ -92,8 +120,13 @@ Q_SIGNALS:
   void unrecognisedClient(const QString &clientName);
   void connectionRefused(deskflow::core::ConnectionRefusal reason);
   void retryIn(int seconds);
+  void peerIdentityRequired(const QJsonObject &identity);
   void peerFingerprint(const QString &fingerprint);
+  void peerIdentityBlocked(const QString &fingerprint);
   void missingKeyboardLayouts(const QString &layouts);
+  void ipcReady();
+  void serviceProbeFinished(const QString &state);
+  void controlFinished(const QJsonObject &result);
 
 private Q_SLOTS:
   void onProcessFinished(int exitCode, QProcess::ExitStatus);
@@ -134,6 +167,21 @@ private:
   FileTail *m_daemonFileTail = nullptr;
   QProcess *m_process = nullptr;
   QString m_appPath;
+  quint64 m_fileValidationGeneration = 0;
+  quint64 m_processGeneration = 0;
+  QMetaObject::Connection m_restartConnection;
+  quint64 m_restartGeneration = 0;
+  QString m_configurationError;
+  QString m_runtimeSettings;
+  QString m_runtimeConfig;
+  ProcessMode m_runtimeProcessMode = ProcessMode::Desktop;
+  QSet<QString> m_pendingControls;
+  QTimer m_daemonStateTimer;
+  QString m_daemonStateRequest;
+  QString m_serviceProbe;
+  bool m_attachingService = false;
+  void watchDaemonState();
+  void connectCoreIpc();
 };
 
 } // namespace deskflow::gui

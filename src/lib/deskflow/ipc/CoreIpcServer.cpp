@@ -8,6 +8,10 @@
 
 #include "base/Log.h"
 #include "common/Constants.h"
+#include "common/CoreControl.h"
+#include "deskflow/App.h"
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <QLocalSocket>
 
@@ -30,6 +34,14 @@ CoreIpcServer &CoreIpcServer::instance()
 void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
   Q_UNUSED(parts)
+  if (command == QStringLiteral("control") && parts.size() == 2) {
+    const auto request = decodeCoreControlRequest(parts.at(1));
+    if (!request)
+      return;
+    auto &app = App::instance();
+    app.getEvents()->addEvent(Event(EventTypes::AppControl, &app, new App::ControlRequest(*request)));
+    return;
+  }
   if (command == QStringLiteral("stop")) {
     LOG_DEBUG("core ipc server got stop message");
     writeToClientSocket(clientSocket, QStringLiteral("ok"));

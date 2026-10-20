@@ -153,6 +153,7 @@ public:
   This will disconnect any clients no longer in the configuration.
   */
   bool setConfig(const ServerConfig &);
+  bool reloadLayout(const ServerConfig &candidate);
 
   //! Add a client
   /*!
@@ -169,6 +170,8 @@ public:
   The caller can also just destroy this object to force the disconnection.
   */
   void disconnect();
+  void setPaused(bool paused);
+  bool disconnectFingerprint(const QByteArray &fingerprint);
 
   //! Store ClientListener pointer
   void setListener(ClientListener *p)
@@ -374,6 +377,9 @@ private:
   // Order suggested by clang
 
   // the Primary Computer Client
+  bool m_paused = false;
+  std::map<KeyButton, std::pair<KeyID, KeyModifierMask>> m_heldKeys;
+  std::set<ButtonID> m_heldButtons;
   PrimaryClient *m_primaryClient = nullptr;
 
   // the client with focus

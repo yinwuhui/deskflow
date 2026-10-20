@@ -10,6 +10,7 @@
 
 #include "base/IEventQueue.h"
 #include "base/Log.h"
+#include "common/Settings.h"
 #include "deskflow/AppUtil.h"
 #include "deskflow/Computer.h"
 #include "deskflow/DeskflowException.h"
@@ -19,11 +20,16 @@
 #include "deskflow/ProtocolTypes.h"
 #include "deskflow/StreamChunker.h"
 #include "deskflow/ipc/CoreIpc.h"
+#include "io/StreamFilter.h"
+#include "net/PeerIdentityStore.h"
+#include "net/SecureSocket.h"
 #include "net/TCPSocket.h"
 #include "server/ClientListener.h"
 #include "server/ClientProxy.h"
 #include "server/ClientProxyUnknown.h"
 #include "server/PrimaryClient.h"
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #ifdef _WIN32
 #include <algorithm>
@@ -48,6 +54,7 @@ Server::Server(ServerConfig &config, PrimaryClient *primaryClient, deskflow::Com
       m_computer(computer),
       m_events(events)
 {
+  m_paused = Settings::value(Settings::Core::SharingPaused).toBool();
   // must have a primary client and it must have a canonical name
   assert(m_primaryClient != nullptr);
   assert(config.isComputer(primaryClient->getName()));
@@ -202,6 +209,17 @@ size_t Server::getMaximumClipboardSizeBytes() const
   return m_maximumClipboardSize * 1024;
 }
 
+bool Server::reloadLayout(const ServerConfig &candidate)
+{
+  for (const auto &[name, client] : m_clients)
+    if (!candidate.isCanonicalName(name))
+      return false;
+  stopSwitch();
+  m_config->applyLayoutFrom(candidate);
+  m_primaryClient->reconfigure(getActivePrimarySides());
+  return true;
+}
+
 bool Server::setConfig(const ServerConfig &config)
 {
   // refuse configuration if it doesn't include the primary computer
@@ -257,6 +275,34 @@ void Server::adoptClient(BaseClientProxy *client)
     ipcSendToClient("unrecognisedClient", QString::fromStdString(client->getName()));
     closeClient(client, kMsgEUnknown);
     return;
+  }
+
+  if (Settings::value(Settings::Security::TlsEnabled).toBool() &&
+      Settings::value(Settings::Security::CheckPeers).toBool()) {
+    auto *stream = client->getStream();
+    while (auto *filter = dynamic_cast<StreamFilter *>(stream))
+      stream = filter->getStream();
+    auto *socket = dynamic_cast<SecureSocket *>(stream);
+    const auto fingerprint = socket ? socket->peerFingerprint() : QByteArray();
+    const auto identifier = QString::fromStdString(m_config->getCanonicalName(client->getName()));
+    const auto stableId = m_config->deviceStableId(identifier);
+    const auto key = stableId.isEmpty() ? identifier : stableId;
+    PeerIdentityStore store(Settings::peerIdentityDb());
+    PeerIdentityStore::Record previous;
+    const auto status = store.check("client", key, fingerprint, &previous);
+    if (status != PeerIdentityStore::Status::Match) {
+      const QJsonObject identity{
+          {"role", "client"},
+          {"key", key},
+          {"identifier", identifier},
+          {"fingerprint", QString::fromLatin1(fingerprint)},
+          {"previous", QString::fromLatin1(previous.fingerprint)},
+          {"available", status != PeerIdentityStore::Status::Unavailable}
+      };
+      ipcSendToClient("peerIdentity", QString::fromUtf8(QJsonDocument(identity).toJson(QJsonDocument::Compact)));
+      closeClient(client, kMsgCClose);
+      return;
+    }
   }
 
   // add client to client list
@@ -397,6 +443,8 @@ int32_t Server::getJumpZoneSize(const BaseClientProxy *client) const
 
 void Server::switchComputer(BaseClientProxy *dst, int32_t x, int32_t y, bool forScreensaver)
 {
+  if (m_paused && dst != m_primaryClient)
+    return;
   assert(dst != nullptr);
 
   int32_t dx;
@@ -1163,6 +1211,8 @@ void Server::handleShapeChanged(BaseClientProxy *client)
 
 void Server::handleClipboardGrabbed(const Event &event, BaseClientProxy *grabber)
 {
+  if (m_paused)
+    return;
   if (!m_enableClipboard || (m_maximumClipboardSize == 0)) {
     return;
   }
@@ -1215,6 +1265,8 @@ void Server::handleClipboardGrabbed(const Event &event, BaseClientProxy *grabber
 
 void Server::handleClipboardChanged(const Event &event, BaseClientProxy *client)
 {
+  if (m_paused)
+    return;
   // ignore events from unknown clients
   if (!m_clientSet.contains(client)) {
     return;
@@ -1439,6 +1491,8 @@ void Server::handleLockCursorToComputerEvent(const Event &event)
 
 void Server::onClipboardChanged(const BaseClientProxy *sender, ClipboardID id, uint32_t seqNum)
 {
+  if (m_paused)
+    return;
   ClipboardInfo &clipboard = m_clipboards[id];
 
   // ignore update if sequence number is old
@@ -1534,6 +1588,9 @@ void Server::onScreensaver(bool activated)
 
 void Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button, const std::string &lang, const char *computers)
 {
+  if (m_paused)
+    return;
+  m_heldKeys[button] = {id, mask};
   LOG_VERBOSE("onKeyDown id=%d mask=0x%04x button=0x%04x lang=%s", id, mask, button, lang.c_str());
   assert(m_active != nullptr);
 
@@ -1557,6 +1614,9 @@ void Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button, const s
 
 void Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button, const char *computers)
 {
+  if (m_paused)
+    return;
+  m_heldKeys.erase(button);
   LOG_VERBOSE("onKeyUp id=%d mask=0x%04x button=0x%04x", id, mask, button);
   assert(m_active != nullptr);
 
@@ -1580,6 +1640,8 @@ void Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button, const cha
 
 void Server::onKeyRepeat(KeyID id, KeyModifierMask mask, int32_t count, KeyButton button, const std::string &lang)
 {
+  if (m_paused)
+    return;
   LOG(
       (CLOG_VERBOSE "onKeyRepeat id=%d mask=0x%04x count=%d button=0x%04x lang=\"%s\"", id, mask, count, button,
        lang.c_str())
@@ -1592,6 +1654,9 @@ void Server::onKeyRepeat(KeyID id, KeyModifierMask mask, int32_t count, KeyButto
 
 void Server::onMouseDown(ButtonID id)
 {
+  if (m_paused)
+    return;
+  m_heldButtons.insert(id);
   LOG_VERBOSE("onMouseDown id=%d", id);
   assert(m_active != nullptr);
 
@@ -1601,6 +1666,9 @@ void Server::onMouseDown(ButtonID id)
 
 void Server::onMouseUp(ButtonID id)
 {
+  if (m_paused)
+    return;
+  m_heldButtons.erase(id);
   LOG_VERBOSE("onMouseUp id=%d", id);
   assert(m_active != nullptr);
 
@@ -1610,6 +1678,8 @@ void Server::onMouseUp(ButtonID id)
 
 bool Server::onMouseMovePrimary(int32_t x, int32_t y)
 {
+  if (m_paused)
+    return false;
   LOG_VERBOSE("onMouseMovePrimary %d,%d", x, y);
 
   // mouse move on primary (server's) computer
@@ -1707,6 +1777,8 @@ bool Server::onMouseMovePrimary(int32_t x, int32_t y)
 
 void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
 {
+  if (m_paused)
+    return;
   LOG_VERBOSE("mouse move on secondary: %+d,%+d", dx, dy);
 
   // TODO: move this to client side and use a qt setting or cli arg instead of env var.
@@ -1879,6 +1951,8 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
 
 void Server::onMouseWheel(int32_t xDelta, int32_t yDelta)
 {
+  if (m_paused)
+    return;
   LOG_VERBOSE("onMouseWheel %+d,%+d", xDelta, yDelta);
   assert(m_active != nullptr);
 
@@ -2061,4 +2135,53 @@ void Server::forceLeaveClient(const BaseClientProxy *client)
 
   // tell primary client about the active sides
   m_primaryClient->reconfigure(getActivePrimarySides());
+}
+
+void Server::setPaused(bool paused)
+{
+  if (m_paused == paused)
+    return;
+  if (paused) {
+    // Balance every press before suppressing new events, including broadcasts.
+    for (const auto &[name, client] : m_clients) {
+      if (client == m_primaryClient)
+        continue;
+      for (const auto &[button, key] : m_heldKeys)
+        client->keyUp(key.first, key.second, button);
+      for (auto button : m_heldButtons)
+        client->mouseUp(button);
+    }
+    m_heldKeys.clear();
+    m_heldButtons.clear();
+    stopSwitch();
+    if (m_active != m_primaryClient)
+      jumpToComputer(m_primaryClient);
+  }
+  m_paused = paused;
+}
+
+bool Server::disconnectFingerprint(const QByteArray &fingerprint)
+{
+  std::vector<BaseClientProxy *> matches;
+  bool unidentifiedSession = false;
+  for (const auto &[name, client] : m_clients) {
+    if (client == m_primaryClient)
+      continue;
+    auto *stream = client->getStream();
+    while (auto *filter = dynamic_cast<StreamFilter *>(stream))
+      stream = filter->getStream();
+    auto *socket = dynamic_cast<SecureSocket *>(stream);
+    if (!socket || socket->peerFingerprint().isEmpty())
+      unidentifiedSession = true;
+    if (socket && socket->peerFingerprint() == fingerprint)
+      matches.push_back(client);
+  }
+  for (auto *client : matches) {
+    auto *stream = client->getStream();
+    closeClient(client, kMsgCClose);
+    stream->close();
+  }
+  sendConnectedClientsIpc();
+  // Unauthenticated sessions cannot be associated with a specific identity.
+  return !unidentifiedSession;
 }

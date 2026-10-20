@@ -123,8 +123,19 @@ void DaemonApp::clearSettings()
   Settings::setValue(Settings::Daemon::LogLevel);
 }
 
-void DaemonApp::connectIpcServer(const ipc::DaemonIpcServer *ipcServer) const
+void DaemonApp::connectIpcServer(ipc::DaemonIpcServer *ipcServer) const
 {
+  connect(ipcServer, &ipc::DaemonIpcServer::processStateRequested, ipcServer, [this, ipcServer](const QString &id) {
+    QString state = "unknown";
+#if defined(Q_OS_WIN)
+    if (m_pWatchdog) {
+      const auto running = m_pWatchdog->processRunningSnapshot();
+      if (running.has_value())
+        state = *running ? "running" : "stopped";
+    }
+#endif
+    ipcServer->broadcastCommand("processState", id + "," + state);
+  });
   // Use direct connection as this object is on it's own thread,
   // and so is on a different event loop to the main Qt loop.
   connect(ipcServer, &ipc::DaemonIpcServer::logLevelChanged, this, &DaemonApp::saveLogLevel, Qt::DirectConnection);

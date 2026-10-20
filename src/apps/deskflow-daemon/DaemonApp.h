@@ -36,7 +36,7 @@ public:
   void run(QThread &daemonThread);
   void setForeground();
   void initLogging();
-  void connectIpcServer(const deskflow::core::ipc::DaemonIpcServer *ipcServer) const;
+  void connectIpcServer(deskflow::core::ipc::DaemonIpcServer *ipcServer) const;
 
   static QString logFilename();
 

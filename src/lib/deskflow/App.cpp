@@ -6,6 +6,8 @@
  */
 
 #include "deskflow/App.h"
+#include "deskflow/ipc/CoreIpc.h"
+#include <QJsonDocument>
 
 #include "DisplayInvalidException.h"
 #include "arch/Arch.h"
@@ -46,6 +48,32 @@ App::App(IEventQueue *events, const QString &processName)
 {
   assert(s_instance == nullptr);
   s_instance = this;
+  m_events->addHandler(EventTypes::AppControl, this, [this](const Event &event) {
+    const auto *request = static_cast<const ControlRequest *>(event.getDataObject());
+    if (!request)
+      return;
+    auto result = request->value;
+    const bool success = control(result.value("command").toString(), result.value("argument").toString());
+    result["success"] = success;
+    result["tlsEnabled"] = Settings::value(Settings::Security::TlsEnabled).toBool();
+    result["peerAuthEnabled"] = Settings::value(Settings::Security::CheckPeers).toBool();
+    result["paused"] = Settings::value(Settings::Core::SharingPaused).toBool();
+    result["source"] = Settings::value(Settings::Client::RemoteHost).toString();
+    result["role"] = static_cast<int>(Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>());
+    result["settingsFile"] = Settings::settingsFile();
+    result["interface"] = Settings::value(Settings::Core::Interface).toString();
+    if (result.value("command").toString() == "ready" || result.value("command").toString() == "reloadLayout") {
+      const auto state = controlState();
+      for (auto it = state.begin(); it != state.end(); ++it)
+        result[it.key()] = it.value();
+    }
+    ipcSendToClient(
+        "controlResult",
+        QString::fromLatin1(QJsonDocument(result)
+                                .toJson(QJsonDocument::Compact)
+                                .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals))
+    );
+  });
 #if defined(WINAPI_XWINDOWS) or defined(WINAPI_LIBEI)
   deskflow::platform::setAppId();
 #endif

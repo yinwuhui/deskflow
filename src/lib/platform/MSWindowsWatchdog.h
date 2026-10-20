@@ -59,6 +59,7 @@ public:
    * @return True if the process is running.
    */
   bool isProcessRunning();
+  std::optional<bool> processRunningSnapshot();
 
 private:
   /**

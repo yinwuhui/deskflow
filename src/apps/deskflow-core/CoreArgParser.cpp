@@ -102,3 +102,8 @@ bool CoreArgParser::singleInstanceOnly() const
 {
   return m_singleInstance;
 }
+
+bool CoreArgParser::validateOnly() const
+{
+  return m_parser.isSet(CoreArgs::validateOption);
+}

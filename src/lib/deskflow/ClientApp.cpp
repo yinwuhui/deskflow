@@ -91,6 +91,30 @@ void ClientApp::parseArgs()
   }
 }
 
+QJsonObject ClientApp::controlState() const
+{
+  return {{"connectionState", m_client && m_client->isConnected() ? "Connected" : "Connecting"}};
+}
+
+bool ClientApp::control(const QString &command, const QString &argument)
+{
+  if (!m_client)
+    return false;
+  if (command == "ready")
+    return true;
+  if (command == "pause") {
+    m_client->setPaused(argument == "1");
+    Settings::setValue(Settings::Core::SharingPaused, argument == "1");
+    Settings::save(false);
+    return true;
+  }
+  if (command == "revoke") {
+    // The GUI only sends this for the active source identity.
+    return m_client->disconnectFingerprint(argument.toLatin1());
+  }
+  return false;
+}
+
 const char *ClientApp::daemonName() const
 {
   if (deskflow::platform::isWindows())

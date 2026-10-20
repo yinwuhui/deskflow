@@ -8,14 +8,15 @@
 
 #include "common/Settings.h" // must include first
 
+#include "deskflow/App.h" // Qt JSON headers must precede Xlib macros (None, True, False).
+#include "deskflow/ClientApp.h"
+
 #include "platform/XWindowsComputer.h"
 
 #include "arch/Arch.h"
 #include "base/IEventQueue.h"
 #include "base/Log.h"
 #include "base/Stopwatch.h"
-#include "deskflow/App.h"
-#include "deskflow/ClientApp.h"
 #include "deskflow/Clipboard.h"
 #include "deskflow/DisplayException.h"
 #include "deskflow/KeyMap.h"
