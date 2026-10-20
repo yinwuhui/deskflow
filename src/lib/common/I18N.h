@@ -75,11 +75,13 @@ private:
   I18N(const I18N &other) = delete;
   ~I18N() override = default;
   void detectLanguages();
+  void loadLanguage(const QString &requested);
 
   QMap<QString, QStringList> m_translations;
   QMap<QString, QString> m_nameMap;
   QList<QTranslator *> m_currentTranslations;
   QString m_currentLang = QStringLiteral("en");
+  bool m_followSystem = false;
   QString m_appTrPath;
   QString m_qtTrPath;
 };

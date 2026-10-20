@@ -20,6 +20,7 @@ private Q_SLOTS:
   void setLangTest_validLangs();
   void setLangTest_invalidLang();
   void setLangTest_currentLang();
+  void setLangTest_followSystem();
   void reDetectTest();
 
 private:

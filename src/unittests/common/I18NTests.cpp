@@ -10,6 +10,7 @@
 #include "common/Settings.h"
 #include <QDir>
 #include <QFile>
+#include <QLocale>
 #include <QSignalSpy>
 
 void I18NTests::initTestCase()
@@ -95,6 +96,26 @@ void I18NTests::setLangTest_currentLang()
   QSignalSpy spy(I18N::instance(), &I18N::languageChanged);
   I18N::setLanguage(I18N::currentLanguage());
   QCOMPARE(spy.count(), 0);
+}
+
+void I18NTests::setLangTest_followSystem()
+{
+  const auto originalLocale = QLocale();
+  const auto originalSelection = Settings::value(Settings::Core::Language).toString();
+  QLocale::setDefault(QLocale("ja_JP"));
+  I18N::setLanguage("es");
+  I18N::setLanguage({});
+  QCOMPARE(I18N::currentLanguage(), QString("ja"));
+  QVERIFY(Settings::value(Settings::Core::Language).toString().isEmpty());
+  // Selecting the same effective language must still leave system-following mode.
+  I18N::setLanguage("ja");
+  QLocale::setDefault(QLocale("en_US"));
+  I18N::setLanguage({});
+  QCOMPARE(I18N::currentLanguage(), QString("en"));
+  QVERIFY(Settings::value(Settings::Core::Language).toString().isEmpty());
+  QLocale::setDefault(originalLocale);
+  I18N::setLanguage("es");
+  I18N::setLanguage(originalSelection);
 }
 
 void I18NTests::reDetectTest()
