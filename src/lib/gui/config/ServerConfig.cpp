@@ -7,6 +7,9 @@
  */
 
 #include "ServerConfig.h"
+#include <QPoint>
+#include <QSaveFile>
+#include <QSet>
 
 #include "common/Hotkey.h"
 #include "common/Settings.h"
@@ -39,20 +42,21 @@ ServerConfig::ServerConfig(int columns, int rows) : m_computers(columns), m_colu
 
 bool ServerConfig::save(const QString &fileName) const
 {
-  QFile file(fileName);
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+  QString text;
+  QTextStream stream(&text);
+  stream << *this;
+  stream.flush();
+  const auto data = text.toUtf8();
+  QSaveFile file(fileName);
+  if (!file.open(QIODevice::WriteOnly))
     return false;
-
-  save(file);
-  file.close();
-
-  return true;
+  return file.write(data) == data.size() && file.commit();
 }
 
 bool ServerConfig::operator==(const ServerConfig &sc) const
 {
-  return m_computers == sc.m_computers && //
-         m_Hotkeys == sc.m_Hotkeys;       //
+  return m_columns == sc.m_columns && m_rows == sc.m_rows && m_computers == sc.m_computers && //
+         m_Hotkeys == sc.m_Hotkeys;                                                           //
 }
 
 void ServerConfig::save(QFile &file) const
@@ -63,7 +67,7 @@ void ServerConfig::save(QFile &file) const
 
 void ServerConfig::setupComputers()
 {
-  computers().clear();
+  m_computers = ComputerList(m_columns);
   hotkeys().clear();
 
   // There must always be computer objects for each cell in the computers QList.
@@ -74,10 +78,14 @@ void ServerConfig::setupComputers()
 
 void ServerConfig::commit()
 {
+  if (!m_loadError.isEmpty()) {
+    qWarning() << m_loadError;
+    return;
+  }
   qDebug("committing server config");
 
   settings().beginGroup("internalConfig");
-  settings().remove("");
+  // Preserve unknown fields; beginWriteArray updates the known array size.
 
   settings().beginWriteArray("screens");
   for (int i = 0; i < computers().size(); i++) {
@@ -107,15 +115,32 @@ void ServerConfig::recall()
 
   settings().beginGroup("internalConfig");
 
-  m_columns = Settings::value(Settings::Server::GridWidth).toInt();
-  m_rows = Settings::value(Settings::Server::GridHeight).toInt();
+  m_columns = std::clamp(Settings::value(Settings::Server::GridWidth).toInt(), 1, 100);
+  m_rows = std::clamp(Settings::value(Settings::Server::GridHeight).toInt(), 1, 100);
 
   // we need to know the number of columns and rows before we can set up
   // ourselves
   setupComputers();
 
   int numComputers = settings().beginReadArray("screens");
-  Q_ASSERT(numComputers <= computers().size());
+  m_loadError.clear();
+  if (numComputers < 0 || numComputers > 10000) {
+    m_loadError = QObject::tr(
+        "The legacy layout exceeds the supported 100 x 100 bounds. Its original data is preserved; restore a valid "
+        "backup before editing."
+    );
+    numComputers = 0;
+  }
+  if (numComputers > computers().size()) {
+    const int rows = (numComputers + m_columns - 1) / m_columns;
+    if (rows > 100) {
+      m_loadError = QObject::tr("The legacy layout cannot fit within 100 rows. Original data is preserved.");
+      numComputers = 0;
+    } else {
+      m_rows = rows;
+      m_computers.resize(m_rows * m_columns);
+    }
+  }
   for (int i = 0; i < numComputers; i++) {
     settings().setArrayIndex(i);
     computers()[i].loadSettings(settings());
@@ -135,6 +160,37 @@ void ServerConfig::recall()
   settings().endArray();
 
   settings().endGroup();
+  updateServerName();
+}
+
+QStringList ServerConfig::unreachableComputers() const
+{
+  int primary = -1;
+  const auto name = Settings::value(Settings::Core::ComputerName).toString();
+  for (int i = 0; i < m_computers.size(); ++i)
+    if (!m_computers[i].isNull() && m_computers[i].name() == name)
+      primary = i;
+  QSet<int> visited;
+  QList<int> pending;
+  if (primary >= 0) {
+    visited.insert(primary);
+    pending.append(primary);
+  }
+  while (!pending.isEmpty()) {
+    const auto current = pending.takeFirst();
+    for (const auto &delta : {QPoint(-1, 0), QPoint(1, 0), QPoint(0, -1), QPoint(0, 1)}) {
+      const auto next = adjacentComputerIndex(current, delta.x(), delta.y());
+      if (next < 0 || m_computers[next].isNull() || visited.contains(next))
+        continue;
+      visited.insert(next);
+      pending.append(next);
+    }
+  }
+  QStringList result;
+  for (int i = 0; i < m_computers.size(); ++i)
+    if (!m_computers[i].isNull() && !visited.contains(i))
+      result.append(m_computers[i].name());
+  return result;
 }
 
 int ServerConfig::adjacentComputerIndex(int idx, int deltaColumn, int deltaRow) const
@@ -202,11 +258,17 @@ QString ServerConfig::getServerName() const
 
 void ServerConfig::updateServerName()
 {
+  bool found = false;
   for (auto &computer : computers()) {
     if (computer.isServer()) {
       computer.setName(Settings::value(Settings::Core::ComputerName).toString());
+      found = true;
       break;
     }
+  }
+  if (!found) {
+    int index = -1;
+    fixNoServer(getServerName(), index);
   }
 }
 
@@ -287,15 +349,21 @@ bool ServerConfig::findComputerName(const QString &name, int &index)
 
 bool ServerConfig::fixNoServer(const QString &name, int &index)
 {
-  bool fixed = false;
-  if (computers()[serverDefaultIndex].isNull()) {
-    m_computers[serverDefaultIndex].setName(name);
-    m_computers[serverDefaultIndex].markAsServer();
-    index = serverDefaultIndex;
-    fixed = true;
-  }
-
-  return fixed;
+  if (name.isEmpty() || computers().isEmpty())
+    return false;
+  const auto preferred = std::min(serverDefaultIndex, static_cast<int>(computers().size()) - 1);
+  index = computers()[preferred].isNull() ? preferred : -1;
+  if (index < 0)
+    for (int i = 0; i < computers().size(); ++i)
+      if (computers()[i].isNull()) {
+        index = i;
+        break;
+      }
+  if (index < 0)
+    return false;
+  m_computers[index] = Computer(name);
+  m_computers[index].markAsServer();
+  return true;
 }
 
 QSettingsProxy &ServerConfig::settings()

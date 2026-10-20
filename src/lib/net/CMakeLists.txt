@@ -18,6 +18,8 @@ add_library(net STATIC
   Fingerprint.h
   FingerprintDatabase.cpp
   FingerprintDatabase.h
+  PeerIdentityStore.h
+  PeerIdentityStore.cpp
   IDataSocket.cpp
   IDataSocket.h
   IListenSocket.h

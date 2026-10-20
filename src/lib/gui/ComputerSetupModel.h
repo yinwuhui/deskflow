@@ -53,6 +53,9 @@ public:
   QStringList mimeTypes() const override;
   QMimeData *mimeData(const QModelIndexList &indexes) const override;
   bool isFull() const;
+  bool moveComputer(int column, int row, int targetColumn, int targetRow);
+  bool resizeGrid(int columns, int rows);
+  void resetGrid(int columns, int rows);
 
 Q_SIGNALS:
   void computersChanged();

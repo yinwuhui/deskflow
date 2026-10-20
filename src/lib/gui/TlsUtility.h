@@ -11,7 +11,9 @@
 
 namespace deskflow::gui::TlsUtility {
 
-bool generateCertificate();
+bool generateCertificate(int requestedKeyLength = 0);
+// Explicit arguments allow certificate generation without reading GUI settings on a worker.
+bool generateCertificateAtPath(const QString &certPath, int keyLength);
 
 /**
  * @brief Checks the settings values Settings::Security::TlsEnabled

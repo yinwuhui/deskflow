@@ -18,27 +18,35 @@
 #include <QPixmap>
 #include <QString>
 #include <QStringList>
+#include <QUuid>
 
 class QSettings;
 class QTextStream;
 class ComputerSettingsDialog;
 
+namespace deskflow::gui::workspace {
+class DeviceWorkspace;
+}
+
 class Computer : public ComputerConfig
 {
   friend class ComputerSettingsDialog;
+  friend class deskflow::gui::workspace::DeviceWorkspace;
   friend class ComputerSetupModel;
   friend class ComputerSetupView;
 
   friend QDataStream &operator<<(QDataStream &outStream, const Computer &computer)
   {
     return outStream << computer.name() << computer.switchCornerSize() << computer.aliases() << computer.modifiers()
-                     << computer.switchCorners() << computer.fixes() << computer.isServer();
+                     << computer.switchCorners() << computer.fixes() << computer.isServer() << computer.m_weakX11Focus
+                     << computer.m_stableId << computer.m_displayName;
   }
 
   friend QDataStream &operator>>(QDataStream &inStream, Computer &computer)
   {
     return inStream >> computer.m_Name >> computer.m_SwitchCornerSize >> computer.m_Aliases >> computer.m_Modifiers >>
-           computer.m_SwitchCorners >> computer.m_Fixes >> computer.m_isServer;
+           computer.m_SwitchCorners >> computer.m_Fixes >> computer.m_isServer >> computer.m_weakX11Focus >>
+           computer.m_stableId >> computer.m_displayName;
   }
 
 public:
@@ -102,6 +110,8 @@ public:
   void setName(const QString &name)
   {
     m_Name = name;
+    if (!name.isEmpty() && m_stableId.isEmpty())
+      m_stableId = QUuid::createUuid().toString(QUuid::WithoutBraces);
   }
   [[nodiscard]] bool isServer() const
   {
@@ -112,9 +122,24 @@ public:
     m_isServer = true;
   }
 
+  QString stableId() const
+  {
+    return m_stableId;
+  }
+  QString displayName() const
+  {
+    return m_displayName.isEmpty() ? m_Name : m_displayName;
+  }
+  bool weakX11Focus() const
+  {
+    return m_weakX11Focus;
+  }
   bool operator==(const Computer &computer) const;
 
 protected:
+  QString m_stableId;
+  QString m_displayName;
+  bool m_weakX11Focus = false;
   QStringList &aliases()
   {
     return m_Aliases;

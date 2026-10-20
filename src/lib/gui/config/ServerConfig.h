@@ -21,9 +21,14 @@ class QString;
 class QFile;
 class ServerConfigDialog;
 
+namespace deskflow::gui::workspace {
+class DeviceWorkspace;
+}
+
 class ServerConfig : public ComputerConfig
 {
   friend class ServerConfigDialog;
+  friend class deskflow::gui::workspace::DeviceWorkspace;
   friend QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config);
 
 public:
@@ -51,8 +56,25 @@ public:
   bool isFull() const;
   void commit();
   int numComputers() const;
+  QStringList unreachableComputers() const;
   QString getServerName() const;
   void updateServerName();
+  void reloadSaved()
+  {
+    recall();
+  }
+  int gridWidth() const
+  {
+    return m_columns;
+  }
+  int gridHeight() const
+  {
+    return m_rows;
+  }
+  QString loadError() const
+  {
+    return m_loadError;
+  }
   QString configFile() const;
   bool useExternalConfig() const;
   void addClient(const QString &clientName);
@@ -84,6 +106,7 @@ private:
   bool fixNoServer(const QString &name, int &index);
 
 private:
+  QString m_loadError;
   HotkeyList m_Hotkeys;
 
   ComputerList m_computers;

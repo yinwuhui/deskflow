@@ -17,6 +17,8 @@ using enum ComputerConfig::Fix;
 Computer::Computer(const QString &name)
 {
   setName(name);
+  if (!name.isEmpty())
+    m_stableId = QUuid::createUuid().toString(QUuid::WithoutBraces);
 }
 
 void Computer::loadSettings(QSettingsProxy &settings)
@@ -50,6 +52,12 @@ void Computer::loadSettings(QSettingsProxy &settings)
   m_Fixes[static_cast<int>(ScrollLock)] = Settings::value(Settings::Computer::HalfDuplexScrollLock.arg(name)).toBool();
   m_Fixes[static_cast<int>(XTest)] = Settings::value(Settings::Computer::XtestIsXineramaUnaware.arg(name)).toBool();
 
+  m_stableId = Settings::value(QStringLiteral("computer_%1/stableId").arg(name)).toString();
+  if (m_stableId.isEmpty())
+    m_stableId = QUuid::createUuidV5(QUuid("{e3768772-e041-4a24-8e7f-66a0a4d3206c}"), name.toUtf8())
+                     .toString(QUuid::WithoutBraces);
+  m_displayName = Settings::value(QStringLiteral("computer_%1/displayName").arg(name)).toString();
+  m_weakX11Focus = Settings::value(Settings::Computer::WeakX11Focus.arg(name)).toBool();
   m_Aliases = Settings::value(Settings::Computer::Aliases.arg(name)).toStringList();
 }
 
@@ -61,6 +69,9 @@ void Computer::saveSettings(QSettingsProxy &settings) const
   if (computerName.isEmpty())
     return;
 
+  Settings::setValue(QStringLiteral("computer_%1/stableId").arg(computerName), m_stableId);
+  Settings::setValue(QStringLiteral("computer_%1/displayName").arg(computerName), m_displayName);
+  Settings::setValue(Settings::Computer::WeakX11Focus.arg(computerName), m_weakX11Focus);
   Settings::setValue(Settings::Computer::Name.arg(computerName), computerName);
   Settings::setValue(Settings::Computer::Aliases.arg(computerName), m_Aliases);
   Settings::setValue(Settings::Computer::HalfDuplexCapsLock.arg(computerName), m_Fixes[static_cast<int>(CapsLock)]);
@@ -114,7 +125,9 @@ QString Computer::screensSection() const
 
 bool Computer::operator==(const Computer &computer) const
 {
-  return m_Name == computer.m_Name && m_Aliases == computer.m_Aliases && m_Modifiers == computer.m_Modifiers &&
-         m_SwitchCorners == computer.m_SwitchCorners && m_SwitchCornerSize == computer.m_SwitchCornerSize &&
-         m_Fixes == computer.m_Fixes && m_Swapped == computer.m_Swapped && m_isServer == computer.m_isServer;
+  return m_stableId == computer.m_stableId && m_displayName == computer.m_displayName &&
+         m_weakX11Focus == computer.m_weakX11Focus && m_Name == computer.m_Name && m_Aliases == computer.m_Aliases &&
+         m_Modifiers == computer.m_Modifiers && m_SwitchCorners == computer.m_SwitchCorners &&
+         m_SwitchCornerSize == computer.m_SwitchCornerSize && m_Fixes == computer.m_Fixes &&
+         m_Swapped == computer.m_Swapped && m_isServer == computer.m_isServer;
 }

@@ -41,8 +41,8 @@ ComputerSetupModel::ComputerSetupModel(ComputerList &computers, int numColumns, 
 
 QVariant ComputerSetupModel::data(const QModelIndex &index, int role) const
 {
-  if (!index.isValid() || index.row() > m_NumRows || index.row() < 0 || index.column() < 0 ||
-      index.column() > m_NumColumns)
+  if (!index.isValid() || index.row() >= m_NumRows || index.row() < 0 || index.column() < 0 ||
+      index.column() >= m_NumColumns)
     return QVariant();
 
   if (computer(index).isNull())
@@ -115,7 +115,7 @@ bool ComputerSetupModel::dropMimeData(
   if (!data->hasFormat(m_MimeType))
     return false;
 
-  if (!parent.isValid() || row != -1 || column != -1)
+  if (!parent.isValid() || parent.row() >= m_NumRows || parent.column() >= m_NumColumns || row != -1 || column != -1)
     return false;
 
   QByteArray encodedData = data->data(m_MimeType);
@@ -136,6 +136,9 @@ bool ComputerSetupModel::dropMimeData(
 
   Computer droppedComputer;
   stream >> droppedComputer;
+  if (stream.status() != QDataStream::Ok || sourceColumn < -1 || sourceRow < -1 || sourceColumn >= m_NumColumns ||
+      sourceRow >= m_NumRows)
+    return false;
 
   if (auto oldComputer = Computer(computer(pColumn, pRow));
       !oldComputer.isNull() && sourceColumn != -1 && sourceRow != -1) {
@@ -162,4 +165,48 @@ bool ComputerSetupModel::isFull() const
 {
   auto emptyComputer = std::ranges::find_if(m_computers, [](const Computer &item) { return item.isNull(); });
   return (static_cast<QList<Computer>::const_iterator>(emptyComputer) == m_computers.cend());
+}
+
+bool ComputerSetupModel::moveComputer(int column, int row, int targetColumn, int targetRow)
+{
+  if (column < 0 || row < 0 || targetColumn < 0 || targetRow < 0 || column >= m_NumColumns || row >= m_NumRows ||
+      targetColumn >= m_NumColumns || targetRow >= m_NumRows || computer(column, row).isNull())
+    return false;
+  std::swap(computer(column, row), computer(targetColumn, targetRow));
+  Q_EMIT dataChanged(index(row, column), index(row, column));
+  Q_EMIT dataChanged(index(targetRow, targetColumn), index(targetRow, targetColumn));
+  Q_EMIT computersChanged();
+  return true;
+}
+bool ComputerSetupModel::resizeGrid(int columns, int rows)
+{
+  if (columns < 1 || rows < 1 || columns > kMaxGridSize || rows > kMaxGridSize)
+    return false;
+  for (int row = 0; row < m_NumRows; ++row)
+    for (int column = 0; column < m_NumColumns; ++column)
+      if ((column >= columns || row >= rows) && !computer(column, row).isNull())
+        return false;
+  ComputerList resized(columns);
+  resized.resize(columns * rows);
+  for (int row = 0; row < std::min(rows, m_NumRows); ++row)
+    for (int column = 0; column < std::min(columns, m_NumColumns); ++column)
+      resized[row * columns + column] = computer(column, row);
+  beginResetModel();
+  m_computers = resized;
+  m_NumColumns = columns;
+  m_NumRows = rows;
+  endResetModel();
+  Q_EMIT computersChanged();
+  return true;
+}
+
+void ComputerSetupModel::resetGrid(int columns, int rows)
+{
+  beginResetModel();
+  m_NumColumns = std::clamp(columns, 1, 100);
+  m_NumRows = std::clamp(rows, 1, 100);
+  if (m_computers.size() < m_NumColumns * m_NumRows)
+    m_computers.resize(m_NumColumns * m_NumRows);
+  endResetModel();
+  Q_EMIT computersChanged();
 }

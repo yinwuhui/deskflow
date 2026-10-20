@@ -10,6 +10,7 @@
 #include "net/SecurityLevel.h"
 #include "net/TCPSocket.h"
 
+#include <QByteArray>
 #include <memory>
 #include <mutex>
 
@@ -59,6 +60,7 @@ public:
     m_fatal = b;
   }
   bool isSecureReady() const;
+  QByteArray peerFingerprint() const;
   void secureConnect();
   void secureAccept();
   int secureRead(void *buffer, int size, int &read);
@@ -91,6 +93,8 @@ private:
   // from outside SocketMultiplexer thread is close(), so we mostly care about things accessed
   // by it.
   std::mutex ssl_mutex_;
+  mutable std::mutex m_identityMutex;
+  mutable QByteArray m_peerFingerprint;
 
   std::unique_ptr<Ssl> m_ssl;
   bool m_secureReady = false;

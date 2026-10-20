@@ -110,6 +110,14 @@ Settings::Settings(QObject *parent) : QObject(parent), m_settingsWatcher{new QFi
 
 void Settings::upgradeSettings()
 {
+  const auto source = m_settings->fileName();
+  const auto backup = source + ".before-workspace";
+  if (QFile::exists(source) && !QFile::exists(backup) && !QFile::copy(source, backup)) {
+    qWarning() << "Cannot back up settings; deferring legacy migration:" << source;
+    return;
+  }
+  if (QFile::exists(backup))
+    QFile::setPermissions(backup, QFile::ReadOwner | QFile::WriteOwner);
   if (const auto logValue = m_settings->value(Settings::Log::Level).toString();
       !LogLevel::logLevelOptions().contains(logValue, Qt::CaseInsensitive))
     m_settings->setValue(Settings::Log::Level, defaultValue(Settings::Log::Level));
@@ -117,7 +125,8 @@ void Settings::upgradeSettings()
   for (const auto &key : screenKeys) {
     auto newKey = key;
     newKey.replace("screen_", "computer_");
-    m_settings->setValue(newKey, m_settings->value(key));
+    if (!m_settings->contains(newKey))
+      m_settings->setValue(newKey, m_settings->value(key));
   }
   for (const auto [oldKey, newKey] : m_upgradedMap.asKeyValueRange()) {
     if (m_settings->contains(newKey) || !m_settings->contains(oldKey))
@@ -243,12 +252,10 @@ void Settings::cleanSettings()
 {
   const QStringList keys = m_settings->allKeys();
   for (const QString &key : keys) {
-    if (m_oldServerConfigKeys.contains(key) || key.startsWith("screen_"))
-      m_settings->remove(key);
+    // Retain legacy keys in place as well as in the migration backup.
     if (key.startsWith(QStringLiteral("internalConfig")))
       continue;
-    if (const auto group = key.mid(0, key.indexOf('/')); !m_validKeys.contains(key) && m_validGroup.contains(group))
-      m_settings->remove(key);
+    // Preserve unknown extension keys for upgrade/rollback compatibility.
     if (!m_settings->value(key).isValid())
       m_settings->remove(key);
   }
@@ -454,6 +461,16 @@ QString Settings::tlsTrustedServersDb()
 QString Settings::tlsTrustedClientsDb()
 {
   return QFileInfo(QStringLiteral("%1/trusted-clients").arg(instance()->tlsDir())).absoluteFilePath();
+}
+
+QString Settings::tlsRevokedDb()
+{
+  return QDir(tlsDir()).filePath("revoked-fingerprints");
+}
+
+QString Settings::peerIdentityDb()
+{
+  return QDir(tlsDir()).filePath("peer-identities.json");
 }
 
 QString Settings::logLevelText()

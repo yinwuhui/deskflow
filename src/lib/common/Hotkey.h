@@ -25,6 +25,14 @@ public:
   Hotkey() = default;
 
   QString text() const;
+  QString displayName() const
+  {
+    return m_displayName;
+  }
+  void setDisplayName(const QString &name)
+  {
+    m_displayName = name;
+  }
   const KeySequence &keySequence() const
   {
     return m_keySequence;
@@ -48,6 +56,7 @@ public:
   bool operator==(const Hotkey &hk) const;
 
 private:
+  QString m_displayName;
   KeySequence m_keySequence = {};
   ActionList m_actions = {};
   inline static const QString kSectionActions = QStringLiteral("actions");

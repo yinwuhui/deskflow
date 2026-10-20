@@ -22,6 +22,7 @@ public:
 
   void clear();
   void addTrusted(const Fingerprint &fingerprint);
+  void removeTrusted(const Fingerprint &fingerprint);
   bool isTrusted(const Fingerprint &fingerprint) const;
 
   const QList<Fingerprint> &fingerprints() const

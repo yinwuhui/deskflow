@@ -11,8 +11,19 @@
 #include <QSettings>
 #include <QTextStream>
 
+bool Action::isValid() const
+{
+  return type() >= 0 && type() < m_actionTypeNames.size() &&
+         (type() != static_cast<int>(Type::switchInDirection) ||
+          (switchDirection() >= 0 && switchDirection() < m_switchDirectionNames.size())) &&
+         (type() != static_cast<int>(Type::lockCursorToComputer) ||
+          (lockCursorMode() >= 0 && lockCursorMode() < m_lockCursorModeNames.size()));
+}
+
 QString Action::text() const
 {
+  if (!isValid())
+    return QStringLiteral("invalidAction()");
   auto text = QString(m_actionTypeNames.at(type()));
 
   switch (static_cast<Action::Type>(type())) {

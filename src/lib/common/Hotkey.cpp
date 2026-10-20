@@ -37,6 +37,7 @@ void Hotkey::removeActionAt(int index)
 
 void Hotkey::loadSettings(QSettings &settings)
 {
+  m_displayName = settings.value("displayName").toString();
   m_keySequence.loadSettings(settings);
 
   m_actions.clear();
@@ -53,6 +54,7 @@ void Hotkey::loadSettings(QSettings &settings)
 
 void Hotkey::saveSettings(QSettings &settings) const
 {
+  settings.setValue("displayName", m_displayName);
   m_keySequence.saveSettings(settings);
 
   settings.beginWriteArray(kSectionActions);
@@ -65,7 +67,7 @@ void Hotkey::saveSettings(QSettings &settings) const
 
 bool Hotkey::operator==(const Hotkey &hk) const
 {
-  return m_keySequence == hk.keySequence() && m_actions == hk.actions();
+  return m_displayName == hk.displayName() && m_keySequence == hk.keySequence() && m_actions == hk.actions();
 }
 
 QTextStream &operator<<(QTextStream &outStream, const Hotkey &hotkey)

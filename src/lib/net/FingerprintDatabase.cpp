@@ -8,6 +8,7 @@
 #include "FingerprintDatabase.h"
 
 #include <QFile>
+#include <QSaveFile>
 #include <QTextStream>
 
 void FingerprintDatabase::read(const QString &path)
@@ -46,11 +47,14 @@ void FingerprintDatabase::readStream(QTextStream &in)
 
 bool FingerprintDatabase::write(const QString &path)
 {
-  QFile file(path);
+  QSaveFile file(path);
   if (!file.open(QIODevice::WriteOnly))
     return false;
   QTextStream out(&file);
-  return (writeStream(out));
+  if (!writeStream(out))
+    return false;
+  out.flush();
+  return out.status() == QTextStream::Ok && file.commit();
 }
 
 bool FingerprintDatabase::writeStream(QTextStream &out)
@@ -84,4 +88,9 @@ void FingerprintDatabase::addTrusted(const Fingerprint &fingerprint)
 bool FingerprintDatabase::isTrusted(const Fingerprint &fingerprint) const
 {
   return m_fingerprints.contains(fingerprint);
+}
+
+void FingerprintDatabase::removeTrusted(const Fingerprint &fingerprint)
+{
+  m_fingerprints.removeAll(fingerprint);
 }

@@ -12,6 +12,8 @@ configure_file(VersionInfo.h.in VersionInfo.h @ONLY)
 add_library(common STATIC
   Action.cpp
   Action.h
+  CoreControl.h
+  CoreControl.cpp
   Coordinate.h
   Enums.h
   ExitCodes.h
@@ -26,6 +28,8 @@ add_library(common STATIC
   LogLevel.h
   NetworkProtocol.h
   PlatformInfo.h
+  LayoutReload.h
+  LayoutReload.cpp
   Settings.h
   Settings.cpp
   QSettingsProxy.cpp

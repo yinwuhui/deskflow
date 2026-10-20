@@ -67,6 +67,7 @@ public:
   Action() = default;
 
   QString text() const;
+  bool isValid() const;
 
   void loadSettings(QSettings &settings);
   void saveSettings(QSettings &settings) const;
@@ -111,7 +112,7 @@ private:
   int m_lockCursorMode = static_cast<int>(LockCursorMode::toggle);
   bool m_activeOnRelease = false;
   bool m_hasComputers = false;
-  bool m_restartServer;
+  bool m_restartServer = false;
 
   inline static const QString m_commandTemplate = QStringLiteral("(%1)");
   inline static const QStringList m_actionTypeNames{

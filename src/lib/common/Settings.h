@@ -55,6 +55,7 @@ public:
     inline static const auto Port = QStringLiteral("core/port");
     inline static const auto PreventSleep = QStringLiteral("core/preventSleep");
     inline static const auto ProcessMode = QStringLiteral("core/processMode");
+    inline static const auto SharingPaused = QStringLiteral("core/sharingPaused");
     inline static const auto ComputerName = QStringLiteral("core/computerName");
     inline static const auto Display = QStringLiteral("core/display");
     inline static const auto UseHooks = QStringLiteral("core/useHooks");
@@ -206,6 +207,8 @@ public:
   static QString tlsDir();
   static QString tlsTrustedServersDb();
   static QString tlsTrustedClientsDb();
+  static QString tlsRevokedDb();
+  static QString peerIdentityDb();
   static QString logLevelText();
   static QSettingsProxy &proxy();
   static NetworkProtocol networkProtocol();
@@ -292,6 +295,7 @@ private:
     , Core::EnableExitCommand
     , Core::ComputerEnterCommand
     , Core::ComputerExitCommand
+    , Core::SharingPaused
     , Core::ComputerName
     , Core::Display
     , Core::UseHooks
@@ -341,7 +345,8 @@ private:
 
   // When checking the default values this list contains the ones that default to false.
   inline static const QStringList m_defaultFalseValues = {
-      Gui::Autohide
+      Core::SharingPaused
+    , Gui::Autohide
     , Gui::AutoStartCore
     , Gui::ShownFirstConnectedMessage
     , Gui::ShownServerFirstStartMessage

@@ -15,8 +15,11 @@
 #include "deskflow/ipc/CoreIpc.h"
 #include "mt/Lock.h"
 #include "net/FingerprintDatabase.h"
+#include "net/PeerIdentityStore.h"
 #include "net/TCPSocket.h"
 #include "net/TSocketMultiplexerMethodJob.h"
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <net/SslLogger.h>
 
 #include <cstdlib>
@@ -624,6 +627,16 @@ bool SecureSocket::verifyCertFingerprint(const QString &FingerprintDatabasePath)
   if (!sha256.isValid())
     return false;
 
+  {
+    std::lock_guard<std::mutex> guard(m_identityMutex);
+    m_peerFingerprint = sha256.data.toHex();
+  }
+  FingerprintDatabase revoked;
+  revoked.read(Settings::tlsRevokedDb());
+  if (revoked.isTrusted(sha256)) {
+    ipcSendToClient("identityRevoked", deskflow::formatSSLFingerprint(sha256.data, false));
+    return false;
+  }
   const auto fingerprint = deskflow::formatSSLFingerprint(sha256.data, false);
   LOG_DEBUG("peer fingerprint: %s", qPrintable(fingerprint));
   ipcSendToClient("peerFingerprint", fingerprint);
@@ -649,6 +662,24 @@ bool SecureSocket::verifyCertFingerprint(const QString &FingerprintDatabasePath)
     return false;
   }
 
+  if (FingerprintDatabasePath == Settings::tlsTrustedServersDb()) {
+    const auto identifier = Settings::value(Settings::Client::RemoteHost).toString().trimmed();
+    PeerIdentityStore store(Settings::peerIdentityDb());
+    PeerIdentityStore::Record previous;
+    const auto status = store.check("server", identifier, sha256.data.toHex(), &previous);
+    if (status != PeerIdentityStore::Status::Match) {
+      const QJsonObject identity{
+          {"role", "server"},
+          {"key", identifier},
+          {"identifier", identifier},
+          {"fingerprint", QString::fromLatin1(sha256.data.toHex())},
+          {"previous", QString::fromLatin1(previous.fingerprint)},
+          {"available", status != PeerIdentityStore::Status::Unavailable}
+      };
+      ipcSendToClient("peerIdentity", QString::fromUtf8(QJsonDocument(identity).toJson(QJsonDocument::Compact)));
+      return false;
+    }
+  }
   LOG_DEBUG("fingerprint matches trusted fingerprint");
   return true;
 }
@@ -737,4 +768,10 @@ void SecureSocket::handleTCPConnected(const Event &)
     return;
   }
   secureConnect();
+}
+
+QByteArray SecureSocket::peerFingerprint() const
+{
+  std::lock_guard<std::mutex> guard(m_identityMutex);
+  return m_peerFingerprint;
 }
