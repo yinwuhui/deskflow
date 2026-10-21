@@ -756,6 +756,8 @@ void Client::handleResume()
 
 void Client::bindNetworkInterface(IDataSocket *socket) const
 {
+  if (m_localTransport)
+    return;
   const auto address = Settings::value(Settings::Core::Interface).toString();
   if (address.isEmpty())
     return;

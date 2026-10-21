@@ -28,6 +28,10 @@
 #include "gui/Messages.h"
 #include "gui/TlsUtility.h"
 #include "gui/core/CoreProcess.h"
+#include "gui/core/TransportNotifications.h"
+#ifdef Q_OS_MACOS
+#include "gui/OSXHelpers.h"
+#endif
 #include "gui/ipc/DaemonIpcClient.h"
 #include "gui/widgets/LogDock.h"
 #include "net/FingerprintDatabase.h"
@@ -83,6 +87,28 @@ MainWindow::MainWindow()
       m_networkMonitor{new NetworkMonitor(this)}
 {
   ui->setupUi(this);
+  m_transportNotifications = new TransportNotifications(this);
+  connect(
+      &m_coreProcess, &CoreProcess::transportStateChanged, m_transportNotifications, &TransportNotifications::update
+  );
+  connect(&m_coreProcess, &CoreProcess::processStateChanged, this, [this](auto state) {
+    if (state == deskflow::core::ProcessState::Stopped)
+      m_transportNotifications->reset();
+  });
+  connect(m_transportNotifications, &TransportNotifications::statusChanged, this, [this](const auto &text) {
+    m_statusBar->showMessage(text);
+    m_trayIcon->setToolTip(text.isEmpty() ? QStringLiteral("Deskflow") : text);
+  });
+  connect(
+      m_transportNotifications, &TransportNotifications::notification, this,
+      [this](const QString &title, const QString &body) {
+#ifdef Q_OS_MACOS
+        showOSXNotification(title, body);
+#else
+        m_trayIcon->showMessage(title, body, QSystemTrayIcon::Information, 6000);
+#endif
+      }
+  );
 
   setWindowIcon(QIcon::fromTheme(kRevFqdnName));
 
@@ -652,8 +678,7 @@ void MainWindow::open()
     qDebug() << "skipping check for new version, disabled";
   }
 
-  const bool autoConnect = ui->rbModeClient->isChecked() &&
-                           Settings::value(Settings::Client::AutoConnect).toBool();
+  const bool autoConnect = ui->rbModeClient->isChecked() && Settings::value(Settings::Client::AutoConnect).toBool();
   if (Settings::value(Settings::Gui::AutoStartCore).toBool() || autoConnect) {
     if (ui->rbModeClient->isChecked() && ui->lineHostname->text().isEmpty())
       return;

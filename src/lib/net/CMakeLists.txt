@@ -68,3 +68,7 @@ if(WIN32)
     PRIVATE Crypt32 ws2_32 iphlpapi
   )
 endif()
+
+if(BUILD_BLUETOOTH)
+  add_subdirectory(bluetooth)
+endif()

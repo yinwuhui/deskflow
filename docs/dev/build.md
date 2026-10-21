@@ -105,3 +105,9 @@ After configuring you should be able to run make to build all targets.
 [openssl]:https://www.openssl.org/
 [libei]:https://gitlab.freedesktop.org/libinput/libei
 [libportal]:https://github.com/flatpak/libportal
+
+## Experimental RFCOMM prototype
+
+Set `-DBUILD_BLUETOOTH=ON` to enable the optional RFCOMM backend in `deskflow-core`; the default build does not require Qt Bluetooth. See [the backend guide](bluetooth.md) for core commands and architecture, and [the standalone diagnostic tool](../../tools/rfcomm-prototype/README.zh-CN.md) for RTT and recovery checks.
+
+For the opt-in automatic network/Bluetooth failover MVP, see [automatic failover](auto-failover.md).

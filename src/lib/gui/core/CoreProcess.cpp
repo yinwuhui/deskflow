@@ -626,7 +626,9 @@ void CoreProcess::setProcessState(ProcessState state)
 
 void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString &args)
 {
-  if (command == "connectionState") {
+  if (command == "transportState") {
+    Q_EMIT transportStateChanged(args);
+  } else if (command == "connectionState") {
     const auto metaEnum = QMetaEnum::fromType<ConnectionState>();
     bool ok = false;
     const auto state = static_cast<ConnectionState>(metaEnum.keyToValue(args.toUtf8().constData(), &ok));

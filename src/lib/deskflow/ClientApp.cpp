@@ -51,8 +51,10 @@ ClientApp::ClientApp(IEventQueue *events, const QString &processName) : App(even
 void ClientApp::parseArgs()
 {
   // save server addresses (comma-separated list supported)
-  if (const auto addressList = Settings::value(Settings::Client::RemoteHost).toString(); !addressList.isEmpty()) {
-    const int port = Settings::value(Settings::Core::Port).toInt();
+  const auto addressList =
+      localTransportPort() ? QStringLiteral("127.0.0.1") : Settings::value(Settings::Client::RemoteHost).toString();
+  if (!addressList.isEmpty()) {
+    const int port = localTransportPort() ? localTransportPort() : Settings::value(Settings::Core::Port).toInt();
     const QStringList addresses = addressList.split(',', Qt::SkipEmptyParts);
 
     for (const QString &addr : addresses) {
@@ -233,6 +235,7 @@ void ClientApp::handleClientDisconnected()
 Client *ClientApp::openClient(const std::string &name, const NetworkAddress &address, deskflow::Computer *computer)
 {
   auto *client = new Client(getEvents(), name, address, getSocketFactory(), computer);
+  client->setLocalTransport(localTransportPort() != 0);
 
   try {
     getEvents()->addHandler(EventTypes::ClientConnected, client->getEventTarget(), [this](const auto &) {

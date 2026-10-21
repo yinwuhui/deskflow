@@ -65,7 +65,9 @@ ServerApp::ServerApp(IEventQueue *events, const QString &processName) : App(even
 
 void ServerApp::parseArgs()
 {
-  if (const auto address = Settings::value(Settings::Core::Interface).toString(); !address.isEmpty()) {
+  if (localTransportPort()) {
+    *m_deskflowAddress = NetworkAddress("127.0.0.1", localTransportPort());
+  } else if (const auto address = Settings::value(Settings::Core::Interface).toString(); !address.isEmpty()) {
     *m_deskflowAddress = NetworkAddress(address.toStdString(), Settings::value(Settings::Core::Port).toInt());
   } else {
     *m_deskflowAddress = NetworkAddress(Settings::value(Settings::Core::Port).toInt());
@@ -126,6 +128,8 @@ bool ServerApp::loadConfig(const QString &filename)
       return false;
     }
     configStream >> *m_config;
+    if (clipboardLimitKiB())
+      m_config->limitClipboardSize(clipboardLimitKiB());
     LOG_DEBUG("configuration read successfully");
     return true;
   } catch (ServerConfigReadException &e) {
@@ -216,13 +220,12 @@ void ServerApp::stopServer()
 
 void ServerApp::startMdnsPublisher()
 {
-  if (m_mdnsPublisher)
+  if (localTransportPort() || m_mdnsPublisher)
     return;
   const auto port = static_cast<int>(m_config->getDeskflowAddress().getPort());
   const QString name = QString::fromStdString(m_name);
-  const QString fingerprint = deskflow::localCertFingerprint(
-      Settings::value(Settings::Security::Certificate).toString()
-  );
+  const QString fingerprint =
+      deskflow::localCertFingerprint(Settings::value(Settings::Security::Certificate).toString());
   m_mdnsPublisher = std::make_unique<deskflow::mdns::MdnsPublisher>(name, port, fingerprint, nullptr);
   m_mdnsPublisher->start();
 }

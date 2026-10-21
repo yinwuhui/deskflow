@@ -112,6 +112,10 @@ public:
   */
   void connect(size_t addressIndex = 0);
   void setServerAddress(const NetworkAddress &address);
+  void setLocalTransport(bool local)
+  {
+    m_localTransport = local;
+  }
 
   //! Disconnect
   /*!
@@ -222,6 +226,7 @@ private:
 private:
   std::string m_name;
   NetworkAddress m_serverAddress;
+  bool m_localTransport = false;
   ISocketFactory *m_socketFactory = nullptr;
   deskflow::Computer *m_computer = nullptr;
   deskflow::IStream *m_stream = nullptr;

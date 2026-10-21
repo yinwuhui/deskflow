@@ -161,12 +161,18 @@ void IpcServer::processMessage(QLocalSocket *clientSocket, const QString &messag
 
 void IpcServer::broadcastCommand(const QString &command, const QString &args)
 {
+  Q_EMIT commandBroadcast(command, args);
   const auto message = args.isEmpty() ? command : QStringLiteral("%1=%2").arg(command, args);
 
   if (m_clients.isEmpty()) {
     LOG_VERBOSE(
         "%s ipc server has no clients, message queued: %s", m_typeName.constData(), message.toUtf8().constData()
     );
+    if (command == "transportState") {
+      for (int i = m_pendingMessages.size() - 1; i >= 0; --i)
+        if (m_pendingMessages[i].startsWith("transportState="))
+          m_pendingMessages.removeAt(i);
+    }
     m_pendingMessages.append(message);
     return;
   }

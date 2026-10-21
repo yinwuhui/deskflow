@@ -34,6 +34,11 @@ public:
   bool serverMode() const;
   bool clientMode() const;
   bool singleInstanceOnly() const;
+  bool bluetoothRequested() const;
+  bool autoFailover() const;
+  QString bluetoothPeer() const;
+  bool bluetoothScan() const;
+  QString bluetoothServices() const;
 
 private:
   [[noreturn]] void showHelpText() const;

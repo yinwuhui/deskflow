@@ -76,6 +76,23 @@ public:
     return m_appUtil;
   }
 
+  // Set before run(): route the existing TLS protocol through a local transport bridge.
+  void setLocalTransportPort(quint16 port)
+  {
+    m_localTransportPort = port;
+  }
+  void setClipboardLimitKiB(unsigned limit)
+  {
+    m_clipboardLimitKiB = limit;
+  }
+  unsigned clipboardLimitKiB() const
+  {
+    return m_clipboardLimitKiB;
+  }
+  quint16 localTransportPort() const
+  {
+    return m_localTransportPort;
+  }
   void run(QThread &coreThread);
   void quit() const;
   void setupFileLogging();
@@ -139,6 +156,8 @@ private:
   std::unique_ptr<SocketMultiplexer> m_socketMultiplexer;
   QString m_pname;
   int m_exitCode = s_exitSuccess;
+  quint16 m_localTransportPort = 0;
+  unsigned m_clipboardLimitKiB = 0;
 };
 
 #if !defined(WINAPI_LIBEI) && WINAPI_XWINDOWS

@@ -26,6 +26,7 @@ public:
   void broadcastCommand(const QString &command, const QString &args = "");
 
 Q_SIGNALS:
+  void commandBroadcast(const QString &command, const QString &args);
   void logLevelChanged(const QString &logLevel);
   void configFileChanged(const QString &configFile);
   void startProcessRequested();

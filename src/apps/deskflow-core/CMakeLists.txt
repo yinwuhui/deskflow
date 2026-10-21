@@ -65,3 +65,12 @@ elseif (WIN32)
 else()
   generate_app_man(${target} "${CMAKE_PROJECT_DESCRIPTION}")
 endif()
+
+if(BUILD_BLUETOOTH)
+  target_link_libraries(${target} deskflow-bluetooth)
+  target_compile_definitions(${target} PRIVATE DESKFLOW_BLUETOOTH)
+  if(APPLE)
+    # Core lives inside the Deskflow app bundle, whose plist declares Bluetooth usage.
+    target_link_libraries(${target} Qt6::QDarwinBluetoothPermissionPlugin)
+  endif()
+endif()

@@ -1574,3 +1574,10 @@ QString ServerConfigReadException::getWhat() const throw()
 }
 
 } // namespace deskflow::server
+
+void deskflow::server::Config::limitClipboardSize(unsigned kib)
+{
+  auto [it, inserted] = m_globalOptions.emplace(kOptionClipboardSharingSize, kib);
+  if (!inserted)
+    it->second = std::min<OptionValue>(it->second, kib);
+}

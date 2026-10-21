@@ -7,3 +7,7 @@ create_test(
   SOURCE NetworkMonitorTests.cpp
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
 )
+
+create_test(NAME TransportNotificationsTests DEPENDS gui
+  SOURCE TransportNotificationsTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui")

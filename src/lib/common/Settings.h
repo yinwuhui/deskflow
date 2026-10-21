@@ -47,6 +47,12 @@ public:
     inline static const auto XdpClipboardRetried = QStringLiteral("client/xdpClipboardRetried");
     inline static const auto XdpRestoreToken = QStringLiteral("client/xdpRestoreToken");
   };
+  struct Connection
+  {
+    inline static const auto AutoFailover = QStringLiteral("connection/autoFailover");
+    inline static const auto BluetoothPeer = QStringLiteral("connection/bluetoothPeer");
+    inline static const auto PeerFingerprint = QStringLiteral("connection/peerFingerprint");
+  };
   struct Core
   {
     inline static const auto CoreMode = QStringLiteral("core/coreMode");
@@ -268,13 +274,17 @@ private:
     , QStringLiteral("daemon")
     , QStringLiteral("gui")
     , QStringLiteral("log")
+    , QStringLiteral("connection")
     , QStringLiteral("security")
     , QStringLiteral("server")
     , QStringLiteral("internalConfig")
   };
 
   inline static const QStringList m_validKeys = {
-      Client::DynamicConnectionRetry
+      Connection::AutoFailover
+    , Connection::BluetoothPeer
+    , Connection::PeerFingerprint
+    , Client::DynamicConnectionRetry
     , Client::InvertYScroll
     , Client::InvertXScroll
     , Client::LanguageSync
@@ -341,7 +351,8 @@ private:
 
   // When checking the default values this list contains the ones that default to false.
   inline static const QStringList m_defaultFalseValues = {
-      Gui::Autohide
+      Connection::AutoFailover
+    , Gui::Autohide
     , Gui::AutoStartCore
     , Gui::ShownFirstConnectedMessage
     , Gui::ShownServerFirstStartMessage

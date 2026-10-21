@@ -102,3 +102,26 @@ bool CoreArgParser::singleInstanceOnly() const
 {
   return m_singleInstance;
 }
+
+QString CoreArgParser::bluetoothPeer() const
+{
+  return m_parser.value(CoreArgs::bluetoothPeerOption);
+}
+bool CoreArgParser::bluetoothScan() const
+{
+  return m_parser.isSet(CoreArgs::bluetoothScanOption);
+}
+QString CoreArgParser::bluetoothServices() const
+{
+  return m_parser.value(CoreArgs::bluetoothServicesOption);
+}
+
+bool CoreArgParser::bluetoothRequested() const
+{
+  return m_parser.isSet(CoreArgs::bluetoothPeerOption);
+}
+
+bool CoreArgParser::autoFailover() const
+{
+  return m_parser.isSet(CoreArgs::autoFailoverOption);
+}

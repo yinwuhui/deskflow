@@ -8,6 +8,7 @@
  */
 
 #pragma once
+#include "core/TransportNotifications.h"
 
 #include <QMainWindow>
 #include <QProcess>
@@ -19,8 +20,8 @@
 #include "config/ServerConfig.h"
 #include "gui/core/CoreProcess.h"
 #include "gui/core/NetworkMonitor.h"
-#include "net/MdnsBrowser.h"
 #include "net/Fingerprint.h"
+#include "net/MdnsBrowser.h"
 
 #ifdef Q_OS_MACOS
 #include "gui/OSXHelpers.h"
@@ -181,6 +182,7 @@ private:
   QStringList m_checkedClients;
   QStringList m_checkedServers;
   QSystemTrayIcon *m_trayIcon = nullptr;
+  TransportNotifications *m_transportNotifications = nullptr;
   QLocalServer *m_guiDupeChecker = nullptr;
   deskflow::gui::ipc::DaemonIpcClient *m_daemonIpcClient = nullptr;
 

@@ -23,6 +23,7 @@ endif()
 
 #Project level options
 option(BUILD_INSTALLER "Build installer" ON)
+option(BUILD_BLUETOOTH "Build experimental RFCOMM Bluetooth backend" OFF)
 option(ENABLE_COVERAGE "Enable test coverage" OFF)
 if(UNIX)
   if(APPLE)
@@ -97,6 +98,12 @@ project(
   HOMEPAGE_URL "https://deskflow.org"
   LANGUAGES C CXX
 )
+
+if(APPLE AND BUILD_BLUETOOTH)
+  enable_language(OBJC OBJCXX)
+  set(CMAKE_OBJCXX_STANDARD 20)
+  set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
 
 # Define Additional "PROJECT" vars for packaging and metadata
 set(CMAKE_PROJECT_PROPER_NAME "Deskflow")

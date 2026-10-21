@@ -39,6 +39,9 @@
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
 
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Share keyboard and mouse input with your paired computers over Bluetooth.</string>
+
 	<!-- Local Lan Entitlements -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This app uses local network permissions for communication between a Deskflow server and clients.</string>

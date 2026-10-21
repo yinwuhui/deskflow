@@ -11,6 +11,7 @@ class ServerConfigTests : public QObject
   Q_OBJECT
 private Q_SLOTS:
   void equalityCheck();
+  void clipboardLimitPreservesLowerLimit();
   void equalityCheck_diff_options();
   void equalityCheck_diff_alias();
   void equalityCheck_diff_filters();

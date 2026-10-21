@@ -114,6 +114,8 @@ void Computer::enable()
 void Computer::disable()
 {
   assert(m_enabled);
+  if (!m_isPrimary)
+    releaseSyntheticInput();
 
   if (!m_isPrimary && m_entered) {
     leave();
@@ -245,11 +247,14 @@ void Computer::keyUp(KeyID, KeyModifierMask, KeyButton button)
 void Computer::mouseDown(ButtonID button)
 {
   m_computer->fakeMouseButton(button, true);
+  if (!m_isPrimary)
+    m_pressedButtons.insert(button);
 }
 
 void Computer::mouseUp(ButtonID button)
 {
   m_computer->fakeMouseButton(button, false);
+  m_pressedButtons.erase(button);
 }
 
 void Computer::mouseMove(int32_t x, int32_t y)
@@ -458,8 +463,15 @@ void Computer::leavePrimary()
 
 void Computer::leaveSecondary()
 {
-  // release any keys we think are still down
+  releaseSyntheticInput();
+}
+
+void Computer::releaseSyntheticInput()
+{
   m_computer->fakeAllKeysUp();
+  for (const auto button : m_pressedButtons)
+    m_computer->fakeMouseButton(button, false);
+  m_pressedButtons.clear();
 }
 
 std::string Computer::getSecureInputApp() const

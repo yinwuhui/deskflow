@@ -38,3 +38,18 @@ create_test(
   SOURCE MdnsLifecycleTests.cpp
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net"
 )
+
+if(BUILD_BLUETOOTH)
+  create_test(
+    NAME RfcommBackendTests
+    DEPENDS deskflow-bluetooth
+    SOURCE "${CMAKE_SOURCE_DIR}/tools/rfcomm-prototype/tests.cpp"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net"
+  )
+endif()
+
+if(BUILD_BLUETOOTH)
+  create_test(NAME FailoverTests DEPENDS deskflow-bluetooth
+    SOURCE "${CMAKE_SOURCE_DIR}/tools/rfcomm-prototype/FailoverTests.cpp"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net")
+endif()

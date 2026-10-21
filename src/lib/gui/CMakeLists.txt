@@ -126,3 +126,5 @@ target_link_libraries(${target}
     net
     Qt6::Widgets
 )
+
+target_sources(gui PRIVATE core/TransportNotifications.cpp core/TransportNotifications.h)

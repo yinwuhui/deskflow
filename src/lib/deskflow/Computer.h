@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include <set>
 
 #include "deskflow/ClipboardTypes.h"
 #include "deskflow/IComputer.h"
@@ -291,6 +292,8 @@ protected:
   void leaveSecondary();
 
 private:
+  void releaseSyntheticInput();
+  std::set<ButtonID> m_pressedButtons;
   // our platform dependent computer
   IPlatformComputer *m_computer = nullptr;
 

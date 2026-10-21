@@ -6,6 +6,7 @@
  */
 
 #include "ServerConfigTests.h"
+#include "deskflow/OptionTypes.h"
 
 #include "server/Config.h"
 
@@ -162,3 +163,14 @@ void ServerConfigTests::equalityCheck_diff_neighbours3()
 }
 
 QTEST_MAIN(ServerConfigTests)
+
+void ServerConfigTests::clipboardLimitPreservesLowerLimit()
+{
+  deskflow::server::Config config(nullptr);
+  config.addOption("", kOptionClipboardSharingSize, 3072);
+  config.limitClipboardSize(64);
+  QCOMPARE(config.getOptions("")->at(kOptionClipboardSharingSize), OptionValue(64));
+  config.limitClipboardSize(32);
+  config.limitClipboardSize(64);
+  QCOMPARE(config.getOptions("")->at(kOptionClipboardSharingSize), OptionValue(32));
+}

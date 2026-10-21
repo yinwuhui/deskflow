@@ -263,6 +263,7 @@ public:
   existing option's value if there is one.  Returns true iff \c name
   is a known computer.
   */
+  void limitClipboardSize(unsigned kib);
   bool addOption(const std::string &name, OptionID option, OptionValue value);
 
   //! Get the hot key input filter

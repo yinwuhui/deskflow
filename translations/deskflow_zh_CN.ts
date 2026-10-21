@@ -1484,4 +1484,20 @@ Enabling this setting will disable the server config GUI.</source>
         <translation type="unfinished">一台同名的计算机已经存在</translation>
     </message>
 </context>
+<context>
+<name>TransportNotifications</name>
+<message><source>Switching connection; control remains local.</source><translation>正在切换连接，鼠标保留在本机。</translation></message>
+<message><source>Offline; retrying automatically.</source><translation>连接不可用，正在自动重试。</translation></message>
+<message><source>Using %1; move to the screen edge to resume.</source><translation>当前使用%1，移至屏幕边缘继续操作。</translation></message>
+<message><source>Reconnecting to the other computer automatically...</source><translation>正在自动重新连接另一台电脑…</translation></message>
+<message><source>Connection interrupted</source><translation>连接中断</translation></message>
+<message><source>Remote control has stopped. Deskflow is automatically trying another connection.</source><translation>远端控制已暂停，Deskflow 正在自动尝试其他连接。</translation></message>
+<message><source>Connection interrupted; automatically switching. Control returns to this computer.</source><translation>连接已中断，鼠标已回到本机，正在自动切换连接。</translation></message>
+<message><source>Unable to connect to the other computer. Control remains local; Deskflow will keep retrying automatically.</source><translation>暂时无法连接另一台电脑，鼠标保留在本机，Deskflow 正在自动重试。</translation></message>
+<message><source>Waiting for a connection</source><translation>等待连接恢复</translation></message>
+<message><source>network</source><translation>网络</translation></message>
+<message><source>Bluetooth</source><translation>蓝牙</translation></message>
+<message><source>Connected via %1. Move the mouse to the screen edge to control the other computer.</source><translation>已通过%1连接。将鼠标移至屏幕边缘，即可继续控制另一台电脑。</translation></message>
+<message><source>Connection restored</source><translation>连接已恢复</translation></message>
+</context>
 </TS>

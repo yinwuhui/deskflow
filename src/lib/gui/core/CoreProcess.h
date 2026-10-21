@@ -93,6 +93,7 @@ Q_SIGNALS:
   void connectionRefused(deskflow::core::ConnectionRefusal reason);
   void retryIn(int seconds);
   void peerFingerprint(const QString &fingerprint);
+  void transportStateChanged(const QString &state);
   void missingKeyboardLayouts(const QString &layouts);
 
 private Q_SLOTS:

@@ -20,5 +20,17 @@ struct CoreArgs
   inline static const auto configOption =
       QCommandLineOption({"s", "settings"}, "override configuration file to use", "configFile");
 
-  inline static const auto options = {helpOption, versionOption, multiInstanceOption, configOption};
+  inline static const auto autoFailoverOption = QCommandLineOption(
+      "auto-failover", "Keep network and Bluetooth ready; automatically reconnect on the other channel"
+  );
+  inline static const auto bluetoothPeerOption = QCommandLineOption(
+      "bluetooth-peer", "Use RFCOMM to connect to this Bluetooth peer (server: allowed peer)", "address"
+  );
+  inline static const auto bluetoothScanOption =
+      QCommandLineOption("bluetooth-scan", "Scan classic Bluetooth devices, then exit (no coremode required)");
+  inline static const auto bluetoothServicesOption =
+      QCommandLineOption("bluetooth-services", "Find Deskflow RFCOMM services on a peer, then exit", "address");
+  inline static const auto options = {helpOption,          versionOption,          multiInstanceOption,
+                                      configOption,        autoFailoverOption,     bluetoothPeerOption,
+                                      bluetoothScanOption, bluetoothServicesOption};
 };
