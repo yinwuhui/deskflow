@@ -68,7 +68,14 @@ public:
   void initSsl(bool server);
   bool loadCertificate(const QString &filename);
 
+public:
+  std::string peerIdentity() const override
+  {
+    return m_verifiedIdentity;
+  }
+
 private:
+  mutable std::string m_verifiedIdentity;
   // SSL
   void initContext(bool server);
   void createSSL();

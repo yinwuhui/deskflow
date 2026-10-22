@@ -11,8 +11,10 @@
 #include "client/Client.h"
 #include "client/ServerProxy.h"
 #include "deskflow/AppUtil.h"
+#include "deskflow/Clipboard.h"
 #include "deskflow/ProtocolTypes.h"
 #include "io/IStream.h"
+#include <new>
 
 #include <QTest>
 
@@ -49,6 +51,7 @@ public:
 class FakeStream : public deskflow::IStream
 {
 public:
+  int writes = 0;
   void push(const std::string &bytes)
   {
     m_chunks.push_back(bytes);
@@ -81,6 +84,7 @@ public:
 
   void write(const void *, uint32_t) override
   {
+    ++writes;
   }
 
   void flush() override
@@ -329,3 +333,29 @@ void ServerProxyTests::parseHandshakeMessage_protocolError_queuesRefusalRequest(
 }
 
 QTEST_MAIN(ServerProxyTests)
+
+void ServerProxyTests::queuedClipboardDoesNotCrossSessionGeneration()
+{
+  RecordingEventQueue events;
+  FakeStream stream;
+  Clipboard clipboard;
+  QVERIFY(clipboard.open(0));
+  clipboard.add(IClipboard::Format::Text, "old clipboard");
+  clipboard.close();
+  alignas(ServerProxy) unsigned char storage[sizeof(ServerProxy)];
+  auto *old = new (storage) ServerProxy(undereferenceableClient(), &stream, &events);
+  old->onClipboardChanged(0, &clipboard);
+  const auto oldCount = events.addedEvents().size();
+  QVERIFY(oldCount > 0);
+  old->~ServerProxy();
+  auto *current = new (storage) ServerProxy(undereferenceableClient(), &stream, &events);
+  const auto writes = stream.writes;
+  for (size_t i = 0; i < oldCount; ++i)
+    events.dispatchEvent(events.addedEvents()[i]);
+  QCOMPARE(stream.writes, writes);
+  current->onClipboardChanged(0, &clipboard);
+  for (size_t i = oldCount; i < events.addedEvents().size(); ++i)
+    events.dispatchEvent(events.addedEvents()[i]);
+  QVERIFY(stream.writes > writes);
+  current->~ServerProxy();
+}

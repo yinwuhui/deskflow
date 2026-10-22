@@ -12,6 +12,7 @@
 #include "gui/FileTail.h"
 #include "gui/config/ServerConfig.h"
 
+#include <QJsonObject>
 #include <QMutex>
 #include <QObject>
 #include <QProcess>
@@ -44,6 +45,7 @@ public:
   void start(std::optional<ProcessMode> processMode = std::nullopt);
   void stop(std::optional<ProcessMode> processMode = std::nullopt);
   void restart();
+  void transportCommand(const QJsonObject &command);
   void cleanup();
   void applyLogLevel();
   void clearSettings();
@@ -94,6 +96,8 @@ Q_SIGNALS:
   void connectionRefused(deskflow::core::ConnectionRefusal reason);
   void retryIn(int seconds);
   void peerFingerprint(const QString &fingerprint);
+  void transportOperationFinished(const QJsonObject &result);
+  void transportSnapshot(const QJsonObject &snapshot);
   void transportStateChanged(const QString &state);
   void missingKeyboardLayouts(const QString &layouts);
 

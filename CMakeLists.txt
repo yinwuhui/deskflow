@@ -23,7 +23,7 @@ endif()
 
 #Project level options
 option(BUILD_INSTALLER "Build installer" ON)
-option(BUILD_BLUETOOTH "Build experimental RFCOMM Bluetooth backend" OFF)
+
 option(ENABLE_COVERAGE "Enable test coverage" OFF)
 if(UNIX)
   if(APPLE)
@@ -98,6 +98,13 @@ project(
   HOMEPAGE_URL "https://deskflow.org"
   LANGUAGES C CXX
 )
+
+if(APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(default_bluetooth ON)
+else()
+  set(default_bluetooth OFF)
+endif()
+option(BUILD_BLUETOOTH "Build RFCOMM transport and automatic backup connections" ${default_bluetooth})
 
 if(APPLE AND BUILD_BLUETOOTH)
   enable_language(OBJC OBJCXX)

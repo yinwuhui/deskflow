@@ -1,5 +1,8 @@
 # 蓝牙后端（Mac 开发阶段）
 
+> 本文保留早期原型说明。当前统一连接实现与操作方式见 [自动备用开发实现记录](automatic-backup-connection-implementation.zh-CN.md)。
+
+
 自动主备初版现已接入核心，包含非阻塞恢复通知；配置与验证边界见 [auto-failover.md](auto-failover.md)。下文介绍单通道蓝牙模式。
 
 当前完成 Mac 端后端实现，按需求暂不改动产品 UI、不进行 Linux 联调。

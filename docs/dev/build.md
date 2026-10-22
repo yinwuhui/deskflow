@@ -129,6 +129,8 @@ After configuring you should be able to run make to build all targets.
 
 ## Experimental RFCOMM prototype
 
-Set `-DBUILD_BLUETOOTH=ON` to enable the optional RFCOMM backend in `deskflow-core`; the default build does not require Qt Bluetooth. See [the backend guide](bluetooth.md) for core commands and architecture, and [the standalone diagnostic tool](../../tools/rfcomm-prototype/README.zh-CN.md) for RTT and recovery checks.
+Mac/Linux builds enable `BUILD_BLUETOOTH` by default; set `-DBUILD_BLUETOOTH=OFF` for a build without this feature. Qt Bluetooth is required when enabled. Set `-DBUILD_BLUETOOTH=ON` to enable the RFCOMM backend in `busymouse-core`. See [the backend guide](bluetooth.md) for core commands and architecture, and [the standalone diagnostic tool](../../tools/rfcomm-prototype/README.zh-CN.md) for RTT and recovery checks.
 
 For the opt-in automatic network/Bluetooth failover MVP, see [automatic failover](auto-failover.md).
+
+For the current unified first-connection and automatic backup feature, see [the implementation guide](automatic-backup-connection-implementation.zh-CN.md).

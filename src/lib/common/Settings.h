@@ -49,6 +49,10 @@ public:
   };
   struct Connection
   {
+    inline static const auto AutoBackup = QStringLiteral("connection/autoBackup");
+    inline static const auto InitialTransport = QStringLiteral("connection/initialTransport");
+    inline static const auto Peers = QStringLiteral("connection/peers");
+    inline static const auto BackupTarget = QStringLiteral("connection/backupTarget");
     inline static const auto AutoFailover = QStringLiteral("connection/autoFailover");
     inline static const auto BluetoothPeer = QStringLiteral("connection/bluetoothPeer");
     inline static const auto PeerFingerprint = QStringLiteral("connection/peerFingerprint");
@@ -286,7 +290,11 @@ private:
   };
 
   inline static const QStringList m_validKeys = {
-      Connection::AutoFailover
+      Connection::AutoBackup
+    , Connection::InitialTransport
+    , Connection::Peers
+    , Connection::BackupTarget
+    , Connection::AutoFailover
     , Connection::BluetoothPeer
     , Connection::PeerFingerprint
     , Client::DynamicConnectionRetry
@@ -390,6 +398,7 @@ private:
 
   // When checking the default values this list contains the ones that default to true.
   inline static const QStringList m_defaultTrueValues = {
+      Connection::AutoBackup,
       Core::UseHooks
     , Gui::CloseToTray
     , Gui::CloseReminder

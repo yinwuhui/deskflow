@@ -649,6 +649,7 @@ bool SecureSocket::verifyCertFingerprint(const QString &FingerprintDatabasePath)
     return false;
   }
 
+  m_verifiedIdentity = sha256.data.toHex().toStdString();
   LOG_DEBUG("fingerprint matches trusted fingerprint");
   return true;
 }

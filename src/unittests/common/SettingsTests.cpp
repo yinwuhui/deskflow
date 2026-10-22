@@ -7,7 +7,9 @@
 #include "SettingsTests.h"
 
 #include <QFile>
+#include <QSettings>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 
 void SettingsTests::initTestCase()
 {
@@ -112,3 +114,24 @@ void SettingsTests::checkClearState()
 }
 
 QTEST_MAIN(SettingsTests)
+
+void SettingsTests::autoBackupMigration()
+{
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  const auto path = directory.filePath("migration.conf");
+  {
+    QSettings raw(path, QSettings::IniFormat);
+    raw.setValue(Settings::Connection::AutoFailover, false);
+    raw.sync();
+  }
+  Settings::setSettingsFile(path);
+  QVERIFY(!Settings::value(Settings::Connection::AutoBackup).toBool());
+  Settings::setValue(Settings::Connection::AutoBackup, true);
+  Settings::setSettingsFile(path);
+  QVERIFY(Settings::value(Settings::Connection::AutoBackup).toBool());
+  const auto fresh = directory.filePath("fresh.conf");
+  Settings::setSettingsFile(fresh);
+  QVERIFY(Settings::value(Settings::Connection::AutoBackup).toBool());
+  Settings::setSettingsFile(m_settingsFile);
+}

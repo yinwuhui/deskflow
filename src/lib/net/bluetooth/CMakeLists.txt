@@ -2,6 +2,7 @@
 find_package(Qt6 6.7 REQUIRED COMPONENTS Core Network Bluetooth)
 find_package(OpenSSL 3.0 REQUIRED COMPONENTS SSL Crypto)
 add_library(deskflow-bluetooth STATIC
+  ConnectionManager.cpp ConnectionManager.h
   TlsChannel.cpp TlsChannel.h FailoverLink.cpp FailoverLink.h
   FailoverSession.cpp FailoverSession.h AutoTransport.cpp AutoTransport.h
   RfcommSession.cpp RfcommSession.h RfcommBridge.h

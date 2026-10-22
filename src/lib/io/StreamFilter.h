@@ -44,6 +44,10 @@ public:
   void *getEventTarget() const override;
   bool isReady() const override;
   uint32_t getSize() const override;
+  std::string peerIdentity() const override
+  {
+    return m_stream->peerIdentity();
+  }
 
   //! Get the stream
   /*!

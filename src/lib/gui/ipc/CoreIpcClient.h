@@ -20,6 +20,10 @@ public:
   explicit CoreIpcClient(QObject *parent = nullptr);
 
   void sendStop();
+  void sendTransport(const QString &json)
+  {
+    sendMessage("transport=" + json);
+  }
 
 Q_SIGNALS:
   void commandReceived(const QString &command, const QString &args);

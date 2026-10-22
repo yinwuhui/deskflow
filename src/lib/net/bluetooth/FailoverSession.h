@@ -22,7 +22,7 @@ public:
   {
     return m_id;
   }
-  void attach(Lane lane, FailoverLink *link);
+  void attach(Lane lane, FailoverLink *link, bool startLink = true);
   void acceptLocal(QTcpSocket *socket);
   void setCorePort(quint16 port)
   {
@@ -30,6 +30,24 @@ public:
   }
   void coreConnected(bool connected);
   void stop();
+  void setInitialLane(Lane lane)
+  {
+    if (m_selected < 0)
+      m_preferred = lane;
+  }
+  void setAutomatic(bool enabled)
+  {
+    m_automatic = enabled;
+  }
+  void removeLane(Lane lane);
+  bool laneReady(Lane lane) const
+  {
+    return available(lane);
+  }
+  int reconnectLane() const
+  {
+    return m_fixedLane;
+  }
   int selectedLane() const
   {
     return m_selected;
@@ -51,6 +69,7 @@ private:
   quint16 m_corePort = 0;
   quint64 m_epoch = 0, m_lastEpoch = 0;
   int m_selected = -1, m_preferred = Network;
-  bool m_coreReported = false;
+  bool m_coreReported = false, m_automatic = true;
+  int m_fixedLane = -1;
   QTimer m_activationDeadline, m_offlineDeadline;
 };

@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include "deskflow/StreamChunker.h"
 
 #include "deskflow/ClipboardChunk.h"
 #include "server/ClientProxy1_5.h"
@@ -25,6 +26,7 @@ public:
   bool recvClipboard() override;
 
 private:
+  const uint64_t m_clipboardGeneration = StreamChunker::newGeneration();
   IEventQueue *m_events;
   std::string m_clipboardDataCached;
   ClipboardChunkAssemblyState m_clipboardChunkState;

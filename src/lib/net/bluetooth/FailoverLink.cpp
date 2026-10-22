@@ -14,7 +14,7 @@ FailoverLink::FailoverLink(
   channel->setParent(this);
   m_tick.setInterval(heartbeatMs);
   connect(channel, &TlsChannel::authenticated, this, [this] {
-    send(Hello, 0, QByteArray("DFF1") + char(m_server ? 1 : 0) + m_id);
+    send(Hello, 0, QByteArray("DFF2") + char(m_server ? 1 : 0) + m_id);
   });
   connect(channel, &TlsChannel::readyRead, this, &FailoverLink::receive);
   connect(channel, &TlsChannel::bytesWritten, this, [this] {
@@ -86,7 +86,7 @@ void FailoverLink::flush()
 
 void FailoverLink::receive()
 {
-  while (!m_stopped && m_channel->bytesAvailable()) {
+  while (!m_stopped && !m_readPaused && m_channel->bytesAvailable()) {
     const qint64 target = m_input.size() < 13 ? 13 : 13 + qFromBigEndian<quint32>(m_input.constData() + 1);
     const auto part = m_channel->read(target - m_input.size());
     if (part.isEmpty())
@@ -106,7 +106,7 @@ void FailoverLink::receive()
     const auto data = m_input.mid(13);
     m_input.clear();
     if (!m_ready) {
-      if (type != Hello || epoch || data.size() != 21 || data.left(4) != "DFF1" || data[4] != char(m_server ? 0 : 1)) {
+      if (type != Hello || epoch || data.size() != 21 || data.left(4) != "DFF2" || data[4] != char(m_server ? 0 : 1)) {
         stop("Invalid channel handshake");
         return;
       }
@@ -117,6 +117,12 @@ void FailoverLink::receive()
       send(Pong, epoch);
     } else if (type == Pong && m_ping && epoch == m_ping && data.isEmpty()) {
       m_ping = 0;
+      if (!m_healthy) {
+        m_healthy = true;
+        Q_EMIT healthConfirmed();
+      }
+    } else if (type == Control && !epoch && !data.isEmpty()) {
+      Q_EMIT message(type, epoch, data);
     } else if (type >= Activate && type <= Close && epoch && (type == Data || data.isEmpty())) {
       Q_EMIT message(type, epoch, data);
     } else {
@@ -124,4 +130,13 @@ void FailoverLink::receive()
       return;
     }
   }
+}
+
+void FailoverLink::pauseRead(bool paused)
+{
+  if (m_readPaused == paused)
+    return;
+  m_readPaused = paused;
+  if (!paused)
+    QMetaObject::invokeMethod(this, [this] { receive(); }, Qt::QueuedConnection);
 }

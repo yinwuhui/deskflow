@@ -3120,4 +3120,50 @@ Enabling this setting will disable the server config GUI.</source>
         <translation type="unfinished">一台同名的计算机已经存在</translation>
     </message>
 </context>
+
+<context>
+<name>BackupConnectionPanel</name>
+<message><source> · Clipboard cap: up to 64 KiB (lower settings retained)</source><translation> · 此电脑剪贴板最多 64 KiB，保留更低设置</translation></message>
+<message><source>Automatic discovery could not locate this computer. Enter its Bluetooth address.</source><translation>自动发现未能定位此电脑，请输入它的蓝牙地址。</translation></message>
+<message><source>Automatically establish a backup connection</source><translation>自动建立备用连接</translation></message>
+<message><source>Backup disabled</source><translation>备用已关闭</translation></message>
+<message><source>Backup is disabled by the other computer</source><translation>对方未启用备用连接</translation></message>
+<message><source>Backup ready</source><translation>备用已就绪</translation></message>
+<message><source>Backup unavailable; current connection remains usable</source><translation>备用暂不可用，当前连接仍可使用</translation></message>
+<message><source>Bluetooth</source><translation>蓝牙</translation></message>
+<message><source>Bluetooth address of the other computer</source><translation>对方电脑的蓝牙地址</translation></message>
+<message><source>Bluetooth computer</source><translation>蓝牙电脑</translation></message>
+<message><source>Bluetooth computers</source><translation>蓝牙电脑</translation></message>
+<message><source>Bluetooth pairing</source><translation>蓝牙配对</translation></message>
+<message><source>Bluetooth permission is required for discovery.</source><translation>需要授予蓝牙权限才能查找电脑。</translation></message>
+<message><source>Complete Bluetooth setup</source><translation>需要完成蓝牙设置</translation></message>
+<message><source>Complete setup</source><translation>完成设置</translation></message>
+<message><source>Confirm</source><translation>确认</translation></message>
+<message><source>Confirm the code on both computers: %1</source><translation>请核对两台电脑上的配对码：%1</translation></message>
+<message><source>Disconnect selected computer</source><translation>断开选定电脑</translation></message>
+<message><source>Disconnected</source><translation>已断开</translation></message>
+<message><source>Enable encryption and certificate verification to prepare backup connections.</source><translation>请启用加密及证书验证，才能准备备用连接。</translation></message>
+<message><source>Enter the pairing PIN</source><translation>请输入配对 PIN</translation></message>
+<message><source>Enter this code on the other computer: %1</source><translation>请在另一台电脑输入此配对码：%1</translation></message>
+<message><source>Find Bluetooth computers</source><translation>查找蓝牙电脑</translation></message>
+<message><source>Finding Bluetooth computers…</source><translation>正在查找蓝牙电脑…</translation></message>
+<message><source>First connection</source><translation>首连方式</translation></message>
+<message><source>Later</source><translation>稍后</translation></message>
+<message><source>Local network</source><translation>局域网</translation></message>
+<message><source>No Bluetooth computers found. Start Bluetooth sharing on the other computer.</source><translation>未找到蓝牙电脑，请在另一台电脑上开启蓝牙共享。</translation></message>
+<message><source>Not connected</source><translation>尚未连接</translation></message>
+<message><source>Preparing backup</source><translation>正在准备备用连接</translation></message>
+<message><source>Reconnect</source><translation>重新连接</translation></message>
+<message><source>Reject</source><translation>拒绝</translation></message>
+<message><source>Retry backup</source><translation>重试备用连接</translation></message>
+<message><source>Review this computer&#x27;s certificate trust before reconnecting.</source><translation>请检查此电脑的证书信任后再重新连接。</translation></message>
+<message><source>Select a computer to protect with a backup</source><translation>请选择一台电脑启用备用连接</translation></message>
+<message><source>Select a computer; its identity will be verified when connecting.</source><translation>请选择电脑，连接时还会验证其身份。</translation></message>
+<message><source>The first connection works independently of backup preparation.</source><translation>首条连接可独立使用，备用连接将在后台准备。</translation></message>
+<message><source>This action is no longer available. Refresh the connection and try again.</source><translation>此操作已失效，请刷新连接状态后重试。</translation></message>
+<message><source>This build does not include Bluetooth support.</source><translation>此版本未包含蓝牙支持。</translation></message>
+<message><source>Use backup for this computer</source><translation>为此电脑启用备用</translation></message>
+<message><source>Using Bluetooth</source><translation>当前使用蓝牙</translation></message>
+<message><source>Using local network</source><translation>当前使用局域网</translation></message>
+</context>
 </TS>

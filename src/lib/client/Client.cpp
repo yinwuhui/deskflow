@@ -7,6 +7,7 @@
  */
 
 #include "client/Client.h"
+#include "common/PeerPolicy.h"
 
 #include "arch/Arch.h"
 #include "base/IEventQueue.h"
@@ -193,7 +194,7 @@ NetworkAddress Client::getServerAddress() const
 
 size_t Client::getMaximumClipboardReceiveSizeBytes() const
 {
-  return m_maximumClipboardSize * 1024;
+  return PeerPolicy::limit(m_stream ? m_stream->peerIdentity() : std::string(), m_maximumClipboardSize * 1024);
 }
 
 void *Client::getEventTarget() const
@@ -393,7 +394,7 @@ void Client::sendClipboard(ClipboardID id)
   if (m_timeClipboard[id] == 0 || clipboard.getTime() != m_timeClipboard[id]) {
     // marshall the data
     std::string data = clipboard.marshall();
-    if (data.size() >= m_maximumClipboardSize * 1024) {
+    if (data.size() >= getMaximumClipboardReceiveSizeBytes()) {
       LOG_WARN("not sending clipboard data, exceeds limit: %zu KB", m_maximumClipboardSize);
       return;
     }
@@ -736,6 +737,7 @@ void Client::handleSuspend()
   if (!m_suspended) {
     LOG_INFO("suspend");
     m_suspended = true;
+    ipcSendToClient("transportPower", "suspend");
     bool wasConnected = isConnected();
     disconnect(nullptr);
     m_connectOnResume = wasConnected;
@@ -747,6 +749,7 @@ void Client::handleResume()
   if (m_suspended) {
     LOG_INFO("resume");
     m_suspended = false;
+    ipcSendToClient("transportPower", "resume");
     if (m_connectOnResume) {
       m_connectOnResume = false;
       connect();

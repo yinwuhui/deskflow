@@ -29,6 +29,7 @@
 #include "common/VersionInfo.h"
 #include "gui/Messages.h"
 #include "gui/TlsUtility.h"
+#include "gui/core/BackupConnectionPanel.h"
 #include "gui/core/CoreProcess.h"
 #include "gui/core/TransportNotifications.h"
 #ifdef Q_OS_MACOS
@@ -310,6 +311,16 @@ void MainWindow::setupControls()
 
 void MainWindow::setupHome()
 {
+  auto *backupPanel = new BackupConnectionPanel(ui->homeContent);
+  ui->contentLayout->insertWidget(ui->contentLayout->indexOf(ui->homeActionCard) + 1, backupPanel);
+  connect(backupPanel, &BackupConnectionPanel::command, &m_coreProcess, &CoreProcess::transportCommand);
+  connect(&m_coreProcess, &CoreProcess::transportSnapshot, backupPanel, &BackupConnectionPanel::updateSnapshot);
+  connect(
+      &m_coreProcess, &CoreProcess::transportOperationFinished, backupPanel, &BackupConnectionPanel::operationFinished
+  );
+  connect(&m_coreProcess, &CoreProcess::processStateChanged, backupPanel, [backupPanel](ProcessState state) {
+    backupPanel->setRunning(state != ProcessState::Stopped);
+  });
   // Keep the homepage light like the approved prototype, independently of native dialog appearance.
   auto homePalette = ui->topLevelWidget->palette();
   homePalette.setColor(QPalette::Window, QColor("#ffffff"));
@@ -620,7 +631,10 @@ void MainWindow::openDevices()
       m_devicesPage->message(tr("Local discovery is continuous; newly found computers appear automatically."));
     });
     connect(m_devicesPage, &DeviceListPage::connectRequested, this, &MainWindow::connectDeviceServer);
-    connect(m_devicesPage, &DeviceListPage::disconnectRequested, this, &MainWindow::stopCore);
+    connect(m_devicesPage, &DeviceListPage::disconnectRequested, this, [this] {
+      const auto selected = m_devicesPage->selectedDevice();
+      m_coreProcess.transportCommand({{"kind", "disconnectName"}, {"name", selected.section(':', 1)}});
+    });
     connect(
         m_devicesPage, &DeviceListPage::addServerRequested, this,
         [this](const QString &name, const QString &address) {
@@ -992,6 +1006,10 @@ void MainWindow::toggleLogVisible(bool visible)
 
 void MainWindow::settingsChanged(const QString &key)
 {
+  if (key == Settings::Connection::InitialTransport || key == Settings::Connection::BluetoothPeer) {
+    toggleCanRunCore(canRunCore());
+    return;
+  }
   if (key == Settings::Log::Level) {
     m_coreProcess.applyLogLevel();
     return;
@@ -1060,6 +1078,11 @@ void MainWindow::coreProcessError(CoreProcess::Error error)
 
 void MainWindow::startCore()
 {
+  // An explicit new connection may ask again after a rejected trust prompt.
+  // Background retries retain prompt suppression within CoreProcess.
+  m_checkedServers.clear();
+  m_checkedClients.clear();
+
   // Save current IP state when server starts
   if (m_coreProcess.mode() == CoreMode::Server && Settings::value(Settings::Core::Interface).toString().isEmpty()) {
     m_serverStartIPs = NetworkMonitor::validAddresses();
@@ -2070,5 +2093,7 @@ bool MainWindow::canRunCore() const
   const auto mode = m_coreProcess.mode();
   const bool isServer = mode == Settings::CoreMode::Server;
   const bool isClient = mode == Settings::CoreMode::Client;
+  if (isClient && Settings::value(Settings::Connection::InitialTransport) == "bluetooth")
+    return !Settings::value(Settings::Connection::BluetoothPeer).toString().isEmpty();
   return ((isServer || isClient) && (isClient && !ui->lineHostname->text().isEmpty()) || isServer);
 }

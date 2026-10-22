@@ -53,3 +53,9 @@ if(BUILD_BLUETOOTH)
     SOURCE "${CMAKE_SOURCE_DIR}/tools/rfcomm-prototype/FailoverTests.cpp"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net")
 endif()
+
+if(BUILD_BLUETOOTH)
+  create_test(NAME ConnectionManagerTests DEPENDS deskflow-bluetooth
+    SOURCE ConnectionManagerTests.cpp
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net")
+endif()

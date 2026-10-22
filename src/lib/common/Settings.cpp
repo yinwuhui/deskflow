@@ -145,6 +145,24 @@ Settings::Settings(QObject *parent) : QObject(parent), m_settingsWatcher{new QFi
 
 void Settings::upgradeSettings()
 {
+  // Presence, not the old default value, represents an explicit legacy preference.
+  if (!m_settings->contains(Connection::AutoBackup) && m_settings->contains(Connection::AutoFailover))
+    m_settings->setValue(Connection::AutoBackup, m_settings->value(Connection::AutoFailover));
+  if (!m_settings->contains(Connection::Peers)) {
+    const auto identity = m_settings->value(Connection::PeerFingerprint).toString().remove(':').toLower();
+    if (identity.size() == 64 && QByteArray::fromHex(identity.toLatin1()).toHex() == identity.toLatin1()) {
+      QVariantMap peers;
+      peers.insert(
+          identity,
+          QVariantMap{
+              {"bluetooth", m_settings->value(Connection::BluetoothPeer)},
+              {"automatic", m_settings->value(Connection::AutoBackup, true)}
+          }
+      );
+      m_settings->setValue(Connection::Peers, peers);
+      m_settings->setValue(Connection::BackupTarget, identity);
+    }
+  }
   if (const auto logValue = m_settings->value(Settings::Log::Level).toString();
       !LogLevel::logLevelOptions().contains(logValue, Qt::CaseInsensitive))
     m_settings->setValue(Settings::Log::Level, defaultValue(Settings::Log::Level));

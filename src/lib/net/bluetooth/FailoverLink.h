@@ -16,7 +16,8 @@ public:
     Data,
     Close,
     Ping,
-    Pong
+    Pong,
+    Control
   };
   static constexpr int MaxData = 16384;
   FailoverLink(
@@ -24,8 +25,13 @@ public:
       int timeoutMs = 6000
   );
   void start();
+  void pauseRead(bool paused);
   void stop(const QString &reason);
   bool send(Message type, quint64 epoch = 0, const QByteArray &data = {});
+  bool healthy() const
+  {
+    return m_healthy && ready();
+  }
   bool ready() const
   {
     return m_ready && !m_stopped;
@@ -34,12 +40,17 @@ public:
   {
     return m_output.size() + m_channel->bytesToWrite();
   }
+  QByteArray peerFingerprint() const
+  {
+    return m_channel->peerFingerprint();
+  }
   QByteArray peerInstance() const
   {
     return m_peer;
   }
 Q_SIGNALS:
   void established();
+  void healthConfirmed();
   void message(quint8 type, quint64 epoch, const QByteArray &data);
   void writable();
   void disconnected(const QString &reason);
@@ -48,7 +59,7 @@ private:
   void receive();
   void flush();
   TlsChannel *m_channel;
-  bool m_server, m_ready = false, m_stopped = false;
+  bool m_server, m_ready = false, m_stopped = false, m_healthy = false, m_readPaused = false;
   QByteArray m_id, m_peer, m_input, m_output;
   QTimer m_tick;
   QElapsedTimer m_clock;

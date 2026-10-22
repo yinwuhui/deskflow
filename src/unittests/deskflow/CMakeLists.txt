@@ -68,3 +68,8 @@ create_test(NAME InputReleaseTests DEPENDS app
   LIBS arch base io mt net platform server
   SOURCE InputReleaseTests.cpp
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow")
+
+create_test(NAME TransportIpcTests DEPENDS app
+  LIBS arch base io mt net platform server
+  SOURCE TransportIpcTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow")

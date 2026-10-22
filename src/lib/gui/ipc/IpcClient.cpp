@@ -133,16 +133,25 @@ void IpcClient::handleReadyRead()
 {
   QByteArray data = m_readBuffer + m_socket->readAll();
   m_readBuffer.clear();
+  if (data.size() > 65536) {
+    disconnectFromServer();
+    return;
+  }
 
   while (data.contains('\n')) {
     const auto index = data.indexOf('\n');
     const auto message = QString::fromUtf8(data.left(index));
     data.remove(0, index + 1);
 
-    qDebug().noquote() << QStringLiteral("%1 ipc client message: %2").arg(m_typeName, message);
-    const auto parts = message.split('=');
+    qDebug().noquote(
+    ) << QStringLiteral("%1 ipc client message: %2")
+             .arg(m_typeName, message.startsWith("transport") ? QStringLiteral("transport [redacted]") : message);
+    const auto split = message.indexOf('=');
+    const auto parts = split < 0 ? QStringList{message} : QStringList{message.left(split), message.mid(split + 1)};
     if (parts.isEmpty()) {
-      qWarning().noquote() << QStringLiteral("%1 ipc client got invalid message: %2").arg(m_typeName, message);
+      qWarning().noquote(
+      ) << QStringLiteral("%1 ipc client got invalid message: %2")
+               .arg(m_typeName, message.startsWith("transport") ? QStringLiteral("transport [redacted]") : message);
       continue;
     }
 
@@ -211,7 +220,9 @@ void IpcClient::sendMessage(const QString &message)
   }
 
   m_socket->write(message.toUtf8() + "\n");
-  qDebug().noquote() << QStringLiteral("%1 ipc client sent message: %2").arg(m_typeName, message);
+  qDebug().noquote(
+  ) << QStringLiteral("%1 ipc client sent message: %2")
+           .arg(m_typeName, message.startsWith("transport") ? QStringLiteral("transport [redacted]") : message);
 }
 
 } // namespace deskflow::gui::ipc

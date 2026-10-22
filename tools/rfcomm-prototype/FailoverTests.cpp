@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-#include "FailoverSession.h"
 #include "AutoTransport.h"
+#include "FailoverSession.h"
 #include <QFile>
 #include <QSignalSpy>
 #include <QTcpServer>
@@ -126,23 +126,32 @@ private Q_SLOTS:
   {
     QTcpServer port;
     QVERIFY(port.listen(QHostAddress::LocalHost, 0));
-    const auto networkPort = port.serverPort(); port.close();
+    const auto networkPort = port.serverPort();
+    port.close();
     AutoTransport::Options left, right;
-    left.host = "127.0.0.1"; left.networkPort = networkPort;
+    left.host = "127.0.0.1";
+    left.networkPort = networkPort;
     left.bluetoothPeer = QBluetoothAddress("02:00:00:00:00:01");
-    left.pem = alice; left.peerSha256 = bobPin;
-    right = left; right.server = true; right.pem = bob; right.peerSha256 = alicePin;
+    left.pem = alice;
+    left.peerSha256 = bobPin;
+    right = left;
+    right.server = true;
+    right.pem = bob;
+    right.peerSha256 = alicePin;
     right.corePort = coreServer.serverPort();
     auto remote = std::make_unique<AutoTransport>(right);
     QSignalSpy remoteStarted(remote.get(), &AutoTransport::started);
-    remote->start(); QCOMPARE(remoteStarted.count(), 1);
+    remote->start();
+    QCOMPARE(remoteStarted.count(), 1);
     AutoTransport local(left);
     QSignalSpy localStarted(&local, &AutoTransport::started);
-    local.start(); QCOMPARE(localStarted.count(), 1);
+    local.start();
+    QCOMPARE(localStarted.count(), 1);
     const auto localPort = localStarted.first().first().value<quint16>();
     QTcpSocket core;
     for (int attempt = 0; attempt < 30 && !coreServer.hasPendingConnections(); ++attempt) {
-      core.abort(); core.connectToHost(QHostAddress::LocalHost, localPort);
+      core.abort();
+      core.connectToHost(QHostAddress::LocalHost, localPort);
       QTest::qWait(100);
     }
     QVERIFY(coreServer.hasPendingConnections());
@@ -150,14 +159,18 @@ private Q_SLOTS:
     core.write("network-one");
     QTRY_COMPARE(first->bytesAvailable(), 11);
     QCOMPARE(first->readAll(), QByteArray("network-one"));
-    local.coreConnected(true); remote->coreConnected(true);
+    local.coreConnected(true);
+    remote->coreConnected(true);
     QTest::qWait(550);
-    remote->stop(); remote.reset();
+    remote->stop();
+    remote.reset();
     QTRY_COMPARE(core.state(), QAbstractSocket::UnconnectedState);
     QTRY_COMPARE(first->state(), QAbstractSocket::UnconnectedState);
-    remote = std::make_unique<AutoTransport>(right); remote->start();
+    remote = std::make_unique<AutoTransport>(right);
+    remote->start();
     for (int attempt = 0; attempt < 40 && !coreServer.hasPendingConnections(); ++attempt) {
-      core.abort(); core.connectToHost(QHostAddress::LocalHost, localPort);
+      core.abort();
+      core.connectToHost(QHostAddress::LocalHost, localPort);
       QTest::qWait(100);
     }
     QVERIFY(coreServer.hasPendingConnections());
@@ -165,7 +178,8 @@ private Q_SLOTS:
     core.write("network-two");
     QTRY_COMPARE(second->bytesAvailable(), 11);
     QCOMPARE(second->readAll(), QByteArray("network-two"));
-    local.stop(); remote->stop();
+    local.stop();
+    remote->stop();
   }
 
   void standbyDoesNotCreateControlSession()
@@ -211,7 +225,7 @@ private Q_SLOTS:
     auto *link = new FailoverLink(tls, false, client->instanceId(), this, 30, 200);
     QSignalSpy closed(link, &FailoverLink::disconnected);
     connect(rawPeer, &TlsChannel::authenticated, rawPeer, [rawPeer, this, malformed] {
-      const auto hello = QByteArray("DFF1") + char(1) + server->instanceId();
+      const auto hello = QByteArray("DFF2") + char(1) + server->instanceId();
       QByteArray header(13, '\0');
       header[0] = char(FailoverLink::Hello);
       qToBigEndian<quint32>(hello.size(), header.data() + 1);
@@ -237,13 +251,21 @@ private Q_SLOTS:
     QTcpSocket *remote = nullptr;
     connectCore(local, remote);
     QCOMPARE(client->selectedLane(), int(FailoverSession::Network));
-    QByteArray payload(200000, '\0');
+    QByteArray payload(2000000, '\0');
     for (int i = 0; i < payload.size(); ++i)
       payload[i] = char(i % 256);
+    remote->setReadBufferSize(1);
     local.write(payload);
+    QTest::qWait(100);
+    QCOMPARE(local.state(), QAbstractSocket::ConnectedState);
+    remote->setReadBufferSize(0);
     QTRY_COMPARE(remote->bytesAvailable(), payload.size());
     QCOMPARE(remote->readAll(), payload);
+    local.setReadBufferSize(1);
     remote->write(payload);
+    QTest::qWait(100);
+    QCOMPARE(remote->state(), QAbstractSocket::ConnectedState);
+    local.setReadBufferSize(0);
     QTRY_COMPARE(local.bytesAvailable(), payload.size());
     QCOMPARE(local.readAll(), payload);
   }

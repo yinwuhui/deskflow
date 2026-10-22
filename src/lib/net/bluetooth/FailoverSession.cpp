@@ -24,7 +24,7 @@ bool FailoverSession::available(int lane) const
   return lane >= 0 && m_links[lane] && m_links[lane]->ready();
 }
 
-void FailoverSession::attach(Lane lane, FailoverLink *link)
+void FailoverSession::attach(Lane lane, FailoverLink *link, bool startLink)
 {
   if (m_stopping || m_links[lane]) {
     link->stop("Duplicate or stopped channel");
@@ -53,7 +53,7 @@ void FailoverSession::attach(Lane lane, FailoverLink *link)
     m_links[lane] = nullptr;
     if (m_selected == lane) {
       dropCore(false);
-      m_preferred = 1 - lane;
+      m_preferred = Network;
       m_selected = -1;
       interrupted();
     }
@@ -64,7 +64,15 @@ void FailoverSession::attach(Lane lane, FailoverLink *link)
     }
     link->deleteLater();
   });
-  link->start();
+  if (link->ready()) {
+    if (!m_peerId.isEmpty() && link->peerInstance() != m_peerId) {
+      link->stop("Channels belong to different peer instances");
+      return;
+    }
+    m_peerId = link->peerInstance();
+  }
+  if (startLink)
+    link->start();
 }
 
 void FailoverSession::acceptLocal(QTcpSocket *socket)
@@ -74,13 +82,14 @@ void FailoverSession::acceptLocal(QTcpSocket *socket)
     socket->deleteLater();
     return;
   }
-  const int lane = available(m_preferred) ? m_preferred : (available(1 - m_preferred) ? 1 - m_preferred : -1);
+  const int preferred = !m_automatic && m_fixedLane >= 0 ? m_fixedLane : m_preferred;
+  const int lane = available(preferred) ? preferred : (m_automatic && available(1 - preferred) ? 1 - preferred : -1);
   if (lane < 0) {
     socket->abort();
     socket->deleteLater();
     return;
   }
-  m_selected = m_preferred = lane;
+  m_selected = m_preferred = m_fixedLane = lane;
   ++m_epoch;
   attachCore(socket);
   m_activationDeadline.start();
@@ -96,6 +105,10 @@ void FailoverSession::attachCore(QTcpSocket *socket)
   socket->setReadBufferSize(TlsChannel::Limit);
   socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
   connect(socket, &QTcpSocket::readyRead, this, &FailoverSession::pump);
+  connect(socket, &QTcpSocket::bytesWritten, this, [this, socket] {
+    if (m_core == socket && available(m_selected) && socket->bytesToWrite() < TlsChannel::Limit / 4)
+      m_links[m_selected]->pauseRead(false);
+  });
   connect(socket, &QTcpSocket::disconnected, this, [this, socket] {
     if (m_core == socket)
       dropCore(true);
@@ -109,6 +122,8 @@ void FailoverSession::attachCore(QTcpSocket *socket)
 void FailoverSession::dropCore(bool tellPeer)
 {
   m_activationDeadline.stop();
+  if (available(m_selected))
+    m_links[m_selected]->pauseRead(false);
   m_dataReady = false;
   if (m_core) {
     auto *socket = m_core.data();
@@ -123,15 +138,15 @@ void FailoverSession::dropCore(bool tellPeer)
 
 void FailoverSession::handle(int lane, quint8 type, quint64 epoch, const QByteArray &data)
 {
-  if (m_stopping)
+  if (m_stopping || type == FailoverLink::Control)
     return;
   if (type == FailoverLink::Activate && m_server) {
-    if (epoch <= m_lastEpoch)
+    if ((!m_automatic && m_fixedLane >= 0 && lane != m_fixedLane) || epoch <= m_lastEpoch)
       return; // A delayed activation from an old lane must never replace the new session.
     m_lastEpoch = epoch;
     const bool replaced = m_core != nullptr;
     dropCore(false);
-    m_selected = lane;
+    m_selected = m_fixedLane = lane;
     m_epoch = epoch;
     if (replaced)
       interrupted();
@@ -160,6 +175,10 @@ void FailoverSession::handle(int lane, quint8 type, quint64 epoch, const QByteAr
   } else if (type == FailoverLink::Data && m_dataReady && m_core && !data.isEmpty()) {
     if (m_core->bytesToWrite() + data.size() > TlsChannel::Limit || m_core->write(data) != data.size())
       dropCore(true);
+    else if (m_core->bytesToWrite() >= TlsChannel::Limit / 2)
+      m_links[lane]->pauseRead(true);
+  } else if (type == FailoverLink::Data && !m_core) {
+    return; // A retired generation never forwards its remaining input into another core.
   } else {
     m_links[lane]->stop("Unexpected session message");
   }
@@ -217,4 +236,10 @@ void FailoverSession::stop()
     if (link)
       link->stop("Transport stopped");
   }
+}
+
+void FailoverSession::removeLane(Lane lane)
+{
+  if (m_links[lane] && m_selected != lane)
+    m_links[lane]->stop("Backup disabled");
 }

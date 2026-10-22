@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <QHash>
 #include <QObject>
 #include <QSet>
 
@@ -26,6 +27,7 @@ public:
   void broadcastCommand(const QString &command, const QString &args = "");
 
 Q_SIGNALS:
+  void transportCommand(const QString &json);
   void commandBroadcast(const QString &command, const QString &args);
   void logLevelChanged(const QString &logLevel);
   void configFileChanged(const QString &configFile);
@@ -52,6 +54,8 @@ private:
 
   QLocalServer *m_server;
   QSet<QLocalSocket *> m_clients;
+  QHash<QLocalSocket *, QByteArray> m_buffers;
+  QSet<QLocalSocket *> m_authenticated;
   QString m_serverName;
   QStringList m_pendingMessages;
   QByteArray m_typeName;

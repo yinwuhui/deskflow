@@ -1,5 +1,8 @@
 # 自动主备连接初版
 
+> 本文保留早期原型说明。当前统一连接实现与操作方式见 [自动备用开发实现记录](automatic-backup-connection-implementation.zh-CN.md)。
+
+
 目标是断线后自动恢复，不需要用户重新选择网络或蓝牙。允许短暂中断，切换会新建 Deskflow/TLS 会话。
 本版本仍按当前任务范围仅做 Mac 开发和本机验证，未进行 Linux 硬件联调。
 

@@ -7,6 +7,7 @@
  */
 
 #pragma once
+#include "deskflow/StreamChunker.h"
 
 #include "common/Enums.h"
 #include "deskflow/ClipboardChunk.h"
@@ -72,6 +73,7 @@ protected:
   }
 
 private:
+  const uint64_t m_clipboardGeneration = StreamChunker::newGeneration();
   // if compressing mouse motion then send the last motion now
   void flushCompressedMouse();
 

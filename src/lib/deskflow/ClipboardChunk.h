@@ -29,6 +29,8 @@ class ClipboardChunk : public Chunk
 {
 public:
   explicit ClipboardChunk(size_t size);
+  uint64_t localGeneration = 0; // Local queue metadata; never serialized.
+  size_t transferSize = 0;
 
   static ClipboardChunk *start(ClipboardID id, uint32_t sequence, const std::string &size);
   static ClipboardChunk *data(ClipboardID id, uint32_t sequence, const std::string &data);

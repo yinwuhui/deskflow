@@ -6,6 +6,7 @@
  */
 
 #include "CoreProcess.h"
+#include <QJsonDocument>
 
 #include "common/ExitCodes.h"
 #include "gui/ipc/CoreIpcClient.h"
@@ -635,6 +636,18 @@ void CoreProcess::setProcessState(ProcessState state)
 
 void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString &args)
 {
+  if (command == "transportResult") {
+    const auto doc = QJsonDocument::fromJson(args.toUtf8());
+    if (doc.isObject())
+      Q_EMIT transportOperationFinished(doc.object());
+    return;
+  }
+  if (command == "transportSnapshot") {
+    const auto doc = QJsonDocument::fromJson(args.toUtf8());
+    if (doc.isObject())
+      Q_EMIT transportSnapshot(doc.object());
+    return;
+  }
   if (command == "transportState") {
     Q_EMIT transportStateChanged(args);
   } else if (command == "connectionState") {
@@ -742,3 +755,9 @@ void CoreProcess::retryDaemon()
 }
 
 } // namespace deskflow::gui
+
+void deskflow::gui::CoreProcess::transportCommand(const QJsonObject &command)
+{
+  if (m_coreIpcClient)
+    m_coreIpcClient->sendTransport(QString::fromUtf8(QJsonDocument(command).toJson(QJsonDocument::Compact)));
+}

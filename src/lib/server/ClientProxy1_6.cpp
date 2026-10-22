@@ -5,6 +5,7 @@
  */
 
 #include "server/ClientProxy1_6.h"
+#include "common/PeerPolicy.h"
 
 #include "base/Log.h"
 #include "deskflow/ClipboardChunk.h"
@@ -22,7 +23,10 @@ ClientProxy1_6::ClientProxy1_6(const std::string &name, deskflow::IStream *strea
       m_events(events)
 {
   m_events->addHandler(EventTypes::ClipboardSending, this, [this](const auto &e) {
-    ClipboardChunk::send(getStream(), e.getDataObject());
+    auto *chunk = static_cast<ClipboardChunk *>(e.getDataObject());
+    if (chunk && chunk->localGeneration == m_clipboardGeneration &&
+        chunk->transferSize <= PeerPolicy::limit(getStream()->peerIdentity()))
+      ClipboardChunk::send(getStream(), chunk);
   });
 }
 
@@ -42,9 +46,11 @@ void ClientProxy1_6::setClipboard(ClipboardID id, const IClipboard *clipboard)
     std::string data = m_clipboard[id].m_clipboard.marshall();
 
     size_t size = data.size();
+    if (size > PeerPolicy::limit(getStream()->peerIdentity(), m_server->getMaximumClipboardSizeBytes()))
+      return;
     LOG_DEBUG("sending clipboard %d to \"%s\"", id, getName().c_str());
 
-    StreamChunker::sendClipboard(data, size, id, 0, m_events, this);
+    StreamChunker::sendClipboard(data, size, id, 0, m_events, this, m_clipboardGeneration);
   }
 }
 
@@ -55,7 +61,8 @@ bool ClientProxy1_6::recvClipboard()
   uint32_t seq;
 
   auto r = ClipboardChunk::assemble(
-      getStream(), m_clipboardDataCached, id, seq, m_clipboardChunkState, m_server->getMaximumClipboardSizeBytes()
+      getStream(), m_clipboardDataCached, id, seq, m_clipboardChunkState,
+      PeerPolicy::limit(getStream()->peerIdentity(), m_server->getMaximumClipboardSizeBytes())
   );
 
   if (r == TransferState::Started) {

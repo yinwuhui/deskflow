@@ -7,6 +7,7 @@
  */
 
 #pragma once
+#include <string>
 
 #include <cstdint>
 
@@ -101,6 +102,11 @@ public:
   return zero.
   */
   virtual uint32_t getSize() const = 0;
+
+  virtual std::string peerIdentity() const
+  {
+    return {};
+  }
 
   //@}
 };

@@ -269,6 +269,8 @@ void Server::adoptClient(BaseClientProxy *client)
   LOG_DEBUG("client \"%s\" has connected", getName(client).c_str());
   ipcSendConnectionState(deskflow::core::ConnectionState::Connected);
   sendConnectedClientsIpc();
+  if (auto *stream = client->getStream(); stream && !stream->peerIdentity().empty())
+    ipcSendToClient("peerCore", QString::fromStdString(stream->peerIdentity()) + ":connected");
 
   // send configuration options to client
   sendOptions(client);
@@ -1288,6 +1290,8 @@ void Server::handleSwitchWaitTimeout()
 
 void Server::handleClientDisconnected(BaseClientProxy *client)
 {
+  if (auto *stream = client->getStream(); stream && !stream->peerIdentity().empty())
+    ipcSendToClient("peerCore", QString::fromStdString(stream->peerIdentity()) + ":disconnected");
   // client has disconnected.  it might be an old client or an
   // active client.  we don't care so just handle it both ways.
   removeActiveClient(client);

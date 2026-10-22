@@ -142,3 +142,12 @@ target_link_libraries(${target}
 )
 
 target_sources(gui PRIVATE core/TransportNotifications.cpp core/TransportNotifications.h)
+
+target_sources(gui PRIVATE core/BackupConnectionPanel.cpp core/BackupConnectionPanel.h)
+if(BUILD_BLUETOOTH)
+  target_link_libraries(gui PUBLIC deskflow-bluetooth)
+  target_compile_definitions(gui PRIVATE DESKFLOW_BLUETOOTH)
+  if(APPLE)
+    target_link_libraries(gui PRIVATE Qt6::QDarwinBluetoothPermissionPlugin)
+  endif()
+endif()

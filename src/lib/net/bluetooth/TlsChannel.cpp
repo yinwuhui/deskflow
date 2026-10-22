@@ -16,7 +16,7 @@ TlsChannel::TlsChannel(QIODevice *wire, bool server, const QString &pem, const Q
   if (m_context && SSL_CTX_set_min_proto_version(m_context, TLS1_2_VERSION) == 1 &&
       SSL_CTX_use_certificate_chain_file(m_context, file.constData()) == 1 &&
       SSL_CTX_use_PrivateKey_file(m_context, file.constData(), SSL_FILETYPE_PEM) == 1 &&
-      SSL_CTX_check_private_key(m_context) == 1 && pin.size() == 32) {
+      SSL_CTX_check_private_key(m_context) == 1 && (pin.isEmpty() || pin.size() == 32)) {
     // Deskflow uses self-signed certificates. Identity is verified by SHA256 after the handshake.
     SSL_CTX_set_verify(m_context, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, [](int, X509_STORE_CTX *) {
       return 1;
@@ -121,11 +121,11 @@ void TlsChannel::drive()
   if (m_closed || !m_ssl || m_driving)
     return;
   m_driving = true;
-  while (m_wire->bytesAvailable() && !m_closed) {
+  bool firstPass = true;
+  while (!m_closed && m_plain.size() < Limit / 2 && (firstPass || m_wire->bytesAvailable() || SSL_pending(m_ssl))) {
+    firstPass = false;
     const auto bytes = m_wire->read(16384);
-    if (bytes.isEmpty())
-      break;
-    if (BIO_write(SSL_get_rbio(m_ssl), bytes.constData(), int(bytes.size())) != bytes.size()) {
+    if (!bytes.isEmpty() && BIO_write(SSL_get_rbio(m_ssl), bytes.constData(), int(bytes.size())) != bytes.size()) {
       abort("TLS input failed");
       break;
     }
@@ -143,8 +143,9 @@ void TlsChannel::drive()
         X509 *cert = SSL_get1_peer_certificate(m_ssl);
         unsigned char hash[EVP_MAX_MD_SIZE];
         unsigned int size = 0;
-        const bool matches = cert && X509_digest(cert, EVP_sha256(), hash, &size) == 1 &&
-                             QByteArray(reinterpret_cast<char *>(hash), size) == m_pin;
+        const bool digestValid = cert && X509_digest(cert, EVP_sha256(), hash, &size) == 1;
+        m_peerFingerprint = digestValid ? QByteArray(reinterpret_cast<char *>(hash), size) : QByteArray();
+        const bool matches = digestValid && (m_verifier ? m_verifier(m_peerFingerprint) : m_peerFingerprint == m_pin);
         X509_free(cert);
         if (!matches) {
           abort("Peer certificate fingerprint mismatch");
@@ -155,7 +156,7 @@ void TlsChannel::drive()
         Q_EMIT authenticated();
       }
       char plain[16384];
-      while (!m_closed) {
+      while (!m_closed && m_plain.size() < Limit / 2) {
         const int n = SSL_read(m_ssl, plain, sizeof plain);
         if (n <= 0) {
           const int error = SSL_get_error(m_ssl, n);
@@ -189,6 +190,17 @@ qint64 TlsChannel::readData(char *data, qint64 size)
   const auto n = qMin(size, qint64(m_plain.size()));
   std::memcpy(data, m_plain.constData(), size_t(n));
   m_plain.remove(0, n);
+  if (n > 0 && !m_resumeQueued) {
+    m_resumeQueued = true;
+    QMetaObject::invokeMethod(
+        this,
+        [this] {
+          m_resumeQueued = false;
+          drive();
+        },
+        Qt::QueuedConnection
+    );
+  }
   return n;
 }
 

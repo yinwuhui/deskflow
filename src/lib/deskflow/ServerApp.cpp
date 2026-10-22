@@ -220,9 +220,10 @@ void ServerApp::stopServer()
 
 void ServerApp::startMdnsPublisher()
 {
-  if (localTransportPort() || m_mdnsPublisher)
+  if (m_mdnsPublisher)
     return;
-  const auto port = static_cast<int>(m_config->getDeskflowAddress().getPort());
+  const auto port = localTransportPort() ? Settings::value(Settings::Core::Port).toInt()
+                                         : static_cast<int>(m_config->getDeskflowAddress().getPort());
   const QString name = QString::fromStdString(m_name);
   const QString fingerprint =
       deskflow::localCertFingerprint(Settings::value(Settings::Security::Certificate).toString());
@@ -455,6 +456,7 @@ void ServerApp::handleSuspend()
 {
   if (!m_suspended) {
     LOG_INFO("suspend");
+    ipcSendToClient("transportPower", "suspend");
     stopServer();
     m_suspended = true;
   }
@@ -465,6 +467,7 @@ void ServerApp::handleResume()
   if (m_suspended) {
     LOG_INFO("resume");
     startServer();
+    ipcSendToClient("transportPower", "resume");
     m_suspended = false;
   }
 }

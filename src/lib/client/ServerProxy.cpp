@@ -7,6 +7,7 @@
  */
 
 #include "client/ServerProxy.h"
+#include "common/PeerPolicy.h"
 
 #include "base/IEventQueue.h"
 #include "base/Log.h"
@@ -43,7 +44,10 @@ ServerProxy::ServerProxy(Client *client, deskflow::IStream *stream, IEventQueue 
     handleData();
   });
   m_events->addHandler(EventTypes::ClipboardSending, this, [this](const auto &e) {
-    ClipboardChunk::send(m_stream, e.getDataObject());
+    auto *chunk = static_cast<ClipboardChunk *>(e.getDataObject());
+    if (chunk && chunk->localGeneration == m_clipboardGeneration &&
+        chunk->transferSize <= PeerPolicy::limit(m_stream->peerIdentity()))
+      ClipboardChunk::send(m_stream, chunk);
   });
 
   // send heartbeat
@@ -367,7 +371,7 @@ void ServerProxy::onClipboardChanged(ClipboardID id, const IClipboard *clipboard
   std::string data = IClipboard::marshall(clipboard);
   LOG_DEBUG("sending clipboard %d seqnum=%d", id, m_seqNum);
 
-  StreamChunker::sendClipboard(data, data.size(), id, m_seqNum, m_events, this);
+  StreamChunker::sendClipboard(data, data.size(), id, m_seqNum, m_events, this, m_clipboardGeneration);
 }
 
 void ServerProxy::flushCompressedMouse()

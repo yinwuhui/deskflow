@@ -31,7 +31,7 @@ IpcServer::~IpcServer()
 void IpcServer::listen()
 {
   // IPC server normally runs as system, but GUI runs as regular user, so we need to allow world access.
-  m_server->setSocketOptions(QLocalServer::WorldAccessOption);
+  m_server->setSocketOptions(m_typeName == "core" ? QLocalServer::UserAccessOption : QLocalServer::WorldAccessOption);
 
   connect(m_server, &QLocalServer::newConnection, this, &IpcServer::handleNewConnection);
   QLocalServer::removeServer(m_serverName);
@@ -63,24 +63,16 @@ void IpcServer::handleReadyRead()
   const auto clientSocket = qobject_cast<QLocalSocket *>(sender());
   LOG_VERBOSE("%s ipc server ready to read data", m_typeName.constData());
 
-  QByteArray data = clientSocket->readAll();
-  if (data.isEmpty()) {
-    LOG_WARN("%s ipc server got empty message", m_typeName.constData());
+  auto &buffer = m_buffers[clientSocket];
+  buffer += clientSocket->readAll();
+  if (buffer.size() > 65536) {
+    clientSocket->abort();
     return;
   }
-
-  // we don't handle incomplete messages yet; each socket read must have delimiters.
-  if (!data.contains('\n')) {
-    LOG_WARN("%s ipc server got incomplete message: %s", m_typeName.constData(), data.constData());
-    return;
-  }
-
-  // each message is delimited by a newline to keep the protocol super simple.
-  while (data.contains('\n')) {
-    const auto index = data.indexOf('\n');
-    QByteArray messageData = data.left(index);
-    data.remove(0, index + 1);
-    QString message = QString::fromUtf8(messageData);
+  while (buffer.contains('\n')) {
+    const auto index = buffer.indexOf('\n');
+    const auto message = QString::fromUtf8(buffer.left(index));
+    buffer.remove(0, index + 1);
     processMessage(clientSocket, message);
   }
 }
@@ -90,6 +82,8 @@ void IpcServer::handleDisconnected()
   const auto clientSocket = qobject_cast<QLocalSocket *>(sender());
   LOG_DEBUG("%s ipc server client disconnected", m_typeName.constData());
   m_clients.remove(clientSocket);
+  m_buffers.remove(clientSocket);
+  m_authenticated.remove(clientSocket);
   clientSocket->deleteLater();
 }
 
@@ -103,15 +97,30 @@ void IpcServer::handleErrorOccurred()
   }
 
   m_clients.remove(clientSocket);
+  m_buffers.remove(clientSocket);
+  m_authenticated.remove(clientSocket);
   clientSocket->deleteLater();
 }
 
 void IpcServer::processMessage(QLocalSocket *clientSocket, const QString &message)
 {
-  LOG_VERBOSE("%s ipc server got message: %s", m_typeName.constData(), message.toUtf8().constData());
-  const auto parts = message.split('=');
+  LOG_VERBOSE(
+      "%s ipc server got message: %s", m_typeName.constData(),
+      (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+  );
+  const auto split = message.indexOf('=');
+  const auto parts = split < 0 ? QStringList{message} : QStringList{message.left(split), message.mid(split + 1)};
+  if (parts.first() != "hello" && !m_authenticated.contains(clientSocket))
+    return;
+  if (parts.first() == "transport" && parts.size() == 2) {
+    Q_EMIT transportCommand(parts[1]);
+    return;
+  }
   if (parts.isEmpty()) {
-    LOG_ERR("%s ipc server got invalid message: %s", m_typeName.constData(), message.toUtf8().constData());
+    LOG_ERR(
+        "%s ipc server got invalid message: %s", m_typeName.constData(),
+        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+    );
     writeToClientSocket(clientSocket, QStringLiteral("error"));
     return;
   }
@@ -142,6 +151,9 @@ void IpcServer::processMessage(QLocalSocket *clientSocket, const QString &messag
     LOG_DEBUG("%s ipc server sending hello back", m_typeName.constData());
     writeToClientSocket(clientSocket, QStringLiteral("hello=%1").arg(versionId));
 
+    m_authenticated.insert(clientSocket);
+    Q_EMIT transportCommand(QStringLiteral("{\"kind\":\"snapshot\"}"));
+
     // Replay messages that were queued before any clients connected.
     LOG_VERBOSE("ipc server replaying %d pending messages", m_pendingMessages.size());
     for (const auto &pending : std::as_const(m_pendingMessages)) {
@@ -166,20 +178,25 @@ void IpcServer::broadcastCommand(const QString &command, const QString &args)
 
   if (m_clients.isEmpty()) {
     LOG_VERBOSE(
-        "%s ipc server has no clients, message queued: %s", m_typeName.constData(), message.toUtf8().constData()
+        "%s ipc server has no clients, message queued: %s", m_typeName.constData(),
+        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
     );
     if (command == "transportState") {
       for (int i = m_pendingMessages.size() - 1; i >= 0; --i)
         if (m_pendingMessages[i].startsWith("transportState="))
           m_pendingMessages.removeAt(i);
     }
+    if (command == "transportSnapshot")
+      m_pendingMessages.removeIf([](const QString &item) { return item.startsWith("transportSnapshot="); });
+    if (m_pendingMessages.size() >= 128)
+      m_pendingMessages.removeFirst();
     m_pendingMessages.append(message);
     return;
   }
 
   LOG_VERBOSE(
       "%s ipc server broadcasting message to %d clients: %s", m_typeName.constData(), m_clients.size(),
-      message.toUtf8().constData()
+      (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
   );
   for (auto *client : std::as_const(m_clients)) {
     writeToClientSocket(client, message);
@@ -195,7 +212,8 @@ void IpcServer::writeToClientSocket(QLocalSocket *&clientSocket, const QString &
     LOG_ERR("%s ipc server failed to write full message to client socket", m_typeName.constData());
   } else {
     LOG_VERBOSE(
-        "%s ipc server wrote message to client socket: %s", m_typeName.constData(), message.toUtf8().constData()
+        "%s ipc server wrote message to client socket: %s", m_typeName.constData(),
+        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
     );
   }
 }

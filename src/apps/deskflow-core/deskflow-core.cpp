@@ -22,10 +22,14 @@
 #endif
 
 #ifdef DESKFLOW_BLUETOOTH
-#include "AutoTransport.h"
 #include "BluetoothDiscovery.h"
+#include "ConnectionManager.h"
 #include "RfcommBridge.h"
+#include "common/PeerPolicy.h"
 #include "net/FingerprintDatabase.h"
+#include <QFileSystemWatcher>
+#include <QJsonDocument>
+#include <QSettings>
 #endif
 #include <QApplication>
 #include <QFileInfo>
@@ -171,27 +175,23 @@ int main(int argc, char **argv)
   }
 
   parser.parse();
-  const bool automatic = parser.autoFailover() || Settings::value(Settings::Connection::AutoFailover).toBool();
+  bool automatic = parser.autoFailover() || Settings::value(Settings::Connection::AutoBackup).toBool();
+  const bool authenticated = Settings::value(Settings::Security::TlsEnabled).toBool() &&
+                             Settings::value(Settings::Security::CheckPeers).toBool();
+  if ((parser.autoFailover() || parser.bluetoothRequested()) && !authenticated) {
+    LOG_CRIT("Bluetooth transport requires TLS and peer fingerprint verification");
+    return s_exitConfig;
+  }
 #ifndef DESKFLOW_BLUETOOTH
-  if (automatic) {
-    LOG_CRIT("Automatic transport requires a build with Bluetooth support");
+  if (parser.autoFailover() || parser.bluetoothRequested()) {
+    LOG_CRIT("Bluetooth support is not built");
     return s_exitConfig;
   }
 #endif
-
 #ifdef DESKFLOW_BLUETOOTH
-  int bluetoothPort = 0;
-  if (parser.bluetoothRequested() || automatic) {
-    if (!Settings::value(Settings::Security::TlsEnabled).toBool() ||
-        !Settings::value(Settings::Security::CheckPeers).toBool()) {
-      LOG_CRIT("Bluetooth transport requires TLS and peer fingerprint verification");
-      return s_exitConfig;
-    }
-    bluetoothPort = Settings::value(Settings::Core::Port).toInt();
-    if (bluetoothPort < 1 || bluetoothPort > 65535) {
-      return s_exitConfig;
-    }
-  }
+  const int bluetoothPort = Settings::value(Settings::Core::Port).toInt();
+  if (bluetoothPort < 1 || bluetoothPort > 65535)
+    return s_exitConfig;
 #endif
 
   EventQueue events;
@@ -212,110 +212,133 @@ int main(int argc, char **argv)
 
   QObject::connect(&coreThread, &QThread::finished, &app, &QApplication::quit);
 #ifdef DESKFLOW_BLUETOOTH
-  std::unique_ptr<RfcommBridge> bluetooth;
-  std::unique_ptr<AutoTransport> autoTransport;
-  if (automatic) {
-    const QBluetoothAddress peer(
-        parser.bluetoothRequested() ? parser.bluetoothPeer()
-                                    : Settings::value(Settings::Connection::BluetoothPeer).toString()
-    );
-    FingerprintDatabase trusted;
-    trusted.read(parser.serverMode() ? Settings::tlsTrustedClientsDb() : Settings::tlsTrustedServersDb());
-    QList<QByteArray> pins;
-    for (const auto &fingerprint : trusted.fingerprints())
-      if (fingerprint.type == QCryptographicHash::Sha256 && !pins.contains(fingerprint.data))
-        pins.append(fingerprint.data);
-    auto configuredPin = Settings::value(Settings::Connection::PeerFingerprint).toString().remove(':');
-    const auto explicitPin = QByteArray::fromHex(configuredPin.toLatin1());
-    if (!configuredPin.isEmpty() && (configuredPin.size() != 64 ||
-        explicitPin.toHex() != configuredPin.toLatin1().toLower())) {
-      LOG_CRIT("Peer fingerprint must be exactly 64 hexadecimal digits (colons are allowed)");
-      delete coreApp;
-      return s_exitConfig;
-    }
-    const QByteArray pin = configuredPin.isEmpty() && pins.size() == 1 ? pins.first() : explicitPin;
-    const auto host = Settings::value(Settings::Client::RemoteHost).toString().trimmed();
-    if (peer.isNull() || pin.size() != 32 || !pins.contains(pin) ||
-        (!parser.serverMode() && (host.isEmpty() || host.contains(',')))) {
-      LOG_CRIT(
-          "Auto failover needs a valid Bluetooth address, one network host, and one explicitly trusted SHA256 peer "
-          "identity"
-      );
-      delete coreApp;
-      return s_exitConfig;
-    }
-    AutoTransport::Options options;
+  std::unique_ptr<ConnectionManager> autoTransport;
+  if (authenticated) {
+    ConnectionManager::Options options;
     options.server = parser.serverMode();
-    options.host = host;
-    options.bluetoothPeer = peer;
-    options.peerSha256 = pin;
+    options.automatic = automatic;
+    options.host = Settings::value(Settings::Client::RemoteHost).toString().trimmed();
+    options.initialLane =
+        parser.bluetoothRequested() || Settings::value(Settings::Connection::InitialTransport) == "bluetooth" ? 1 : 0;
+    options.bluetoothAddress = parser.bluetoothRequested()
+                                   ? parser.bluetoothPeer()
+                                   : Settings::value(Settings::Connection::BluetoothPeer).toString();
+    options.backupPeer = Settings::value(Settings::Connection::BackupTarget).toString();
     options.pem = Settings::value(Settings::Security::Certificate).toString();
-    options.networkPort = quint16(bluetoothPort);
-    const auto bindAddress = Settings::value(Settings::Core::Interface).toString();
-    if (options.server && !bindAddress.isEmpty() && !options.listenAddress.setAddress(bindAddress)) {
-      LOG_CRIT("Automatic transport requires a numeric listen address");
+    options.name = Settings::value(Settings::Core::ComputerName).toString();
+    options.port = quint16(bluetoothPort);
+    const auto bind = Settings::value(Settings::Core::Interface).toString();
+    if (options.server && !bind.isEmpty() && !options.bind.setAddress(bind)) {
       delete coreApp;
       return s_exitConfig;
     }
-    coreApp->setClipboardLimitKiB(64);
-    autoTransport = std::make_unique<AutoTransport>(options);
-    QObject::connect(autoTransport.get(), &AutoTransport::started, &app, [&](quint16 port) {
+    options.trusted = [server = options.server](const QByteArray &pin) {
+      FingerprintDatabase db;
+      db.read(server ? Settings::tlsTrustedClientsDb() : Settings::tlsTrustedServersDb());
+      return db.isTrusted({QCryptographicHash::Sha256, pin});
+    };
+    if (!options.server) {
+      const auto cached = Settings::value(Settings::Connection::Peers).toMap();
+      QStringList matches;
+      for (auto i = cached.begin(); i != cached.end(); ++i) {
+        const auto record = i.value().toMap();
+        if ((options.initialLane == 0 && !options.host.isEmpty() &&
+             record.value("networkTarget").toString() == options.host) ||
+            (options.initialLane == 1 && !options.bluetoothAddress.isEmpty() &&
+             record.value("bluetooth").toString() == options.bluetoothAddress))
+          matches.append(i.key());
+      }
+      if (matches.size() == 1)
+        options.initialPeer = matches.first();
+    }
+    options.loadPeer = [](const QString &id) {
+      return QJsonObject::fromVariantMap(Settings::value(Settings::Connection::Peers).toMap().value(id).toMap());
+    };
+    options.savePeer = [](const QString &id, const QJsonObject &record) {
+      auto peers = Settings::value(Settings::Connection::Peers).toMap();
+      if (record.value("revoked").toBool()) {
+        peers.remove(id);
+        Settings::setValue(Settings::Connection::Peers, peers);
+        return;
+      }
+      auto previous = peers.value(id).toMap();
+      const auto update = record.toVariantMap();
+      for (auto i = update.begin(); i != update.end(); ++i)
+        previous.insert(i.key(), i.value());
+      peers.insert(id, previous);
+      Settings::setValue(Settings::Connection::Peers, peers);
+    };
+    autoTransport = std::make_unique<ConnectionManager>(options);
+    auto *trustWatcher = new QFileSystemWatcher(&app);
+    const auto trustPath = options.server ? Settings::tlsTrustedClientsDb() : Settings::tlsTrustedServersDb();
+    trustWatcher->addPath(QFileInfo(trustPath).absolutePath());
+    QObject::connect(trustWatcher, &QFileSystemWatcher::directoryChanged, &app, [&] { autoTransport->trustChanged(); });
+    if (QFileInfo::exists(trustPath))
+      trustWatcher->addPath(trustPath);
+    QObject::connect(trustWatcher, &QFileSystemWatcher::fileChanged, &app, [&, trustWatcher, trustPath] {
+      QTimer::singleShot(50, &app, [&, trustWatcher, trustPath] {
+        if (QFileInfo::exists(trustPath) && !trustWatcher->files().contains(trustPath))
+          trustWatcher->addPath(trustPath);
+        autoTransport->trustChanged();
+      });
+    });
+    QObject::connect(autoTransport.get(), &ConnectionManager::started, &app, [&](quint16 port) {
       if (!coreStarted) {
         coreStarted = true;
         coreApp->setLocalTransportPort(port);
         coreApp->run(coreThread);
       }
     });
-    QObject::connect(autoTransport.get(), &AutoTransport::fatalError, &app, [&](const auto &error) {
+    QObject::connect(autoTransport.get(), &ConnectionManager::fatalError, &app, [&](const QString &error) {
       qCritical().noquote() << error;
       app.exit(s_exitConfig);
     });
-    QObject::connect(autoTransport.get(), &AutoTransport::warning, &app, [](const auto &error) {
-      qWarning().noquote() << error;
+    QObject::connect(autoTransport.get(), &ConnectionManager::changed, &app, [&](const QJsonObject &snapshot) {
+      ipcServer->broadcastCommand(
+          "transportSnapshot", QString::fromUtf8(QJsonDocument(snapshot).toJson(QJsonDocument::Compact))
+      );
     });
-    QObject::connect(autoTransport.get(), &AutoTransport::stateChanged, &app, [&](const auto &state) {
+    QObject::connect(autoTransport.get(), &ConnectionManager::operationFinished, &app, [&](const QJsonObject &result) {
+      ipcServer->broadcastCommand(
+          "transportResult", QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact))
+      );
+    });
+    QObject::connect(autoTransport.get(), &ConnectionManager::stateChanged, &app, [&](const QString &state) {
       ipcServer->broadcastCommand("transportState", state);
+    });
+    QObject::connect(autoTransport.get(), &ConnectionManager::trustRequired, &app, [&](const QByteArray &pin) {
+      ipcServer->broadcastCommand("peerFingerprint", QString::fromLatin1(pin.toHex(':')));
+    });
+    QObject::connect(autoTransport.get(), &ConnectionManager::clipboardLimit, &app, [](const QString &id, int kib) {
+      PeerPolicy::setLimit(id.toStdString(), kib);
+    });
+    QObject::connect(ipcServer, &deskflow::core::ipc::IpcServer::transportCommand, &app, [&](const QString &text) {
+      const auto doc = QJsonDocument::fromJson(text.toUtf8());
+      if (doc.isObject()) {
+        autoTransport->command(doc.object());
+        if (doc.object().value("kind") == "defaultPolicy" && doc.object().value("enabled").isBool())
+          Settings::setValue(Settings::Connection::AutoBackup, doc.object().value("enabled").toBool());
+        if (parser.serverMode() && doc.object().value("select").toBool())
+          Settings::setValue(
+              Settings::Connection::BackupTarget, autoTransport->snapshot().value("backupPeer").toString()
+          );
+      }
     });
     QObject::connect(
         ipcServer, &deskflow::core::ipc::IpcServer::commandBroadcast, &app,
         [&](const QString &command, const QString &args) {
-          if (command == "connectionState")
-            autoTransport->coreConnected(args == "Connected");
+          if (command == "transportPower") {
+            autoTransport->suspend(args == "suspend");
+          } else if (command == "peerCore") {
+            const auto parts = args.split(':');
+            if (parts.size() == 2)
+              autoTransport->coreConnected(parts[0], parts[1] == "connected");
+          } else if (command == "connectionState" && !parser.serverMode())
+            autoTransport->coreConnected({}, args == "Connected");
         }
     );
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, autoTransport.get(), &AutoTransport::stop);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, autoTransport.get(), &ConnectionManager::stop);
     QTimer::singleShot(0, &app, [&] { autoTransport->start(); });
-    requestBluetoothPermission(&app, parser.serverMode(), [&](bool granted) {
-      if (granted)
-        autoTransport->enableBluetooth();
-      else
-        qWarning("Bluetooth permission denied; network remains available");
-    });
-  } else if (parser.bluetoothRequested()) {
-    bluetooth = std::make_unique<RfcommBridge>(
-        parser.serverMode(), false, QBluetoothAddress(parser.bluetoothPeer()),
-        parser.serverMode() ? quint16(bluetoothPort) : 0, 0
-    );
-    QObject::connect(bluetooth.get(), &RfcommBridge::started, &app, [&](quint16 localPort) {
-      if (!coreStarted) {
-        coreStarted = true;
-        coreApp->setLocalTransportPort(localPort);
-        coreApp->run(coreThread);
-      }
-    });
-    QObject::connect(bluetooth.get(), &RfcommBridge::fatalError, &app, [&](const QString &error) {
-      qCritical().noquote() << error;
-      app.exit(s_exitFailed);
-    });
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, bluetooth.get(), &RfcommBridge::stop);
-    requestBluetoothPermission(&app, parser.serverMode(), [&](bool granted) {
-      if (granted)
-        bluetooth->start();
-      else {
-        LOG_CRIT("Bluetooth permission denied");
-        app.exit(s_exitFailed);
-      }
-    });
   } else
 #endif
   {
