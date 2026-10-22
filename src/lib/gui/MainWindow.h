@@ -38,6 +38,8 @@ class SettingsPage;
 class ScreenLayoutPage;
 class DeviceListPage;
 class QStackedWidget;
+class QLabel;
+class QPropertyAnimation;
 
 namespace Ui {
 class MainWindow;
@@ -149,6 +151,7 @@ private:
   void updateHomeStatus();
   void refreshPermissionStatus();
   void updateHomeMetrics();
+  void updatePageTitle();
   void rememberHomeDevice(const QString &name);
   void showFirstConnectedMessage();
   void updateStatus();
@@ -193,6 +196,9 @@ private:
   ScreenLayoutPage *m_layoutPage = nullptr;
   DeviceListPage *m_devicesPage = nullptr;
   QStackedWidget *m_pageStack = nullptr;
+  QLabel *m_actionTransitionOverlay = nullptr;
+  QPropertyAnimation *m_actionTransition = nullptr;
+  QAction *m_copyShareAddress = nullptr;
   bool m_saveOnExit = true;
   bool m_clientErrorVisible = false;
   ServerConfig m_serverConfig;

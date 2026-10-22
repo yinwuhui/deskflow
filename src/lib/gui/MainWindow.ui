@@ -173,12 +173,6 @@
           <property name="spacing">
            <number>7</number>
           </property>
-          <property name="topMargin">
-           <number>14</number>
-          </property>
-          <property name="bottomMargin">
-           <number>16</number>
-          </property>
           <item alignment="Qt::AlignmentFlag::AlignHCenter">
            <widget class="QLabel" name="lblAvatar">
             <property name="textFormat">
@@ -299,6 +293,12 @@
             </layout>
            </widget>
           </item>
+          <property name="topMargin">
+           <number>22</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
          </layout>
         </widget>
        </item>
@@ -403,18 +403,6 @@
        <item>
         <widget class="QWidget" name="brand">
          <layout class="QVBoxLayout" name="brandLayout">
-          <property name="leftMargin">
-           <number>12</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>12</number>
-          </property>
-          <property name="bottomMargin">
-           <number>12</number>
-          </property>
           <property name="spacing">
            <number>5</number>
           </property>
@@ -432,9 +420,6 @@
              </property>
              <property name="bottomMargin">
               <number>0</number>
-             </property>
-             <property name="spacing">
-              <number>4</number>
              </property>
              <item>
               <widget class="QLabel" name="lblBrandIcon">
@@ -454,17 +439,20 @@
              </item>
              <item>
               <widget class="QLabel" name="lblBrand">
-               <property name="text">
-                <string>busymouse</string>
-               </property>
                <property name="textFormat">
                 <enum>Qt::TextFormat::PlainText</enum>
                </property>
                <property name="role" stdset="0">
                 <string notr="true">brand</string>
                </property>
+               <property name="text">
+                <string notr="true">BMouse</string>
+               </property>
               </widget>
              </item>
+             <property name="spacing">
+              <number>7</number>
+             </property>
             </layout>
            </widget>
           </item>
@@ -484,6 +472,18 @@
             </property>
            </widget>
           </item>
+          <property name="leftMargin">
+           <number>6</number>
+          </property>
+          <property name="topMargin">
+           <number>12</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
          </layout>
         </widget>
        </item>
@@ -503,7 +503,7 @@
         <number>0</number>
        </property>
        <property name="bottomMargin">
-        <number>0</number>
+        <number>16</number>
        </property>
        <property name="spacing">
         <number>0</number>
@@ -516,14 +516,14 @@
           </property>
           <item>
            <widget class="QLabel" name="lblWorkspaceTitle">
-            <property name="text">
-             <string>Personal workspace</string>
-            </property>
             <property name="textFormat">
              <enum>Qt::TextFormat::PlainText</enum>
             </property>
             <property name="role" stdset="0">
              <string notr="true">muted</string>
+            </property>
+            <property name="text">
+             <string>Home</string>
             </property>
            </widget>
           </item>
@@ -580,16 +580,16 @@
            </widget>
           </item>
           <property name="leftMargin">
-           <number>27</number>
-          </property>
-          <property name="rightMargin">
-           <number>27</number>
+           <number>28</number>
           </property>
           <property name="topMargin">
-           <number>20</number>
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>28</number>
           </property>
           <property name="bottomMargin">
-           <number>20</number>
+           <number>18</number>
           </property>
          </layout>
         </widget>
@@ -607,18 +607,6 @@
          </property>
          <widget class="QWidget" name="homeContent">
           <layout class="QVBoxLayout" name="contentLayout">
-           <property name="leftMargin">
-            <number>42</number>
-           </property>
-           <property name="rightMargin">
-            <number>42</number>
-           </property>
-           <property name="topMargin">
-            <number>22</number>
-           </property>
-           <property name="bottomMargin">
-            <number>16</number>
-           </property>
            <property name="spacing">
             <number>0</number>
            </property>
@@ -627,510 +615,403 @@
              <property name="visible">
               <bool>false</bool>
              </property>
-             <layout class="QVBoxLayout" name="permissionLayout">
-              <property name="leftMargin">
-               <number>14</number>
-              </property>
-              <property name="topMargin">
-               <number>14</number>
-              </property>
-              <property name="rightMargin">
-               <number>14</number>
-              </property>
-              <property name="bottomMargin">
-               <number>14</number>
-              </property>
-              <property name="spacing">
-               <number>8</number>
-              </property>
+             <layout class="QHBoxLayout" name="permissionLayout">
               <item>
                <widget class="QLabel" name="lblPermissionNotice">
-                <property name="text">
-                 <string>Keyboard and mouse control is not authorized yet. You can browse this app, but sharing remains disabled.</string>
-                </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
+                <property name="text">
+                 <string>Accessibility permission is needed to control the keyboard and mouse.</string>
+                </property>
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="permissionButtons">
-                <item>
-                 <widget class="QPushButton" name="btnPermissionSettings">
-                  <property name="text">
-                   <string>Open permission settings</string>
-                  </property>
-                  <property name="role" stdset="0">
-                   <string notr="true">link</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="btnPermissionRecheck">
-                  <property name="text">
-                   <string>Check again</string>
-                  </property>
-                  <property name="role" stdset="0">
-                   <string notr="true">link</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
+               <widget class="QPushButton" name="btnPermissionSettings">
+                <property name="role" stdset="0">
+                 <string notr="true">link</string>
+                </property>
+                <property name="text">
+                 <string>Authorize</string>
+                </property>
+               </widget>
               </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QWidget" name="homeTabs">
-             <layout class="QHBoxLayout" name="tabsLayout">
+              <item>
+               <widget class="QPushButton" name="btnPermissionRecheck">
+                <property name="role" stdset="0">
+                 <string notr="true">link</string>
+                </property>
+                <property name="text">
+                 <string>Check again</string>
+                </property>
+               </widget>
+              </item>
               <property name="leftMargin">
-               <number>0</number>
+               <number>12</number>
               </property>
               <property name="topMargin">
-               <number>0</number>
+               <number>7</number>
               </property>
               <property name="rightMargin">
-               <number>0</number>
+               <number>12</number>
               </property>
               <property name="bottomMargin">
-               <number>0</number>
+               <number>7</number>
               </property>
               <property name="spacing">
-               <number>14</number>
+               <number>10</number>
               </property>
-              <item>
-               <spacer name="tabsLeft">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnSharingTab">
-                <property name="text">
-                 <string>Keyboard &amp; mouse</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">activePill</string>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnLayoutTab">
-                <property name="text">
-                 <string>Screen layout</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">pill</string>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnQuickSettings">
-                <property name="text">
-                 <string>Quick settings</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">pill</string>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="tabsRight">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
              </layout>
             </widget>
            </item>
            <item>
-            <spacer name="homeTabsSpace">
+            <spacer name="permissionSpace">
              <property name="orientation">
               <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeType">
               <enum>QSizePolicy::Policy::Fixed</enum>
              </property>
-             <property name="sizeHint" stdset="0">
+             <property name="sizeHint">
               <size>
                <width>0</width>
-               <height>36</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QWidget" name="localHeader">
-             <layout class="QHBoxLayout" name="localHeaderLayout">
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-              <property name="spacing">
-               <number>0</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="lblLocalHeading">
-                <property name="text">
-                 <string>This computer</string>
-                </property>
-                <property name="textFormat">
-                 <enum>Qt::TextFormat::PlainText</enum>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">heading</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="localHeadingStretch">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnSecurity">
-                <property name="text">
-                 <string>Encryption enabled</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">security</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="localHeaderSpace">
-             <property name="orientation">
-              <enum>Qt::Orientation::Vertical</enum>
-             </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Policy::Fixed</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>0</width>
-               <height>14</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
            </item>
            <item>
             <widget class="QWidget" name="localCard">
-             <layout class="QHBoxLayout" name="localCardLayout">
+             <layout class="QVBoxLayout" name="localCardOuterLayout">
+              <item>
+               <widget class="QWidget" name="localHeader">
+                <layout class="QHBoxLayout" name="localHeaderLayout">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="lblLocalHeading">
+                   <property name="text">
+                    <string>This computer</string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::TextFormat::PlainText</enum>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">muted</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="localHeadingStretch">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnSecurity">
+                   <property name="text">
+                    <string>Encryption enabled</string>
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">security</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="localCardLayout">
+                <property name="spacing">
+                 <number>22</number>
+                </property>
+                <item>
+                 <widget class="QWidget" name="nameColumn">
+                  <layout class="QVBoxLayout" name="nameLayout">
+                   <item>
+                    <widget class="QWidget" name="computerValueRow">
+                     <layout class="QHBoxLayout" name="computerValueLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="spacing">
+                       <number>8</number>
+                      </property>
+                      <item>
+                       <widget class="HomeIdentityLabel" name="lblComputerName">
+                        <property name="textFormat">
+                         <enum>Qt::TextFormat::PlainText</enum>
+                        </property>
+                        <property name="role" stdset="0">
+                         <string notr="true">value</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="btnEditName">
+                        <property name="autoDefault">
+                         <bool>false</bool>
+                        </property>
+                        <property name="accessibleName">
+                         <string>Edit</string>
+                        </property>
+                        <property name="role" stdset="0">
+                         <string notr="true">icon</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="lineEditName">
+                     <property name="maxLength">
+                      <number>255</number>
+                     </property>
+                     <property name="placeholderText">
+                      <string>Computer name</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="lblLocalPlatform">
+                     <property name="textFormat">
+                      <enum>Qt::TextFormat::PlainText</enum>
+                     </property>
+                     <property name="role" stdset="0">
+                      <string notr="true">muted</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QFrame" name="cardDivider">
+                  <property name="frameShape">
+                   <enum>QFrame::Shape::VLine</enum>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background: #e5e9ef; border: none; max-width: 1px;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="addressColumn">
+                  <layout class="QVBoxLayout" name="addressLayout">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QWidget" name="addressValueRow">
+                     <layout class="QHBoxLayout" name="addressValueLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="spacing">
+                       <number>8</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="lblIpAddresses">
+                        <property name="text">
+                         <string>No network address</string>
+                        </property>
+                        <property name="textFormat">
+                         <enum>Qt::TextFormat::PlainText</enum>
+                        </property>
+                        <property name="role" stdset="0">
+                         <string notr="true">value</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="btnCopyAddress">
+                        <property name="autoDefault">
+                         <bool>false</bool>
+                        </property>
+                        <property name="accessibleName">
+                         <string>Copy</string>
+                        </property>
+                        <property name="role" stdset="0">
+                         <string notr="true">icon</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QWidget" name="addressHeader">
+                     <layout class="QHBoxLayout" name="addressHeaderLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="lblAddressHeading">
+                        <property name="text">
+                         <string>Local network address</string>
+                        </property>
+                        <property name="textFormat">
+                         <enum>Qt::TextFormat::PlainText</enum>
+                        </property>
+                        <property name="role" stdset="0">
+                         <string notr="true">muted</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="addressHeadingStretch">
+                        <property name="orientation">
+                         <enum>Qt::Orientation::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>20</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="lblAddressHint">
+                     <property name="text">
+                      <string>Connect from another computer on your network.</string>
+                     </property>
+                     <property name="textFormat">
+                      <enum>Qt::TextFormat::PlainText</enum>
+                     </property>
+                     <property name="role" stdset="0">
+                      <string notr="true">muted</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                     <property name="visible">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                  </layout>
+                 </widget>
+                </item>
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+               </layout>
+              </item>
               <property name="leftMargin">
-               <number>24</number>
+               <number>18</number>
               </property>
               <property name="topMargin">
-               <number>24</number>
+               <number>13</number>
               </property>
               <property name="rightMargin">
-               <number>24</number>
+               <number>18</number>
               </property>
               <property name="bottomMargin">
-               <number>24</number>
+               <number>15</number>
               </property>
               <property name="spacing">
-               <number>22</number>
+               <number>8</number>
               </property>
-              <item>
-               <widget class="QWidget" name="nameColumn">
-                <layout class="QVBoxLayout" name="nameLayout">
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="spacing">
-                  <number>7</number>
-                 </property>
-                 <item>
-                  <widget class="QWidget" name="nameHeader">
-                   <layout class="QHBoxLayout" name="nameHeaderLayout">
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="labelComputerName">
-                      <property name="text">
-                       <string>Computer name</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::TextFormat::PlainText</enum>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">muted</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QPushButton" name="btnEditName">
-                      <property name="autoDefault">
-                       <bool>false</bool>
-                      </property>
-                      <property name="accessibleName">
-                       <string>Edit</string>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">icon</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="nameHeaderStretch">
-                      <property name="orientation">
-                       <enum>Qt::Orientation::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>20</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="lblComputerName">
-                   <property name="textFormat">
-                    <enum>Qt::TextFormat::PlainText</enum>
-                   </property>
-                   <property name="role" stdset="0">
-                    <string notr="true">value</string>
-                   </property>
-                   <property name="wordWrap">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="lineEditName">
-                   <property name="maxLength">
-                    <number>255</number>
-                   </property>
-                   <property name="placeholderText">
-                    <string>Computer name</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="lblLocalPlatform">
-                   <property name="textFormat">
-                    <enum>Qt::TextFormat::PlainText</enum>
-                   </property>
-                   <property name="role" stdset="0">
-                    <string notr="true">muted</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QFrame" name="cardDivider">
-                <property name="frameShape">
-                 <enum>QFrame::Shape::VLine</enum>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background: #e5e9ef; border: none; max-width: 1px;</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QWidget" name="addressColumn">
-                <layout class="QVBoxLayout" name="addressLayout">
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="spacing">
-                  <number>7</number>
-                 </property>
-                 <item>
-                  <widget class="QWidget" name="addressHeader">
-                   <layout class="QHBoxLayout" name="addressHeaderLayout">
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="lblAddressHeading">
-                      <property name="text">
-                       <string>Local network address</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::TextFormat::PlainText</enum>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">muted</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QPushButton" name="btnCopyAddress">
-                      <property name="autoDefault">
-                       <bool>false</bool>
-                      </property>
-                      <property name="accessibleName">
-                       <string>Copy</string>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">icon</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="addressHeadingStretch">
-                      <property name="orientation">
-                       <enum>Qt::Orientation::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>20</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="lblIpAddresses">
-                   <property name="text">
-                    <string>No network address</string>
-                   </property>
-                   <property name="textFormat">
-                    <enum>Qt::TextFormat::PlainText</enum>
-                   </property>
-                   <property name="role" stdset="0">
-                    <string notr="true">value</string>
-                   </property>
-                   <property name="wordWrap">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="lblAddressHint">
-                   <property name="text">
-                    <string>Connect from another computer on your network.</string>
-                   </property>
-                   <property name="textFormat">
-                    <enum>Qt::TextFormat::PlainText</enum>
-                   </property>
-                   <property name="role" stdset="0">
-                    <string notr="true">muted</string>
-                   </property>
-                   <property name="wordWrap">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
              </layout>
             </widget>
            </item>
@@ -1145,21 +1026,21 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>30</height>
+               <height>22</height>
               </size>
              </property>
             </spacer>
            </item>
            <item>
             <widget class="QLabel" name="lblWorkHeading">
-             <property name="text">
-              <string>Work mode</string>
-             </property>
              <property name="textFormat">
               <enum>Qt::TextFormat::PlainText</enum>
              </property>
              <property name="role" stdset="0">
               <string notr="true">heading</string>
+             </property>
+             <property name="text">
+              <string>Keyboard &amp; mouse</string>
              </property>
             </widget>
            </item>
@@ -1174,13 +1055,13 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>14</height>
+               <height>10</height>
               </size>
              </property>
             </spacer>
            </item>
            <item>
-            <widget class="QWidget" name="widgetModeSelection">
+            <widget class="HomeModeSelector" name="widgetModeSelection">
              <layout class="QHBoxLayout" name="modeLayout">
               <property name="leftMargin">
                <number>4</number>
@@ -1231,64 +1112,83 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>12</height>
+               <height>8</height>
               </size>
              </property>
             </spacer>
            </item>
            <item>
-            <widget class="QLabel" name="lblModeDescription">
-             <property name="text">
-              <string>Choose how this computer will work.</string>
-             </property>
-             <property name="textFormat">
-              <enum>Qt::TextFormat::PlainText</enum>
-             </property>
-             <property name="role" stdset="0">
-              <string notr="true">muted</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="lblModeDescriptionSpace">
-             <property name="orientation">
-              <enum>Qt::Orientation::Vertical</enum>
-             </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Policy::Fixed</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>0</width>
-               <height>17</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QWidget" name="widgetModeOptions">
-             <layout class="QHBoxLayout" name="optionsLayout">
+            <widget class="QWidget" name="homeActionCard">
+             <layout class="QVBoxLayout" name="homeActionLayout">
               <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
+               <number>14</number>
               </property>
               <property name="rightMargin">
-               <number>0</number>
+               <number>14</number>
+              </property>
+              <property name="topMargin">
+               <number>14</number>
               </property>
               <property name="bottomMargin">
-               <number>0</number>
+               <number>14</number>
               </property>
               <property name="spacing">
-               <number>18</number>
+               <number>6</number>
               </property>
               <item>
-               <widget class="QWidget" name="modeFields">
-                <layout class="QVBoxLayout" name="modeFieldsLayout">
+               <widget class="QLabel" name="lblShareTitle">
+                <property name="textFormat">
+                 <enum>Qt::TextFormat::PlainText</enum>
+                </property>
+                <property name="role" stdset="0">
+                 <string notr="true">subheading</string>
+                </property>
+                <property name="text">
+                 <string>Share this computer’s keyboard and mouse</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="lblShareHint">
+                <property name="textFormat">
+                 <enum>Qt::TextFormat::PlainText</enum>
+                </property>
+                <property name="role" stdset="0">
+                 <string notr="true">muted</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>On your other computer, choose “Use another computer’s input” and connect to this address.</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="m_pLabelServerName">
+                <property name="textFormat">
+                 <enum>Qt::TextFormat::PlainText</enum>
+                </property>
+                <property name="role" stdset="0">
+                 <string notr="true">muted</string>
+                </property>
+                <property name="text">
+                 <string>Computer providing the keyboard and mouse</string>
+                </property>
+                <property name="margin">
+                 <number>0</number>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true" />
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QWidget" name="widgetModeOptions">
+                <layout class="QHBoxLayout" name="optionsLayout">
                  <property name="leftMargin">
                   <number>0</number>
                  </property>
@@ -1301,62 +1201,9 @@
                  <property name="bottomMargin">
                   <number>0</number>
                  </property>
-                 <property name="spacing">
-                  <number>8</number>
-                 </property>
                  <item>
-                  <widget class="QWidget" name="serverOptions">
-                   <layout class="QVBoxLayout" name="serverOptionsLayout">
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="spacing">
-                     <number>5</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="lblShareTitle">
-                      <property name="text">
-                       <string>Enable keyboard and mouse sharing</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::TextFormat::PlainText</enum>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">subheading</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="lblShareHint">
-                      <property name="text">
-                       <string>Connect your other computers, then move the pointer across a screen edge.</string>
-                      </property>
-                      <property name="textFormat">
-                       <enum>Qt::TextFormat::PlainText</enum>
-                      </property>
-                      <property name="role" stdset="0">
-                       <string notr="true">muted</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QWidget" name="clientOptions">
-                   <layout class="QVBoxLayout" name="clientOptionsLayout">
+                  <widget class="QWidget" name="modeFields">
+                   <layout class="QVBoxLayout" name="modeFieldsLayout">
                     <property name="leftMargin">
                      <number>0</number>
                     </property>
@@ -1373,9 +1220,83 @@
                      <number>8</number>
                     </property>
                     <item>
-                     <widget class="QLabel" name="m_pLabelServerName">
+                     <widget class="QWidget" name="serverOptions">
+                      <layout class="QHBoxLayout" name="serverOptionsLayout">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QLineEdit" name="lineShareAddress">
+                         <property name="readOnly">
+                          <bool>true</bool>
+                         </property>
+                         <property name="accessibleName">
+                          <string>Local network address</string>
+                         </property>
+                         <property name="minimumHeight">
+                          <number>44</number>
+                         </property>
+                         <property name="maximumHeight">
+                          <number>44</number>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QWidget" name="clientOptions">
+                      <layout class="QVBoxLayout" name="clientOptionsLayout">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QLineEdit" name="lineHostname">
+                         <property name="placeholderText">
+                          <string>IP address or computer name</string>
+                         </property>
+                         <property name="clearButtonEnabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="minimumHeight">
+                          <number>44</number>
+                         </property>
+                         <property name="maximumHeight">
+                          <number>44</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="lblNoMode">
                       <property name="text">
-                       <string>Other computer’s address</string>
+                       <string>Select a work mode to continue.</string>
                       </property>
                       <property name="textFormat">
                        <enum>Qt::TextFormat::PlainText</enum>
@@ -1383,14 +1304,7 @@
                       <property name="role" stdset="0">
                        <string notr="true">muted</string>
                       </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="lineHostname">
-                      <property name="placeholderText">
-                       <string>IP address or computer name</string>
-                      </property>
-                      <property name="clearButtonEnabled">
+                      <property name="wordWrap">
                        <bool>true</bool>
                       </property>
                      </widget>
@@ -1399,144 +1313,143 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="lblNoMode">
+                  <widget class="QPushButton" name="btnToggleCore">
                    <property name="text">
-                    <string>Select a work mode to continue.</string>
+                    <string>Start sharing</string>
                    </property>
-                   <property name="textFormat">
-                    <enum>Qt::TextFormat::PlainText</enum>
+                   <property name="autoDefault">
+                    <bool>false</bool>
                    </property>
                    <property name="role" stdset="0">
-                    <string notr="true">muted</string>
+                    <string notr="true">primary</string>
                    </property>
-                   <property name="wordWrap">
-                    <bool>true</bool>
+                   <property name="minimumHeight">
+                    <number>44</number>
+                   </property>
+                   <property name="maximumHeight">
+                    <number>44</number>
                    </property>
                   </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnRestartCore">
+                   <property name="text">
+                    <string />
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">secondary</string>
+                   </property>
+                   <property name="toolTip">
+                    <string>Apply changes and restart the connection</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                </layout>
+                <property name="minimumSize">
+                 <size>None<width>0</width>
+                  <height>44</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QWidget" name="modeLinks">
+                <layout class="QHBoxLayout" name="modeLinksLayout">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <item>
+                  <widget class="QPushButton" name="btnConfigureServer">
+                   <property name="text">
+                    <string>Arrange computers and screen edges</string>
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">link</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnSaveServerConfig">
+                   <property name="text">
+                    <string>Export configuration</string>
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">link</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnBrowseServers">
+                   <property name="text">
+                    <string>Find computers</string>
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">link</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btnConfigureClient">
+                   <property name="text">
+                    <string>Client settings</string>
+                   </property>
+                   <property name="autoDefault">
+                    <bool>false</bool>
+                   </property>
+                   <property name="role" stdset="0">
+                    <string notr="true">link</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="modeLinksStretch">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                 </layout>
                </widget>
               </item>
               <item>
-               <widget class="QPushButton" name="btnToggleCore">
-                <property name="text">
-                 <string>Start sharing</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
+               <widget class="QLabel" name="lblActionHint">
                 <property name="role" stdset="0">
-                 <string notr="true">primary</string>
+                 <string notr="true">muted</string>
                 </property>
                </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnRestartCore">
-                <property name="text">
-                 <string />
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">secondary</string>
-                </property>
-                <property name="toolTip">
-                 <string>Apply changes and restart the connection</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>67</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QWidget" name="modeLinks">
-             <layout class="QHBoxLayout" name="modeLinksLayout">
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>5</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-              <property name="spacing">
-               <number>8</number>
-              </property>
-              <item>
-               <widget class="QPushButton" name="btnConfigureServer">
-                <property name="text">
-                 <string>Arrange computers and screen edges</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">link</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnSaveServerConfig">
-                <property name="text">
-                 <string>Export configuration</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">link</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnBrowseServers">
-                <property name="text">
-                 <string>Find computers</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">link</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnConfigureClient">
-                <property name="text">
-                 <string>Client settings</string>
-                </property>
-                <property name="autoDefault">
-                 <bool>false</bool>
-                </property>
-                <property name="role" stdset="0">
-                 <string notr="true">link</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="modeLinksStretch">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
               </item>
              </layout>
             </widget>
@@ -1552,7 +1465,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>23</height>
+               <height>20</height>
               </size>
              </property>
             </spacer>
@@ -1628,10 +1541,89 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>9</height>
+               <height>10</height>
               </size>
              </property>
             </spacer>
+           </item>
+           <item>
+            <widget class="QWidget" name="homeEmptyState">
+             <layout class="QHBoxLayout" name="homeEmptyLayout">
+              <property name="spacing">
+               <number>8</number>
+              </property>
+              <property name="leftMargin">
+               <number>16</number>
+              </property>
+              <property name="topMargin">
+               <number>14</number>
+              </property>
+              <property name="rightMargin">
+               <number>16</number>
+              </property>
+              <property name="bottomMargin">
+               <number>14</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="lblEmptyIcon" />
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="homeEmptyCopyLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>3</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="lblEmptyTitle">
+                  <property name="role" stdset="0">
+                   <string notr="true">subheading</string>
+                  </property>
+                  <property name="text">
+                   <string>No computers connected yet</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="lblEmptyHint">
+                  <property name="role" stdset="0">
+                   <string notr="true">muted</string>
+                  </property>
+                  <property name="text">
+                   <string>Find a computer on the same network to get started.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btnEmptyAction">
+                <property name="role" stdset="0">
+                 <string notr="true">secondary</string>
+                </property>
+                <property name="text">
+                 <string>Find computers</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <widget class="HomeDeviceList" name="deviceList">
@@ -1676,7 +1668,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>0</width>
-               <height>31</height>
+               <height>20</height>
               </size>
              </property>
             </spacer>
@@ -1745,6 +1737,18 @@
              </property>
             </spacer>
            </item>
+           <property name="leftMargin">
+            <number>28</number>
+           </property>
+           <property name="topMargin">
+            <number>18</number>
+           </property>
+           <property name="rightMargin">
+            <number>28</number>
+           </property>
+           <property name="bottomMargin">
+            <number>16</number>
+           </property>
           </layout>
          </widget>
         </widget>
@@ -1760,30 +1764,30 @@ QWidget#sidebar { background: #f2f5fa; border-top-left-radius: 16px; border-bott
 QWidget#rightPanel { background: #ffffff; border-top-right-radius: 16px; border-bottom-right-radius: 16px; }
 QWidget#homeContent, QScrollArea#homeScroll { background: #ffffff; border: none; }
 QWidget#topLevelWidget QLabel { background: transparent; border: none; }
-QWidget#topLevelWidget QLabel[role="muted"] { color: #8b929c; font-size: 12px; }
-QWidget#topLevelWidget QLabel[role="heading"] { font-size: 17px; font-weight: 600; }
+QWidget#topLevelWidget QLabel[role="muted"] { color: #737c8a; font-size: 12px; }
+QWidget#topLevelWidget QLabel[role="heading"] { font-size: 16px; font-weight: 500; }
 QWidget#topLevelWidget QLabel[role="subheading"] { font-size: 14px; font-weight: 500; }
-QWidget#topLevelWidget QLabel[role="value"] { font-size: 24px; color: #20262d; }
-QWidget#topLevelWidget[compact="true"] QLabel[role="value"] { font-size: 21px; }
+QWidget#topLevelWidget QLabel[role="value"] { font-size: 19px; color: #292e36; }
+QWidget#topLevelWidget[compact="true"] QLabel[role="value"] { font-size: 18px; }
 QWidget#topLevelWidget QLabel[role="profile"] { font-size: 15px; font-weight: 500; }
 QWidget#topLevelWidget QLabel#lblAvatar { border-radius: 22px; background: #e1edff; }
-QWidget#topLevelWidget QLabel[role="brand"] { font-size: 26px; font-weight: 600; color: #087fff; }
-QWidget#topLevelWidget QLabel#lblVersion { font-size: 12px; color: #8b929c; }
+QWidget#topLevelWidget QLabel[role="brand"] { font-size: 25px; font-weight: 500; color: #087fff; }
+QWidget#topLevelWidget QLabel#lblVersion { font-size: 11px; color: #8b929c; }
 QWidget#topLevelWidget QLabel[role="stateDot"] { background: #c6cbd1; border-radius: 3px; }
 QWidget#topLevelWidget QLabel[role="stateDot"][ready="true"] { background: #32bb7b; }
-QWidget#localCard { background: #f7f8fa; border-radius: 13px; }
+QWidget#localCard { background: #f7f8fa; border-radius: 10px; }
 QWidget#topLevelWidget QPushButton { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 8px 10px; }
 QWidget#topLevelWidget QPushButton:hover { background: #edf4fd; }
 QWidget#topLevelWidget QPushButton[keyboardFocus="true"] { border-color: #087fff; }
 QWidget#topLevelWidget QPushButton:disabled { color: #a5acb5; }
-QWidget#topLevelWidget QPushButton[role="navigation"] { text-align: left; padding: 13px 15px; font-size: 16px; color: #6e7682; }
+QWidget#topLevelWidget QPushButton[role="navigation"] { text-align: left; padding: 11px 14px; font-size: 14px; color: #6e7682; }
 QWidget#topLevelWidget QPushButton[role="navigation"]:checked { background: #e6edf6; color: #087fff; }
-QWidget#topLevelWidget QPushButton[role="link"] { color: #217edb; font-size: 12px; padding: 7px 0; }
+QWidget#topLevelWidget QPushButton[role="link"] { color: #217edb; font-size: 12px; padding: 3px 0; }
 QWidget#topLevelWidget QPushButton#btnManageDevices { color: #8d95a0; }
 QWidget#topLevelWidget QPushButton[role="pill"] { background: #f3f8ff; color: #1879df; border-radius: 20px; padding: 10px 20px; }
 QWidget#topLevelWidget QPushButton[role="activePill"] { background: #087fff; color: white; border-radius: 20px; padding: 10px 20px; }
 QWidget#topLevelWidget[compact="true"] QPushButton[role="pill"], QWidget#topLevelWidget[compact="true"] QPushButton[role="activePill"] { padding: 9px 18px; }
-QWidget#topLevelWidget QPushButton[role="primary"] { background: #087fff; color: white; padding: 13px 26px; font-size: 16px; border-radius: 9px; }
+QWidget#topLevelWidget QPushButton[role="primary"] { background: #087fff; color: white; padding: 0px 18px; font-size: 14px; border-radius: 7px; }
 QWidget#topLevelWidget QPushButton[role="primary"]:hover { background: #006fe8; }
 QWidget#topLevelWidget QPushButton[role="primary"]:disabled { background: #bdd7f6; color: white; }
 QWidget#topLevelWidget QPushButton[role="secondary"] { border: 1px solid #dce2e9; color: #6e7b8c; }
@@ -1796,18 +1800,32 @@ QWidget#topLevelWidget QPushButton#btnWindowMinimize { background: #ffbd2e; }
 QWidget#topLevelWidget QPushButton#btnWindowZoom { background: #d3d7dc; }
 QWidget#widgetModeSelection { background: #f7f8fa; border: 1px solid #e6e9ee; border-radius: 9px; }
 QWidget#topLevelWidget HomeModeButton { font-size: 13px; padding: 0; border: none; }
-QWidget#topLevelWidget QLineEdit { background: #ffffff; color: #555e69; border: 1px solid #d9dde3; border-radius: 9px; padding: 13px 15px; selection-background-color: #087fff; selection-color: white; }
+QWidget#topLevelWidget QLineEdit { background: #ffffff; color: #555e69; border: 1px solid #d9dde3; border-radius: 9px; padding: 0px 13px; selection-background-color: #087fff; selection-color: white; }
 QWidget#topLevelWidget QLineEdit:focus { border-color: #087fff; }
 QWidget#topLevelWidget QListWidget { background: transparent; border: none; outline: 0; }
+QScrollArea#homeScroll QScrollBar:vertical { width: 6px; background: transparent; margin: 0; }
+QScrollArea#homeScroll QScrollBar::handle:vertical { background: #c6cdd7; border-radius: 3px; min-height: 28px; }
+QScrollArea#homeScroll QScrollBar::handle:vertical:disabled { background: transparent; }
+QScrollArea#homeScroll QScrollBar::add-line:vertical, QScrollArea#homeScroll QScrollBar::sub-line:vertical { height: 0; background: transparent; }
+QScrollArea#homeScroll QScrollBar::add-page:vertical, QScrollArea#homeScroll QScrollBar::sub-page:vertical { background: transparent; }
 QWidget#homeFooter { border-top: 1px solid #f0f1f4; }
 QWidget#homeFooter QLabel { font-size: 11px; color: #969da7; }
 QWidget#permissionBanner { background: #fff6e6; border-radius: 9px; }
 QWidget#topLevelWidget QLabel#lblPermissionNotice { color: #8a6126; font-size: 12px; }
 
 QWidget#localCard QLabel[role="muted"] { font-size: 11px; }
-QWidget#nameHeader QLabel, QWidget#addressHeader QLabel { font-size: 13px; }
+QWidget#nameHeader QLabel, QWidget#addressHeader QLabel { font-size: 12px; }
 
-QWidget#topLevelWidget[compact="true"] QLabel[role="brand"] { font-size: 24px; }
+QWidget#topLevelWidget[compact="true"] QLabel[role="brand"] { font-size: 23px; }
+QWidget#toolbar { border-bottom: 1px solid #e6e9ef; }
+QWidget#topLevelWidget QLabel#lblWorkspaceTitle { color: #292e36; font-size: 14px; font-weight: 500; }
+QWidget#homeEmptyState { background: #ffffff; border: 1px dashed #e0e5ec; border-radius: 9px; }
+QWidget#homeEmptyState QWidget, QWidget#homeEmptyState QLabel { border: none; }
+QWidget#topLevelWidget QLabel#lblActionHint { font-size: 11px; }
+QWidget#topLevelWidget QLabel#lblLocalHeading { font-size: 12px; }
+QWidget#topLevelWidget QLabel#lblIpAddresses, QWidget#topLevelWidget QLabel#lblComputerName { min-height: 28px; max-height: 28px; }
+QWidget#topLevelWidget QPushButton#btnEmptyAction { padding: 7px 12px; font-size: 12px; }
+QWidget#permissionBanner QPushButton { padding: 3px 0; }
 </string>
    </property>
   </widget>
@@ -1830,6 +1848,16 @@ QWidget#topLevelWidget[compact="true"] QLabel[role="brand"] { font-size: 24px; }
    <class>HomeModeButton</class>
    <extends>QRadioButton</extends>
    <header>gui/widgets/HomeModeButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HomeIdentityLabel</class>
+   <extends>QLabel</extends>
+   <header>gui/widgets/HomeIdentityLabel.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HomeModeSelector</class>
+   <extends>QWidget</extends>
+   <header>gui/widgets/HomeModeSelector.h</header>
   </customwidget>
  </customwidgets>
 </ui>

@@ -109,6 +109,11 @@ bool hasOSXAccessibilityPermission()
   return AXIsProcessTrusted();
 }
 
+bool prefersOSXReducedMotion()
+{
+  return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+}
+
 void forceAppActive()
 {
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];

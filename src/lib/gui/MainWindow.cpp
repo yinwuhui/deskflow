@@ -46,6 +46,7 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFocusEvent>
+#include <QGraphicsOpacityEffect>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
@@ -54,9 +55,11 @@
 #include <QMouseEvent>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
+#include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -71,6 +74,24 @@
 #endif
 
 using namespace deskflow::gui;
+
+namespace {
+auto deferHomeLayout(QWidget *content, QLayout *layout)
+{
+  const bool paintEnabled = content->updatesEnabled();
+  const bool layoutEnabled = layout->isEnabled();
+  content->setUpdatesEnabled(false);
+  layout->setEnabled(false);
+  return qScopeGuard([content, layout, paintEnabled, layoutEnabled] {
+    layout->setEnabled(layoutEnabled);
+    if (layoutEnabled) {
+      layout->invalidate();
+      layout->activate();
+    }
+    content->setUpdatesEnabled(paintEnabled);
+  });
+}
+} // namespace
 
 MainWindow::MainWindow()
     : ui{std::make_unique<Ui::MainWindow>()},
@@ -297,7 +318,7 @@ void MainWindow::setupHome()
   homePalette.setColor(QPalette::Text, QColor("#292d33"));
   homePalette.setColor(QPalette::ButtonText, QColor("#292d33"));
   ui->topLevelWidget->setPalette(homePalette);
-  ui->lblVersion->setText(QStringLiteral("v%1").arg(kVersion));
+  ui->lblVersion->setText(QStringLiteral("v%1").arg(QString::fromLatin1(kVersion).section('.', 0, 2)));
   ui->lblVersion->setToolTip(kDisplayVersion);
 #ifdef Q_OS_MACOS
   ui->lblLocalPlatform->setText(tr("macOS · This computer"));
@@ -308,10 +329,39 @@ void MainWindow::setupHome()
   ui->lblIpAddresses->setTextInteractionFlags(Qt::TextSelectableByMouse);
   ui->nameColumn->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
   ui->addressColumn->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-  ui->localCardLayout->setStretch(0, 1);
-  ui->localCardLayout->setStretch(2, 1);
+  ui->localCard->setFixedHeight(112);
+  ui->localHeader->setFixedHeight(20);
+  ui->widgetModeSelection->setFixedHeight(50);
+  ui->localCardLayout->setStretch(0, 5);
+  ui->localCardLayout->setStretch(2, 4);
   ui->optionsLayout->setStretch(0, 1);
-  ui->btnToggleCore->setMinimumWidth(136);
+  ui->btnToggleCore->setFixedWidth(124);
+  ui->homeActionCard->setFixedHeight(228);
+  ui->lblShareTitle->setFixedHeight(22);
+  ui->lblShareHint->setFixedHeight(36);
+  ui->m_pLabelServerName->setFixedHeight(18);
+  ui->widgetModeOptions->setFixedHeight(44);
+  ui->modeLinks->setFixedHeight(32);
+  ui->lblActionHint->setFixedHeight(18);
+  ui->homeActionCard->setStyleSheet(
+      QStringLiteral("QWidget#homeActionCard { background: #f7f8fa; border: 1px solid #e6e9ee; border-radius: 10px; }")
+  );
+  ui->lineShareAddress->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+  ui->lineHostname->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+  m_copyShareAddress = ui->lineShareAddress->addAction(homeIcon(HomeIcon::Copy), QLineEdit::TrailingPosition);
+  m_copyShareAddress->setText(tr("Copy"));
+  m_copyShareAddress->setToolTip(tr("Copy"));
+  connect(m_copyShareAddress, &QAction::triggered, ui->btnCopyAddress, &QPushButton::click);
+  m_actionTransitionOverlay = new QLabel(ui->homeContent);
+  m_actionTransitionOverlay->setObjectName("homeActionTransitionOverlay");
+  m_actionTransitionOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
+  m_actionTransitionOverlay->hide();
+  auto transitionOpacity = new QGraphicsOpacityEffect(m_actionTransitionOverlay);
+  m_actionTransitionOverlay->setGraphicsEffect(transitionOpacity);
+  m_actionTransition = new QPropertyAnimation(transitionOpacity, "opacity", this);
+  m_actionTransition->setObjectName("homeActionTransition");
+  m_actionTransition->setDuration(150);
+  connect(m_actionTransition, &QPropertyAnimation::finished, m_actionTransitionOverlay, &QWidget::hide);
   ui->btnRestartCore->setFixedWidth(38);
   ui->btnRestartCore->setIcon(homeIcon(HomeIcon::Refresh));
   ui->btnRestartCore->hide();
@@ -321,6 +371,17 @@ void MainWindow::setupHome()
   ui->lblBrandIcon->setAlignment(Qt::AlignCenter);
   ui->lblBrandIcon->setPixmap(brandIcon().pixmap(28, 28));
   ui->modeFieldsLayout->setAlignment(Qt::AlignVCenter);
+  ui->optionsLayout->setAlignment(ui->btnToggleCore, Qt::AlignVCenter);
+  ui->btnEmptyAction->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+  ui->permissionLayout->setStretch(0, 1);
+  ui->btnPermissionSettings->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+  ui->btnPermissionRecheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+  ui->homeEmptyLayout->setStretch(1, 1);
+  ui->computerValueLayout->setStretch(0, 1);
+  ui->addressValueLayout->setStretch(0, 1);
+  ui->btnEditName->setFixedSize(26, 28);
+  ui->btnCopyAddress->setFixedSize(26, 28);
+  ui->lblEmptyIcon->setPixmap(homeIcon(HomeIcon::Monitor, QColor("#8b96a5")).pixmap(26, 26));
   ui->lblShareTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   ui->lblShareHint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   ui->btnHome->setIcon(homeIcon(HomeIcon::Monitor, QColor("#087fff")));
@@ -332,21 +393,23 @@ void MainWindow::setupHome()
   ui->btnHelp->setIcon(homeIcon(HomeIcon::Help));
   ui->btnLogs->setIcon(homeIcon(HomeIcon::Logs));
   ui->btnSecurity->setIcon(homeIcon(HomeIcon::Shield, QColor("#438b7c")));
-  ui->btnSharingTab->setIcon(homeIcon(HomeIcon::MonitorUp, Qt::white));
-  ui->btnLayoutTab->setIcon(homeIcon(HomeIcon::Layout, QColor("#267ed9")));
-  ui->btnQuickSettings->setIcon(homeIcon(HomeIcon::Adjust, QColor("#267ed9")));
   ui->btnBrowseServers->setIcon(homeIcon(HomeIcon::Search, QColor("#267ed9")));
   ui->btnMore->setIcon(homeIcon(HomeIcon::Menu));
   ui->rbModeServer->setIcon(homeIcon(HomeIcon::Keyboard, QColor("#087fff")));
   ui->rbModeClient->setIcon(homeIcon(HomeIcon::MonitorDown));
+  ui->widgetModeSelection->setButtons(ui->rbModeServer, ui->rbModeClient);
+  ui->homeScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+  auto homeScrollBar = ui->homeScroll->verticalScrollBar();
+  connect(homeScrollBar, &QScrollBar::rangeChanged, this, [homeScrollBar](int minimum, int maximum) {
+    homeScrollBar->setEnabled(maximum > minimum);
+  });
+  homeScrollBar->setEnabled(homeScrollBar->maximum() > homeScrollBar->minimum());
   ui->btnManageDevices->setIcon(homeIcon(HomeIcon::ChevronRight));
   ui->btnManageDevices->setLayoutDirection(Qt::RightToLeft);
   for (auto button : {ui->btnHome, ui->btnDevices, ui->btnLayout, ui->btnSettings})
     button->setIconSize(QSize(22, 22));
   for (auto button : {ui->btnHelp, ui->btnLogs, ui->btnMore})
     button->setIconSize(QSize(21, 21));
-  for (auto button : {ui->btnSharingTab, ui->btnLayoutTab, ui->btnQuickSettings})
-    button->setIconSize(QSize(19, 19));
   ui->btnEditName->setIconSize(QSize(16, 16));
   ui->btnCopyAddress->setIconSize(QSize(16, 16));
   connect(ui->btnWindowClose, &QPushButton::clicked, this, [this] {
@@ -374,6 +437,13 @@ void MainWindow::setupHome()
       m_devicesPage->message(text.isEmpty() ? m_statusBar->statusText() : text);
   });
   ui->lblHomeStatus->setText(m_statusBar->statusText());
+  connect(m_pageStack, &QStackedWidget::currentChanged, this, &MainWindow::updatePageTitle);
+  connect(ui->btnEmptyAction, &QPushButton::clicked, this, [this] {
+    if (m_coreProcess.mode() == CoreMode::Server)
+      showConfigureServer("");
+    else
+      browseServers();
+  });
 
   const auto showHome = [this] {
     m_pageStack->setCurrentWidget(ui->homeScroll);
@@ -386,7 +456,6 @@ void MainWindow::setupHome()
     if (checked)
       showHome();
   });
-  connect(ui->btnSharingTab, &QPushButton::clicked, ui->btnHome, &QPushButton::click);
   connect(ui->btnDevices, &QPushButton::toggled, this, [this](bool checked) {
     if (checked && (!m_devicesPage || m_pageStack->currentWidget() != m_devicesPage))
       openDevices();
@@ -396,7 +465,6 @@ void MainWindow::setupHome()
     if (checked && (!m_layoutPage || m_pageStack->currentWidget() != m_layoutPage))
       openLayout();
   });
-  connect(ui->btnLayoutTab, &QPushButton::clicked, this, openLayout);
   connect(ui->btnManageDevices, &QPushButton::clicked, this, &MainWindow::openDevices);
   connect(ui->deviceList, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
     if (item->data(HomeDeviceList::Empty).toBool())
@@ -412,7 +480,6 @@ void MainWindow::setupHome()
     if (checked && (!m_settingsPage || m_pageStack->currentWidget() != m_settingsPage))
       openSettings();
   });
-  connect(ui->btnQuickSettings, &QPushButton::clicked, this, &MainWindow::openSettings);
   connect(ui->btnPermissionRecheck, &QPushButton::clicked, this, &MainWindow::refreshPermissionStatus);
   connect(ui->btnPermissionSettings, &QPushButton::clicked, this, [] {
     QDesktopServices::openUrl(QUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"));
@@ -477,7 +544,7 @@ void MainWindow::updateHomeDevices()
       Settings::value(Settings::Gui::RecentComputers).toStringList().isEmpty() ? tr("Your computers")
                                                                                : tr("Recent computers")
   );
-  for (const auto &name : names) {
+  for (const auto &name : names.mid(0, 4)) {
     const bool connected =
         m_coreProcess.isStarted() &&
         (server ? m_connectedClients.contains(name)
@@ -490,14 +557,15 @@ void MainWindow::updateHomeDevices()
     item->setData(HomeDeviceList::Detail, server ? tr("Configured computer") : tr("Keyboard and mouse source"));
     item->setData(HomeDeviceList::Connected, connected);
   }
-  if (names.isEmpty()) {
-    auto item = new QListWidgetItem(
-        tr("No computers yet. Arrange your screens or find a computer to connect."), ui->deviceList
-    );
-    item->setFlags(Qt::NoItemFlags);
-    item->setData(HomeDeviceList::Empty, true);
-  }
-  ui->deviceList->fitCards();
+  ui->homeEmptyState->setVisible(names.isEmpty());
+  ui->deviceList->setVisible(!names.isEmpty());
+  ui->lblEmptyTitle->setText(server ? tr("No computers added yet") : tr("No computers connected yet"));
+  ui->lblEmptyHint->setText(
+      server ? tr("Add a computer and choose its position beside this one.")
+             : tr("Find a computer on the same network to get started.")
+  );
+  ui->btnEmptyAction->setText(server ? tr("Add computer") : tr("Find computers"));
+  ui->deviceList->refreshCards();
   ui->lblDeviceHint->setText(
       m_serverConfig.useExternalConfig() && server
           ? tr("An external configuration file is in use. Its devices appear here when connected.")
@@ -722,17 +790,35 @@ void MainWindow::rememberHomeDevice(const QString &name)
   Settings::setValue(Settings::Gui::RecentComputers, recent);
 }
 
+void MainWindow::updatePageTitle()
+{
+  if (!m_pageStack)
+    return;
+  const auto page = m_pageStack->currentWidget();
+  ui->lblWorkspaceTitle->setText(
+      page == m_settingsPage  ? tr("Advanced settings")
+      : page == m_layoutPage  ? tr("Screen layout")
+      : page == m_devicesPage ? tr("Devices")
+                              : tr("Home")
+  );
+}
+
 void MainWindow::updateHomeMetrics()
 {
+  if (m_actionTransition && m_actionTransition->state() == QAbstractAnimation::Running) {
+    m_actionTransition->stop();
+    m_actionTransitionOverlay->hide();
+  }
   const bool compact = width() <= 800;
-  ui->sidebar->setFixedWidth(compact ? 170 : 202);
-  ui->contentLayout->setContentsMargins(compact ? 29 : 42, 20, compact ? 29 : 42, 16);
-  const int cardMargin = compact ? 22 : 24;
-  ui->localCardLayout->setContentsMargins(cardMargin, cardMargin, cardMargin, cardMargin);
-  ui->localCardLayout->setSpacing(compact ? 15 : 24);
+  ui->sidebar->setFixedWidth(compact ? 170 : 182);
+  const int margin = compact ? 20 : 28;
+  ui->contentLayout->setContentsMargins(margin, 18, margin, 16);
+  ui->toolbarLayout->setContentsMargins(margin, 18, margin, 18);
+  ui->localCardLayout->setContentsMargins(0, 0, 0, 0);
+  ui->localCardLayout->setSpacing(compact ? 14 : 24);
   const auto name = Settings::value(Settings::Core::ComputerName).toString();
-  ui->lblSidebarName->setMaximumWidth(compact ? 142 : 174);
-  ui->lblSidebarName->setText(ui->lblSidebarName->fontMetrics().elidedText(name, Qt::ElideRight, compact ? 142 : 174));
+  ui->lblSidebarName->setMaximumWidth(compact ? 142 : 154);
+  ui->lblSidebarName->setText(ui->lblSidebarName->fontMetrics().elidedText(name, Qt::ElideRight, compact ? 142 : 154));
   if (ui->topLevelWidget->property("compact").toBool() != compact) {
     ui->topLevelWidget->setProperty("compact", compact);
     ui->topLevelWidget->setStyleSheet(ui->topLevelWidget->styleSheet());
@@ -775,12 +861,15 @@ void MainWindow::updateHomeStatus()
     break;
   }
   ui->lblSidebarStatus->setText(text);
-  ui->lblStateDot->setProperty("ready", m_coreProcess.isStarted());
+  ui->lblStateDot->setProperty("ready", m_coreProcess.connectionState() == ConnectionState::Connected);
   ui->lblStateDot->style()->unpolish(ui->lblStateDot);
   ui->lblStateDot->style()->polish(ui->lblStateDot);
-  ui->btnSecurity->setText(TlsUtility::isEnabled() ? tr("TLS enabled") : tr("Encryption disabled"));
+  ui->btnSecurity->setText(TlsUtility::isEnabled() ? tr("Transport encryption enabled") : tr("Encryption disabled"));
   ui->btnSecurity->setIcon(homeIcon(HomeIcon::Shield, TlsUtility::isEnabled() ? QColor("#438b7c") : QColor("#bf8a38")));
-  ui->btnSecurity->setToolTip(tr("View encryption settings and this computer’s certificate fingerprint."));
+  ui->btnSecurity->setToolTip(
+      tr("Transport encryption is configured. An established connection is required to confirm its security. View this "
+         "computer’s certificate fingerprint.")
+  );
 }
 
 void MainWindow::refreshPermissionStatus()
@@ -790,6 +879,10 @@ void MainWindow::refreshPermissionStatus()
 #else
   ui->permissionBanner->hide();
 #endif
+  ui->permissionSpace->changeSize(
+      0, ui->permissionBanner->isHidden() ? 0 : 16, QSizePolicy::Minimum, QSizePolicy::Fixed
+  );
+  ui->contentLayout->invalidate();
   toggleCanRunCore(canRunCore());
 }
 
@@ -1066,6 +1159,26 @@ void MainWindow::coreModeToggled(bool checked)
   if (!checked)
     return;
 
+  bool animate = m_actionTransition && ui->homeActionCard->isVisible();
+#ifdef Q_OS_MACOS
+  animate = animate && !prefersOSXReducedMotion();
+#endif
+  if (animate) {
+    // Capture the displayed composite, including an interrupted crossfade.
+    const auto frame = ui->homeContent->grab(ui->homeActionCard->geometry());
+    m_actionTransition->stop();
+    m_actionTransitionOverlay->setPixmap(frame);
+    m_actionTransitionOverlay->setGeometry(ui->homeActionCard->geometry());
+    m_actionTransitionOverlay->show();
+    m_actionTransitionOverlay->raise();
+    m_actionTransition->setStartValue(1.0);
+    m_actionTransition->setEndValue(0.0);
+    m_actionTransition->start();
+  }
+
+  // Settings::save() also refreshes device cards. Include that refresh in the
+  // same transaction as changing the fields, rather than painting a mixed mode.
+  const auto layoutTransaction = deferHomeLayout(ui->homeContent, ui->contentLayout);
   Settings::CoreMode mode = Settings::CoreMode::None;
 
   if (ui->rbModeServer->isChecked())
@@ -1087,19 +1200,30 @@ void MainWindow::coreModeToggled(bool checked)
 
 void MainWindow::updateModeControls()
 {
+  // Show/hide all mode-specific fields as a single layout transaction. Showing the
+  // sharing panel before hiding the receiver panel otherwise briefly displays both,
+  // which can make the scroll area resize and repaint the whole page twice.
+  const auto layoutTransaction = deferHomeLayout(ui->homeContent, ui->contentLayout);
   const auto mode = m_coreProcess.mode();
   const bool isServer = mode == Settings::CoreMode::Server;
   const bool isClient = mode == Settings::CoreMode::Client;
 
   ui->serverOptions->setVisible(isServer);
   ui->clientOptions->setVisible(isClient);
+  ui->m_pLabelServerName->setVisible(true);
+  ui->m_pLabelServerName->setText(
+      isServer ? tr("Local network address") : tr("Computer providing the keyboard and mouse")
+  );
+  ui->lblShareTitle->setText(
+      isServer ? tr("Share this computer’s keyboard and mouse") : tr("Use another computer’s input")
+  );
   ui->lblNoMode->setVisible(!isServer && !isClient);
   ui->btnConfigureServer->setVisible(isServer);
   ui->btnConfigureServer->setText(tr("Arrange computers and screen edges") + QStringLiteral("    ›"));
   ui->btnSaveServerConfig->hide();
   ui->btnConfigureClient->hide();
   ui->btnBrowseServers->setVisible(isClient);
-  ui->lblModeDescription->setText(
+  ui->lblShareHint->setText(
       isServer   ? tr("Use this computer’s keyboard and mouse to control your other computers across screen edges.")
       : isClient ? tr("Connect to the computer whose keyboard and mouse you want to use on this computer.")
                  : tr("Choose how this computer will work.")
@@ -1151,9 +1275,10 @@ void MainWindow::updateModeControlLabels()
     ui->btnToggleCore->setText(startText);
     ui->btnToggleCore->setIcon(startIcon);
   }
-  ui->btnToggleCore->setFixedWidth(
-      qMax(136, ui->btnToggleCore->fontMetrics().horizontalAdvance(ui->btnToggleCore->text()) + 52)
-  );
+  int actionWidth = 124;
+  for (const auto &text : {tr("Start sharing"), tr("Stop sharing"), tr("Connect"), tr("Disconnect")})
+    actionWidth = qMax(actionWidth, ui->btnToggleCore->fontMetrics().horizontalAdvance(text) + 42);
+  ui->btnToggleCore->setFixedWidth(actionWidth);
 }
 
 void MainWindow::updateSecurityIcon(bool visible)
@@ -1657,6 +1782,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::updateText()
 {
+  updatePageTitle();
   m_menuFile->setTitle(tr("&File"));
   m_menuEdit->setTitle(tr("&Edit"));
   m_menuView->setTitle(tr("&View"));
@@ -1725,10 +1851,10 @@ void MainWindow::secureSocket(bool secureSocket)
 void MainWindow::updateComputerName()
 {
   const auto computerName = Settings::value(Settings::Core::ComputerName).toString();
-  ui->lblComputerName->setText(computerName);
+  ui->lblComputerName->setIdentity(computerName);
   ui->lineEditName->setText(computerName);
   ui->lblSidebarName->setText(
-      ui->lblSidebarName->fontMetrics().elidedText(computerName, Qt::ElideRight, width() <= 800 ? 142 : 174)
+      ui->lblSidebarName->fontMetrics().elidedText(computerName, Qt::ElideRight, width() <= 800 ? 142 : 154)
   );
   ui->lblSidebarName->setToolTip(computerName);
   m_serverConfig.updateServerName();
@@ -1797,7 +1923,7 @@ void MainWindow::setHostName()
     return;
   }
 
-  ui->lblComputerName->setText(ui->lineEditName->text());
+  ui->lblComputerName->setIdentity(ui->lineEditName->text());
   Settings::setValue(Settings::Core::ComputerName, ui->lineEditName->text());
   if (isServer)
     serverConfig().updateServerName();
@@ -1855,6 +1981,12 @@ void MainWindow::toggleCanRunCore(bool enableButtons)
   ui->btnRestartCore->setEnabled(enableButtons && isStarted);
   m_actionStartCore->setEnabled(enableButtons);
   m_actionStopCore->setEnabled(canStop);
+  ui->lblActionHint->setText(!permission && !canStop ? tr("Authorize keyboard and mouse control first") : QString());
+  ui->btnToggleCore->setToolTip(
+      !permission && !canStop      ? tr("Authorize keyboard and mouse control first")
+      : !enableButtons && !canStop ? tr("Enter the other computer’s address to connect")
+                                   : QString()
+  );
 }
 
 void MainWindow::remoteHostChanged(const QString &newRemoteHost)
@@ -1887,7 +2019,11 @@ void MainWindow::updateIpLabel(const QStringList &addresses)
       !available ? tr("Check your network or bound address before connecting.")
                  : tr("Connect from another computer on your network.")
   );
+  ui->lblAddressHint->setVisible(!available);
+  ui->localCard->setFixedHeight(available ? 112 : 148);
   ui->btnCopyAddress->setEnabled(!m_currentIpAddress.isEmpty());
+  ui->lineShareAddress->setText(ui->lblIpAddresses->text());
+  m_copyShareAddress->setEnabled(ui->btnCopyAddress->isEnabled());
   updateDevicesPage();
 }
 

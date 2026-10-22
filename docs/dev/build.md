@@ -60,11 +60,26 @@ Example cmake configuration:
 
 ### macOS codesign
 
-Locally signed preview builds should use a separate GUI bundle identifier so macOS does not reuse the official
-release's certificate requirements for Accessibility authorization. Configure with
-`-DDESKFLOW_GUI_BUNDLE_ID=org.deskflow.deskflow.homepreview` when building a home UI preview. This does not grant
-any permissions; the user must authorize the resulting preview app separately. The default bundle identifier is
-unchanged for normal release builds. Ad hoc signatures can require authorization again after rebuilding.
+The current busymouse preview keeps `org.busymouse.busymouse` and the stable path
+`dist/home-refined/busymouse.app`. Always sign updates with the same Apple Development identity.
+Ad-hoc signatures tie the designated requirement to the changing code hash and can leave an enabled
+Accessibility switch referring to an older build. Switching from an ad-hoc identity requires one new
+user authorization; stable certificate signing does not grant permissions itself.
+
+Use the certificate-signed preview packaging tool after quitting the running preview:
+
+```sh
+python3 tools/package-macos-preview.py \
+  --build-dir /path/to/build \
+  --qt-bin /path/to/Qt/macos/bin \
+  --identity '<Apple Development identity or SHA-1>'
+```
+
+This builds the GUI/core, refreshes Chinese translations, deploys Qt before signing, signs the complete
+bundle with the supplied certificate, verifies its stable designated requirement, and updates
+`dist/BMouse-Home-Preview-macos-arm64.zip`. It refuses ad-hoc signing or replacing the running output.
+Dependencies are bundled and signed, so this packaging path does not add debugging or relaxed-library
+entitlements. It is a local development preview, not a notarized distribution build.
 
 The code signing option `APPLE_CODESIGN_DEV` is only for local development and not intended for distributed bundles. 
 

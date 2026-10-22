@@ -1132,7 +1132,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>Share this computer’s keyboard and mouse</source>
-        <translation type="vanished">共享本机键鼠</translation>
+        <translation>将本机键鼠共享给其他电脑</translation>
     </message>
     <message>
         <source>Use another computer’s keyboard and mouse</source>
@@ -1361,6 +1361,62 @@ Additionally, check you are able to %1 the server config file: %2</source>
     <message>
         <source>busymouse</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Accessibility permission is needed to control the keyboard and mouse.</source>
+        <translation>需要辅助功能权限，才能控制键盘和鼠标。</translation>
+    </message>
+    <message>
+        <source>Authorize</source>
+        <translation>去授权</translation>
+    </message>
+    <message>
+        <source>No computers connected yet</source>
+        <translation>还没有连接过其他电脑</translation>
+    </message>
+    <message>
+        <source>No computers added yet</source>
+        <translation>还没有添加其他电脑</translation>
+    </message>
+    <message>
+        <source>Find a computer on the same network to get started.</source>
+        <translation>确保两台电脑位于同一网络，然后查找设备。</translation>
+    </message>
+    <message>
+        <source>Add a computer and choose its position beside this one.</source>
+        <translation>先添加另一台电脑，设置它位于本机的哪个方向。</translation>
+    </message>
+    <message>
+        <source>Add computer</source>
+        <translation>添加电脑</translation>
+    </message>
+    <message>
+        <source>Computer providing the keyboard and mouse</source>
+        <translation>提供键鼠的电脑</translation>
+    </message>
+    <message>
+        <source>On your other computer, choose “Use another computer’s input” and connect to this address.</source>
+        <translation>在其他电脑上选择“使用其他电脑的键鼠”，连接本机地址。</translation>
+    </message>
+    <message>
+        <source>Transport encryption enabled</source>
+        <translation>已启用传输加密</translation>
+    </message>
+    <message>
+        <source>Transport encryption is configured. An established connection is required to confirm its security. View this computer’s certificate fingerprint.</source>
+        <translation>已启用传输加密，实际安全状态在连接建立后确认。点击查看本机证书指纹。</translation>
+    </message>
+    <message>
+        <source>Authorize keyboard and mouse control first</source>
+        <translation>请先完成辅助功能授权</translation>
+    </message>
+    <message>
+        <source>Enter the other computer’s address to connect</source>
+        <translation>请输入对方电脑地址后连接</translation>
+    </message>
+    <message>
+        <source>Advanced settings</source>
+        <translation>高级设置</translation>
     </message>
 </context>
 <context>

@@ -16,5 +16,6 @@ bool showOSXNotification(const QString &title, const QString &body);
 bool isOSXInterfaceStyleDark();
 void forceAppActive();
 bool hasOSXAccessibilityPermission();
+bool prefersOSXReducedMotion();
 void macOSNativeHide();
 void installQuitHandler(std::function<bool()> shouldQuit);

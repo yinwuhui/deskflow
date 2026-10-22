@@ -5,9 +5,11 @@
  */
 #pragma once
 #include "HomeIcons.h"
+#include <QAccessibleWidget>
 #include <QCoreApplication>
 #include <QListWidget>
 #include <QPainter>
+#include <QPushButton>
 #include <QScopedValueRollback>
 #include <QStyledItemDelegate>
 
@@ -23,6 +25,20 @@ public:
   };
   explicit HomeDeviceList(QWidget *parent = nullptr) : QListWidget(parent)
   {
+    // The native synthetic table rows cannot safely survive a model reset on macOS.
+    // As on the full devices page, expose genuine button children instead.
+    static const bool factoryInstalled = [] {
+      QAccessible::installFactory([](const QString &, QObject *object) -> QAccessibleInterface * {
+        if (auto list = qobject_cast<QListWidget *>(object); list && list->property("homeDeviceCards").toBool())
+          return new QAccessibleWidget(list, QAccessible::List);
+        return nullptr;
+      });
+      return true;
+    }();
+    Q_UNUSED(factoryInstalled);
+    setProperty("homeDeviceCards", true);
+    if (const auto accessible = QAccessible::queryAccessibleInterface(this); accessible && accessible->tableInterface())
+      QAccessible::deleteAccessibleInterface(QAccessible::uniqueId(accessible));
     setViewMode(QListView::IconMode);
     setResizeMode(QListView::Adjust);
     setMovement(QListView::Static);
@@ -35,6 +51,19 @@ public:
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setItemDelegate(new CardDelegate(this));
   }
+  void refreshCards()
+  {
+    for (int i = 0; i < count(); ++i) {
+      auto item = this->item(i);
+      auto button = new CardButton(this, item);
+      setItemWidget(item, button);
+      connect(button, &QPushButton::clicked, this, [this, item] {
+        setCurrentItem(item);
+        Q_EMIT itemClicked(item);
+      });
+    }
+    fitCards();
+  }
   void fitCards()
   {
     if (m_fitting)
@@ -42,6 +71,10 @@ public:
     QScopedValueRollback<bool> guard(m_fitting, true);
     const int columns = viewport()->width() >= 450 ? 2 : 1;
     setFixedHeight(qMax(72, ((count() + columns - 1) / columns) * 80 - 8));
+    for (int i = 0; i < count(); ++i) {
+      if (auto button = itemWidget(item(i)))
+        button->setGeometry(visualRect(model()->index(i, 0)));
+    }
     viewport()->update();
   }
   QRect visualRect(const QModelIndex &index) const override
@@ -69,6 +102,8 @@ protected:
     QStyleOptionViewItem option;
     initViewItemOption(&option);
     for (int i = 0; i < count(); ++i) {
+      if (itemWidget(item(i)))
+        continue;
       const auto index = model()->index(i, 0);
       option.rect = visualRect(index);
       itemDelegate()->paint(&painter, option, index);
@@ -91,7 +126,7 @@ private:
       p->save();
       p->setRenderHint(QPainter::Antialiasing);
       auto box = QRectF(option.rect).adjusted(.5, .5, -.5, -.5);
-      p->setPen(QColor("#e5e9ef"));
+      p->setPen(QColor(option.state & QStyle::State_HasFocus ? "#087fff" : "#e5e9ef"));
       p->setBrush(Qt::white);
       p->drawRoundedRect(box, 10, 10);
       if (index.data(Empty).toBool()) {
@@ -137,5 +172,34 @@ private:
       p->drawEllipse(QPointF(right - stateWidth + 4, box.center().y()), 3, 3);
       p->restore();
     }
+  };
+
+  class CardButton : public QPushButton
+  {
+  public:
+    CardButton(HomeDeviceList *list, QListWidgetItem *item) : QPushButton(list->viewport()), m_list(list), m_item(item)
+    {
+      setText(item->text());
+      setAccessibleName(item->text());
+      setToolTip(item->toolTip());
+      setAutoDefault(false);
+    }
+
+  protected:
+    void paintEvent(QPaintEvent *) override
+    {
+      QStyleOptionViewItem option;
+      option.initFrom(this);
+      option.rect = rect();
+      option.font = font();
+      if (hasFocus())
+        option.state |= QStyle::State_HasFocus;
+      QPainter painter(this);
+      m_list->itemDelegate()->paint(&painter, option, m_list->model()->index(m_list->row(m_item), 0));
+    }
+
+  private:
+    HomeDeviceList *m_list;
+    QListWidgetItem *m_item;
   };
 };
