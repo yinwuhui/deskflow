@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 if(APPLE)
-  set(target Deskflow)
+  set(target ${CMAKE_PROJECT_PROPER_NAME})
 else()
-  set(target deskflow)
+  set(target ${CMAKE_PROJECT_NAME})
 endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -20,10 +20,10 @@ elseif(BUILD_OSX_BUNDLE)
   set(BUNDLE_EXECUTABLE_NAME "${target}")
   set(BUNDLE_BUNDLE_NAME "${target}")
   set(BUNDLE_DISPLAY_NAME "${target}")
-  set(DESKFLOW_GUI_BUNDLE_ID "${CMAKE_PROJECT_REV_FQDN}" CACHE STRING
+  set(BUSYMOUSE_GUI_BUNDLE_ID "${CMAKE_PROJECT_REV_FQDN}" CACHE STRING
       "macOS GUI bundle identifier; use a separate identifier for locally signed preview builds")
-  set(BUNDLE_GUI_IDENTIFIER "${DESKFLOW_GUI_BUNDLE_ID}")
-  set(BUNDLE_ICON_FILE ${target}.icns)
+  set(BUNDLE_GUI_IDENTIFIER "${BUSYMOUSE_GUI_BUNDLE_ID}")
+  set(BUNDLE_ICON_FILE Deskflow.icns)
   set(BUNDLE_INFO_STRING "${CMAKE_PROJECT_DESCRIPTION}")
   set(BUNDLE_COPYRIGHT "${CMAKE_PROJECT_COPYRIGHT}")
 

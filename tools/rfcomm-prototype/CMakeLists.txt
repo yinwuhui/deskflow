@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.24)
-project(deskflow-rfcomm-prototype LANGUAGES CXX)
+project(busymouse-rfcomm-prototype LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -9,14 +9,14 @@ if(APPLE)
 endif()
 find_package(Qt6 6.7 REQUIRED COMPONENTS Core Network Bluetooth)
 add_subdirectory(../../src/lib/net/bluetooth "${CMAKE_CURRENT_BINARY_DIR}/bluetooth")
-qt_add_executable(deskflow-rfcomm MACOSX_BUNDLE main.cpp)
-target_link_libraries(deskflow-rfcomm PRIVATE deskflow-bluetooth)
+qt_add_executable(busymouse-rfcomm MACOSX_BUNDLE main.cpp)
+target_link_libraries(busymouse-rfcomm PRIVATE deskflow-bluetooth)
 if(APPLE)
   find_package(Qt6 REQUIRED COMPONENTS Gui)
-  target_link_libraries(deskflow-rfcomm PRIVATE Qt6::Gui)
-  set_target_properties(deskflow-rfcomm PROPERTIES
+  target_link_libraries(busymouse-rfcomm PRIVATE Qt6::Gui)
+  set_target_properties(busymouse-rfcomm PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "org.deskflow.rfcomm-prototype")
+    MACOSX_BUNDLE_GUI_IDENTIFIER "org.busymouse.rfcomm-prototype")
 endif()
 include(CTest)
 if(BUILD_TESTING)

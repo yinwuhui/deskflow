@@ -15,14 +15,14 @@ runs:
       shell: bash
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          dmg=$(ls build/deskflow-*.dmg | head -1)
+          dmg=$(ls build/busymouse-*.dmg | head -1)
           echo "Y" | hdiutil attach "$dmg" -nobrowse -mountpoint /tmp/deskflow-dmg
-          /tmp/deskflow-dmg/Deskflow.app/Contents/MacOS/deskflow-core --version
+          /tmp/deskflow-dmg/busymouse.app/Contents/MacOS/busymouse-core --version
           hdiutil detach /tmp/deskflow-dmg
 
         elif [ "$RUNNER_OS" == "Windows" ]; then
-          7z x build/deskflow-*-portable.zip -otmp/deskflow-pkg
-          exe=$(find tmp/deskflow-pkg -name "deskflow-core.exe" -type f | head -1)
+          7z x build/busymouse-*-portable.zip -otmp/deskflow-pkg
+          exe=$(find tmp/deskflow-pkg -name "busymouse-core.exe" -type f | head -1)
           exe_dir=$(dirname "$exe")
           pkg_root=$(dirname "$exe_dir")
           export PATH="$exe_dir:$pkg_root:$pkg_root/lib:$PATH"
@@ -30,18 +30,18 @@ runs:
 
         elif [ "$RUNNER_OS" == "Linux" ]; then
           if [ "${{inputs.like}}" == "debian" ]; then
-            apt-get install -y ./build/deskflow-*.deb
+            apt-get install -y ./build/busymouse-*.deb
           elif [ "${{inputs.like}}" == "fedora" ]; then
-            dnf install -y build/deskflow-*.rpm
+            dnf install -y build/busymouse-*.rpm
           elif [ "${{inputs.like}}" == "suse" ]; then
-            zypper install -y --allow-unsigned-rpm build/deskflow-*.rpm
+            zypper install -y --allow-unsigned-rpm build/busymouse-*.rpm
           elif [ "${{inputs.like}}" == "arch" ]; then
-            pacman -U --noconfirm build/deskflow-*.pkg.tar.zst
+            pacman -U --noconfirm build/busymouse-*.pkg.tar.zst
           else
             echo "Unknown like: ${{inputs.like}}"
             exit 1
           fi
-          QT_QPA_PLATFORM=minimal deskflow-core --version
+          QT_QPA_PLATFORM=minimal busymouse-core --version
 
         else
           echo "Unknown OS: $RUNNER_OS"

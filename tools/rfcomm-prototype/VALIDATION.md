@@ -1,3 +1,24 @@
+# 改名验证：2026-10-22
+
+当前诊断工具名称为 `busymouse-rfcomm`，macOS 应用标识为
+`org.busymouse.rfcomm-prototype`。当前交付路径为
+`dist/busymouse-rfcomm/busymouse-rfcomm.app`，配套启动器为同目录的
+`run-macos-server.command`。服务 UUID、握手协议和蓝牙功能保持原值。
+
+本次改名验证：
+
+- macOS arm64、Release、Qt 6.8.3、macOS 15.2 SDK 编译成功。
+- `rfcomm-tests` 和 `failover-tests` 两组自动化测试全部通过。
+- 打包后的 `--version` 输出 `busymouse-rfcomm 0.1`；`--help` 的程序名和文案已更新。
+- 非法地址在启动蓝牙操作前以退出码 2 拒绝。
+- 新 Bundle ID、完整 Qt 依赖和 `codesign --verify --deep --strict` 检查通过。
+- 启动器 `zsh -n` 和 `git diff --check` 通过。
+- 本次没有执行扫描、配对或真实蓝牙连接，也未验证 Linux 实机。
+
+以下 2026-10-21 的内容是改名前历史记录，其中旧程序名称和旧交付路径不代表当前版本。
+
+---
+
 # 验证记录：2026-10-21
 
 范围：Mac 蓝牙后端开发。按用户要求，产品 UI 未修改，Linux 联调暂缓。

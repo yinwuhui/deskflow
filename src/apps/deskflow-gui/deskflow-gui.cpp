@@ -13,6 +13,7 @@
 #include "common/UrlConstants.h"
 #include "common/VersionInfo.h"
 #include "gui/Diagnostic.h"
+#include "gui/LoginStartup.h"
 #include "gui/MainWindow.h"
 #include "gui/Messages.h"
 #include "gui/StyleUtils.h"
@@ -125,6 +126,9 @@ int main(int argc, char *argv[])
 
   qInstallMessageHandler(deskflow::gui::messages::messageHandler);
   qInfo("%s v%s", kAppName, kDisplayVersion);
+  QString startupMigrationError;
+  if (!LoginStartup().migrateLegacyRegistration(startupMigrationError))
+    qWarning().noquote() << "could not migrate login startup:" << startupMigrationError;
 
 #if defined(Q_OS_MACOS)
 

@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: MIT
 
 create_test(
+  NAME SettingsMigrationTests
+  DEPENDS common
+  SOURCE SettingsMigrationTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/common"
+)
+
+create_test(
   NAME SettingsTests
   DEPENDS common
   SOURCE SettingsTests.cpp

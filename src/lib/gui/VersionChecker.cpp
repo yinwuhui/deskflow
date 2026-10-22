@@ -25,12 +25,16 @@ VersionChecker::VersionChecker(QObject *parent) : QObject(parent), m_network{new
 void VersionChecker::checkLatest() const
 {
   const QString url = Settings::value(Settings::Gui::UpdateCheckUrl).toString();
+  if (url.trimmed().isEmpty()) {
+    qDebug() << "update check skipped: no busymouse update service configured";
+    return;
+  }
   qDebug("checking for updates at: %s", qPrintable(url));
   auto request = QNetworkRequest(url);
   auto userAgent = QString("%1 %2 on %3").arg(kAppName, kVersion, QSysInfo::prettyProductName());
   request.setHeader(QNetworkRequest::UserAgentHeader, userAgent);
-  request.setRawHeader("X-Deskflow-Version", kVersion);
-  request.setRawHeader("X-Deskflow-Language", qPrintable(QLocale::system().name()));
+  request.setRawHeader("X-busymouse-Version", kVersion);
+  request.setRawHeader("X-busymouse-Language", qPrintable(QLocale::system().name()));
   m_network->get(request);
 }
 

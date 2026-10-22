@@ -1,3 +1,12 @@
+# busymouse
+
+本分支将应用名称改为 **busymouse**，保留 Deskflow 的协议兼容性和原始贡献记录。
+构建、配置迁移与发布差异见 [改名说明](../docs/busymouse-rename.zh-CN.md)。
+
+以下保留 Deskflow 上游项目介绍与参考链接。
+
+---
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/deskflow/deskflow-artwork/blob/main/logo/deskflow-logo-dark-200px.png?raw=true">
   <source media="(prefers-color-scheme: light)" srcset="https://github.com/deskflow/deskflow-artwork/blob/main/logo/deskflow-logo-light-200px.png?raw=true">

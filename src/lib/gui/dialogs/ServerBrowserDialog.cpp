@@ -24,7 +24,7 @@ ServerBrowserDialog::ServerBrowserDialog(deskflow::mdns::MdnsBrowser *browser, Q
       m_btnRescan(new QPushButton(tr("Rescan"), this)),
       m_autoConnectCheck(new QCheckBox(tr("Connect to this server automatically next time"), this))
 {
-  setWindowTitle(tr("Deskflow servers on local network"));
+  setWindowTitle(tr("busymouse servers on local network"));
   setMinimumWidth(420);
 
   auto *layout = new QVBoxLayout(this);

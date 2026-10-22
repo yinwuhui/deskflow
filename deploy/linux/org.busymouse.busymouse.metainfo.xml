@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-	<id>org.deskflow.deskflow</id>
+	<id>org.busymouse.busymouse</id>
 	<metadata_license>CC0-1.0</metadata_license>
 	<project_license>GPL-2.0-only</project_license>
-	<name>Deskflow</name>
+	<name>busymouse</name>
 	<developer id="org.deskflow">
 		<name>Deskflow Developers</name>
 	</developer>
@@ -21,7 +21,7 @@
 			한 대의 컴퓨터에 연결된 키보드, 마우스 또는 트랙패드로 주변의 다른 컴퓨터를 제어하고, 컴퓨터 사이를 끊김 없이 오가며 작업할 수 있습니다.
 		</p>
 	</description>
-	<launchable type="desktop-id">org.deskflow.deskflow.desktop</launchable>
+	<launchable type="desktop-id">org.busymouse.busymouse.desktop</launchable>
 	<url type="homepage">https://deskflow.org</url>
 	<url type="bugtracker">https://github.com/deskflow/deskflow/issues</url>
 	<url type="faq">https://github.com/deskflow/deskflow/wiki/Project-FAQ</url>
@@ -54,7 +54,7 @@
 			<caption>Deskflow with the log visible on KDE (dark mode)</caption>
 		</screenshot>
 	</screenshots>
-	<provides> <id>org.deskflow.deskflow.desktop</id> </provides>
+	<provides> <id>org.busymouse.busymouse.desktop</id> </provides>
 	<categories>
 		<category>Utility</category>
 	</categories>

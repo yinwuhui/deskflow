@@ -10,16 +10,25 @@ set(OS_STRING "macos-${BUILD_ARCHITECTURE}")
 
 if (OSX_BUNDLE)
   set(_codesign_identity "-")
+  set(_deployqt_signing_options "")
   if (APPLE_CODESIGN_DEV)
     set(_codesign_identity "${APPLE_CODESIGN_DEV}")
+    set(_deployqt_signing_options "-hardened-runtime -timestamp")
   endif()
+  get_filename_component(_deployqt_bin_dir "${DEPLOYQT}" DIRECTORY)
   install(CODE "execute_process(COMMAND
     ${DEPLOYQT}
     \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_PROJECT_PROPER_NAME}.app\"
-    -hardened-runtime -timestamp \"-codesign=${_codesign_identity}\"
-  )")
+    \"-libpath=${_deployqt_bin_dir}/../lib\"
+    \"-executable=\${CMAKE_INSTALL_PREFIX}/${CMAKE_PROJECT_PROPER_NAME}.app/Contents/MacOS/${CMAKE_PROJECT_NAME}-core\"
+    ${_deployqt_signing_options} \"-codesign=${_codesign_identity}\"
+    RESULT_VARIABLE _deployqt_result
+  )
+  if(NOT _deployqt_result EQUAL 0)
+    message(FATAL_ERROR \"Qt application deployment failed: \${_deployqt_result}\")
+  endif()")
   set(CPACK_PACKAGE_ICON "${MY_DIR}/dmg-volume.icns")
-  set(CPACK_DMG_BACKGROUND_IMAGE "${MY_DIR}/dmg-background.tiff")
+  # Use a neutral background instead of artwork containing the upstream name.
   set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "${MY_DIR}/generate_ds_store.applescript")
   set(CPACK_DMG_VOLUME_NAME "${CMAKE_PROJECT_PROPER_NAME}")
   set(CPACK_DMG_SLA_USE_RESOURCE_FILE_LICENSE ON)

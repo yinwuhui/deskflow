@@ -9,7 +9,7 @@
 
 源码在 `src/lib/net/bluetooth/`：
 
-- `BluetoothDiscovery`：经典蓝牙设备扫描、按固定 UUID 发现 Deskflow 服务、超时和取消。
+- `BluetoothDiscovery`：经典蓝牙设备扫描、按固定 UUID 发现 busymouse 服务、超时和取消。
 - `BluetoothPairing`：Mac 使用 IOBluetoothDevicePair 原生配对；发出确认码、PIN 请求和配对结果信号，支持明确确认、取消和 60 秒超时。Linux 使用系统 BlueZ 配对代理；该分支未做目标机器验证。
 - `RfcommBridge`：服务注册/监听、设备地址白名单、单连接限制、客户端拨号、连接超时、监听错误重试、适配器电源事件处理、显式停止、连接状态和 RTT 信号。
 - `RfcommSession`：协议版本握手、分包/合包、双向转发、帧大小校验、有限写队列、回压、心跳/RTT、静默超时和旧会话销毁。
@@ -20,19 +20,19 @@
 ## 数据路径与身份验证
 
 ```text
-本机 Deskflow 核心 ← TCP 回环 → 内嵌 RfcommBridge
+本机 busymouse 核心 ← TCP 回环 → 内嵌 RfcommBridge
                                 ⇅ RFCOMM
-远端 Deskflow 核心 ← TCP 回环 → 内嵌 RfcommBridge
+远端 busymouse 核心 ← TCP 回环 → 内嵌 RfcommBridge
 ```
 
 蓝牙承担两机之间的传输。回环桥接保留已有 TLS、证书指纹校验、键鼠处理及输入状态释放逻辑。
 蓝牙模式强制要求现有配置启用 `security/tlsEnabled` 和 `security/checkPeerFingerprints`；关闭任一项会在启动核心前拒绝。
 
 运行时覆盖连接地址，不改写已有网络主机、端口或网卡配置。服务端仅监听 `127.0.0.1`，停止发布网络 mDNS；客户端使用自动分配的本机回环端口，并跳过物理网卡绑定。
-断线时立即 abort 两端流，销毁旧队列。客户端通过已有 Deskflow 重试流程创建新的 RFCOMM/TLS 会话，避免重放旧输入。
+断线时立即 abort 两端流，销毁旧队列。客户端通过已有 busymouse 重试流程创建新的 RFCOMM/TLS 会话，避免重放旧输入。
 Mac 的蓝牙安全参数由系统管理，应用层始终依赖已有 TLS 和证书验证。设备蓝牙地址白名单不替代证书身份验证。
 
-首次使用前，两端应已配对，并完成现有 Deskflow 证书信任。可沿用原有 GUI 的信任流程；无界面环境需要核对对端证书 SHA256 后，按现有 `FingerprintDatabase` 格式维护对应的 `trusted-clients` / `trusted-servers` 文件（`v2:sha256:` 加 64 位十六进制指纹）。不要关闭验证来跳过此步骤。
+首次使用前，两端应已配对，并完成现有 busymouse 证书信任。可沿用原有 GUI 的信任流程；无界面环境需要核对对端证书 SHA256 后，按现有 `FingerprintDatabase` 格式维护对应的 `trusted-clients` / `trusted-servers` 文件（`v2:sha256:` 加 64 位十六进制指纹）。不要关闭验证来跳过此步骤。
 
 ## 构建和运行
 
@@ -40,19 +40,19 @@ Mac 的蓝牙安全参数由系统管理，应用层始终依赖已有 TLS 和�
 
 ```sh
 cmake -S . -B build -DBUILD_BLUETOOTH=ON -DCMAKE_PREFIX_PATH="Qt 安装目录"
-cmake --build build --target deskflow-core
+cmake --build build --target busymouse-core
 ```
 
 需要 Qt Core/Gui/Widgets/Network/Bluetooth 和项目原有依赖；Mac 构建系统启用 Objective-C 与 Objective-C++，自动链接原生配对框架，并在 app plist 声明蓝牙用途。
 本机 Qt 6.8.3 使用 macOS 15.2 SDK 构建。新 SDK 若已移除 Qt 所需 AGL，请使用匹配的 SDK 或更新 Qt。
 
-Mac 核心位于应用的 `Contents/MacOS/deskflow-core`。以下 `CORE` 需设置为其完整路径。
+Mac 核心位于应用的 `Contents/MacOS/busymouse-core`。以下 `CORE` 需设置为其完整路径。
 
 ```sh
 # 扫描设备，20 秒后结束；不会启动键鼠捕获。
 "$CORE" --bluetooth-scan
 
-# 在指定电脑上查找 Deskflow RFCOMM 服务。
+# 在指定电脑上查找 busymouse RFCOMM 服务。
 "$CORE" --bluetooth-services AA:BB:CC:DD:EE:FF
 
 # Mac 服务端：地址是唯一允许接入的 Linux 设备；配置文件沿用现有布局/证书。
@@ -80,7 +80,7 @@ Mac 核心位于应用的 `Contents/MacOS/deskflow-core`。以下 `CORE` 需设�
 "$BT" --peer 11:22:33:44:55:66 --probe --drop-after 10 --duration 45
 ```
 
-独立工具的 bridge 模式不解析本机 TLS 字节流，需自行保持两端 Deskflow TLS 设置；集成核心入口会强制检查。
+独立工具的 bridge 模式不解析本机 TLS 字节流，需自行保持两端 busymouse TLS 设置；集成核心入口会强制检查。
 RTT 每秒采样；使用 `analyze-log.py` 统计 P50/P95/最大值和桥接恢复时间。它不等于物理按键到画面响应的延迟。
 详细两机步骤见 [原型操作说明](../../tools/rfcomm-prototype/README.zh-CN.md)。
 

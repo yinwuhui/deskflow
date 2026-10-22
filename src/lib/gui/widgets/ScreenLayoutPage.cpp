@@ -313,7 +313,7 @@ void ScreenLayoutPage::build()
   editorLayout->setContentsMargins(0, 0, 0, 0);
   m_newName = new QLineEdit(m_editor);
   m_newName->setObjectName("newLayoutComputerName");
-  m_newName->setPlaceholderText(tr("Enter the other computer's Deskflow name"));
+  m_newName->setPlaceholderText(tr("Enter the other computer's busymouse name"));
   auto confirm = new QPushButton(tr("Add"), this);
   auto cancel = new QPushButton(tr("Cancel"), this);
   editorLayout->addWidget(m_newName, 1);
@@ -594,7 +594,7 @@ bool ScreenLayoutPage::addComputer(const QString &name)
     return false;
   validators::ComputerNameValidator validator{QString()};
   if (name.isEmpty() || !validator.validate(name)) {
-    message(tr("Use a valid Deskflow computer name: letters, numbers, underscores, dots or hyphens."), true);
+    message(tr("Use a valid busymouse computer name: letters, numbers, underscores, dots or hyphens."), true);
     return false;
   }
   for (const auto &c : std::as_const(m_draft.computers())) {

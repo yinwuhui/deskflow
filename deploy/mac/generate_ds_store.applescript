@@ -26,7 +26,7 @@ on run argv
     open
       set current view of container window to icon view
       set theViewOptions to the icon view options of container window
-      set background picture of theViewOptions to file ".background:background.tiff"
+      set background color of theViewOptions to {65535, 65535, 65535}
       set arrangement of theViewOptions to not arranged
       set icon size of theViewOptions to 100
       set text size of theViewOptions to 16
@@ -39,7 +39,7 @@ on run argv
         set toolbar visible to false
         set pathbar visible to false
         set the bounds to { 200, 120, 800, 520 }
-        set position of item "Deskflow.app" to { 144, 190 }
+        set position of item "busymouse.app" to { 144, 190 }
         set position of item "Applications" to { 455, 190 }
       end tell
     close

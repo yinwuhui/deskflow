@@ -112,7 +112,7 @@ void generatePemSelfSignedCert(const QString &path, int keyLength)
   if (!name) {
     throw std::runtime_error("could not allocate subject name");
   }
-  X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char *>("Deskflow"), -1, -1, 0);
+  X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char *>("busymouse"), -1, -1, 0);
   X509_set_subject_name(cert, name);
   X509_set_issuer_name(cert, name);
   X509_NAME_free(name);

@@ -320,7 +320,7 @@ void SettingsPage::build()
   auto g = group(basic);
   m_startupToggle = toggle(
       g, kStartup, tr("Start automatically at login"),
-      tr("Run Deskflow automatically after signing in to this computer."), false
+      tr("Run busymouse automatically after signing in to this computer."), false
   );
   choice(
       g, Settings::Gui::Autohide, tr("When the application starts"),
@@ -342,7 +342,7 @@ void SettingsPage::build()
   for (const auto &name : I18N::detectedLanguages())
     languages.append({name, I18N::nativeTo639Name(name)});
   choice(
-      g, Settings::Core::Language, tr("Interface language"), tr("Select the language used by Deskflow."), languages,
+      g, Settings::Core::Language, tr("Interface language"), tr("Select the language used by busymouse."), languages,
       false
   );
   choice(
@@ -350,10 +350,14 @@ void SettingsPage::build()
       tr("Choose an appearance for the tray or menu bar icon."), {{tr("Monochrome"), true}, {tr("Colorful"), false}},
       false
   );
-  toggle(
+  const bool updatesAvailable = !Settings::value(Settings::Gui::UpdateCheckUrl).toString().trimmed().isEmpty();
+  auto updateCheck = toggle(
       g, Settings::Gui::AutoUpdateCheck, tr("Check for updates on startup"),
-      tr("Check whether a new application version is available."), false
+      updatesAvailable ? tr("Check whether a new application version is available.")
+                       : tr("Automatic update checks are unavailable in this build."),
+      false
   );
+  updateCheck->setEnabled(updatesAvailable);
   auto extra = button(tr("Other display options"));
   basic->addWidget(extra, 0, Qt::AlignLeft);
   auto other = new QWidget(this);
@@ -556,7 +560,7 @@ void SettingsPage::build()
   );
   auto externalPath = path(
       g, Settings::Server::ExternalConfigFile, tr("Server configuration file"),
-      tr("Choose an existing readable Deskflow server configuration file.")
+      tr("Choose an existing readable busymouse server configuration file.")
   );
   connect(externalConfig, &QCheckBox::toggled, externalPath, &QWidget::setVisible);
   g = group(more);
@@ -602,7 +606,7 @@ void SettingsPage::build()
       clear);
   auto confirm = new QWidget(this);
   auto confirmLayout = new QVBoxLayout(confirm);
-  auto warning = new QLabel(tr("Clear all settings and restart Deskflow?"), confirm);
+  auto warning = new QLabel(tr("Clear all settings and restart busymouse?"), confirm);
   warning->setWordWrap(true);
   confirmLayout->addWidget(warning);
   auto yes = button(tr("Confirm clear and restart"));

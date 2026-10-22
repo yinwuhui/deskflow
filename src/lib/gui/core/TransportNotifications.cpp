@@ -9,7 +9,7 @@ TransportNotifications::TransportNotifications(QObject *parent, int delayMs) : Q
     if (m_recovering && !m_offlineShown)
       Q_EMIT notification(
           tr("Connection interrupted"),
-          tr("Remote control has stopped. Deskflow is automatically trying another connection.")
+          tr("Remote control has stopped. busymouse is automatically trying another connection.")
       );
   });
 }
@@ -40,7 +40,7 @@ void TransportNotifications::update(const QString &state)
     m_delay.stop();
     m_offlineShown = true;
     const auto body =
-        tr("Unable to connect to the other computer. Control remains local; Deskflow will keep retrying automatically."
+        tr("Unable to connect to the other computer. Control remains local; busymouse will keep retrying automatically."
         );
     Q_EMIT statusChanged(tr("Offline; retrying automatically."));
     if (m_recovering)

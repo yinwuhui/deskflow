@@ -78,6 +78,64 @@ private Q_SLOTS:
     QVERIFY(startup.setEnabled(false, error));
   }
 
+  void legacyLoginStartupMovesToNewExecutable_data()
+  {
+    QTest::addColumn<bool>("existingRegistration");
+    QTest::newRow("migrate") << false;
+    QTest::newRow("preserve-existing") << true;
+  }
+
+  void legacyLoginStartupMovesToNewExecutable()
+  {
+    QFETCH(bool, existingRegistration);
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+#ifdef Q_OS_MACOS
+    const auto oldExecutable = dir.filePath("Deskflow.app/Contents/MacOS/Deskflow");
+#elif defined(Q_OS_WIN)
+    const auto oldExecutable = dir.filePath("deskflow.exe");
+#else
+    const auto oldExecutable = dir.filePath("deskflow");
+#endif
+    QVERIFY(QDir().mkpath(QFileInfo(oldExecutable).absolutePath()));
+    QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), oldExecutable));
+    const auto registrationDirectory = dir.filePath("registration");
+    LoginStartup legacy(oldExecutable, registrationDirectory, "org.deskflow.deskflow");
+    LoginStartup current(QCoreApplication::applicationFilePath(), registrationDirectory, "org.busymouse.busymouse");
+    QString error;
+    QVERIFY2(legacy.setEnabled(true, error), qPrintable(error));
+#if !defined(Q_OS_MACOS) && !defined(Q_OS_WIN)
+    // Reproduce the old desktop-entry display name.
+    QFile desktop(legacy.registrationPath());
+    QVERIFY(desktop.open(QIODevice::ReadOnly));
+    const auto contents = desktop.readAll().replace("Name=busymouse", "Name=Deskflow");
+    desktop.close();
+    QVERIFY(desktop.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QCOMPARE(desktop.write(contents), contents.size());
+    desktop.close();
+#endif
+    if (existingRegistration) {
+      LoginStartup existing(oldExecutable, registrationDirectory, "org.busymouse.busymouse");
+      QVERIFY(existing.setEnabled(true, error));
+      QFile file(legacy.registrationPath());
+      QVERIFY(file.open(QIODevice::ReadOnly));
+      const auto before = file.readAll();
+      file.close();
+      QVERIFY(current.migrateLegacyRegistration(error));
+      QVERIFY(existing.isEnabled());
+      QVERIFY(!current.isEnabled());
+      QVERIFY(file.open(QIODevice::ReadOnly));
+      QCOMPARE(file.readAll(), before);
+      return;
+    }
+    QVERIFY2(current.migrateLegacyRegistration(error), qPrintable(error));
+    QVERIFY(current.isEnabled());
+    QVERIFY(!legacy.isEnabled());
+    QVERIFY(current.migrateLegacyRegistration(error));
+    QVERIFY(current.isEnabled());
+    QVERIFY(current.setEnabled(false, error));
+  }
+
   void editsAreDraftsAcrossCategoriesAndCanBeDiscarded()
   {
     QTemporaryDir dir;

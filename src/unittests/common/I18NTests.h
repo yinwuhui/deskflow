@@ -25,8 +25,8 @@ private Q_SLOTS:
 private:
   QString m_myTDir;
   inline static const QString m_settingsPathTemp = QStringLiteral("tmp/test");
-  inline static const QString m_settingsFile = QStringLiteral("%1/Deskflow.conf").arg(m_settingsPathTemp);
-  inline static const QString m_stateFile = QStringLiteral("%1/Deskflow.state").arg(m_settingsPathTemp);
+  inline static const QString m_settingsFile = QStringLiteral("%1/busymouse.conf").arg(m_settingsPathTemp);
+  inline static const QString m_stateFile = QStringLiteral("%1/busymouse.state").arg(m_settingsPathTemp);
   inline static const QMap<QString, QString> m_langMap = {
       {QStringLiteral("English"), QStringLiteral("en")},    {QStringLiteral("Español"), QStringLiteral("es")},
       {QStringLiteral("한국어"), QStringLiteral("ko")},     {QStringLiteral("Italiano"), QStringLiteral("it")},

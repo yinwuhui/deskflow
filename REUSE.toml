@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 version = 1
-SPDX-PackageName = "deskflow"
+SPDX-PackageName = "busymouse"
 SPDX-PackageSupplier = "Deskflow Devs"
 SPDX-PackageDownloadLocation = "https://github.com/deskflow/deskflow"
 
@@ -19,7 +19,7 @@ path = [
  , "**/*.md"
  , "docs/**"
  , "deploy/linux/flatpak/**"
- , "deploy/linux/org.deskflow.deskflow.metainfo.xml"
+ , "deploy/linux/org.busymouse.busymouse.metainfo.xml"
  , "deploy/windows/wix-patch.xml.in"
  , "src/apps/deskflow-client/deskflow-client.exe.manifest"
  , "src/apps/deskflow-core/deskflow-core.exe.manifest"
@@ -36,7 +36,7 @@ SPDX-License-Identifier = "MIT"
 path = [
    "deploy/mac/dmg-background.tiff"
  , "deploy/mac/dmg-volume.icns"
- , "deploy/linux/org.deskflow.deskflow.png"
+ , "deploy/linux/org.busymouse.busymouse.png"
  , "deploy/windows/wix-banner.png"
  , "deploy/windows/wix-dialog.png"
  , "src/apps/res/icons/deskflow-**/apps/64/deskflow*.svg"

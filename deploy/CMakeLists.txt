@@ -33,7 +33,7 @@ else()
   message(STATUS "UNKNOWN System: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-# Always use "deskflow" for start of name
+# Use the application ID as the package filename prefix.
 set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PACKAGE_VERSION_LABEL}-${OS_STRING}")
 message(STATUS "Package Basename: ${CPACK_PACKAGE_FILE_NAME}")
 

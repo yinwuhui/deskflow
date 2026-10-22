@@ -147,7 +147,7 @@ private:
         launch(socket, nullptr);
       }
     });
-    m_service = m_server->listen(ServiceUuid, "Deskflow RFCOMM prototype v1");
+    m_service = m_server->listen(ServiceUuid, "busymouse RFCOMM prototype v1");
     if (!m_service.isRegistered()) {
       qWarning() << "Cannot register RFCOMM service; retrying in 2s. Check Bluetooth power and permission.";
       m_listenerRetry.start();

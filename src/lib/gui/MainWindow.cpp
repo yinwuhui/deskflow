@@ -111,7 +111,7 @@ MainWindow::MainWindow()
   });
   connect(m_transportNotifications, &TransportNotifications::statusChanged, this, [this](const auto &text) {
     m_statusBar->showMessage(text);
-    m_trayIcon->setToolTip(text.isEmpty() ? QStringLiteral("Deskflow") : text);
+    m_trayIcon->setToolTip(text.isEmpty() ? QString::fromLatin1(kAppName) : text);
   });
   connect(
       m_transportNotifications, &TransportNotifications::notification, this,

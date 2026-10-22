@@ -160,7 +160,7 @@ private Q_SLOTS:
       QSignalSpy ready(&sender, &RfcommSession::ready);
       QSignalSpy stopped(&server, &RfcommSession::finished);
       server.start();
-      // Queue local input before RFCOMM readiness, as the Deskflow TLS handshake does.
+      // Queue local input before RFCOMM readiness, as the busymouse TLS handshake does.
       QByteArray payload(200000, '\0');
       for (int i = 0; i < payload.size(); ++i)
         payload[i] = char((i + attempt) % 256);

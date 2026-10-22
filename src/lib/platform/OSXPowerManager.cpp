@@ -16,7 +16,7 @@ OSXPowerManager::~OSXPowerManager()
 void OSXPowerManager::disableSleep()
 {
   if (!m_sleepPreventionAssertionID) {
-    CFStringRef reasonForActivity = CFSTR("Deskflow application");
+    CFStringRef reasonForActivity = CFSTR("busymouse application");
     IOReturn result = IOPMAssertionCreateWithName(
         kIOPMAssertPreventUserIdleDisplaySleep, kIOPMAssertionLevelOn, reasonForActivity, &m_sleepPreventionAssertionID
     );

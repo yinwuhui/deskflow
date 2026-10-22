@@ -209,7 +209,7 @@ QString DeviceListPage::normalizedAddress(const QString &address, int defaultPor
   const auto text = address.trimmed();
   if (text.isEmpty() || text.contains(',') || text.contains(QRegularExpression(QStringLiteral("\\s"))))
     return {};
-  const auto url = QUrl(QStringLiteral("deskflow://") + text);
+  const auto url = QUrl(QStringLiteral("busymouse://") + text);
   if (!url.isValid() || url.host().isEmpty() || !url.userInfo().isEmpty() || !url.path().isEmpty() || url.hasQuery() ||
       url.hasFragment() || url.port(defaultPort) < 1 || url.port(defaultPort) > 65535)
     return {};
@@ -360,7 +360,7 @@ void DeviceListPage::build()
   m_addName->setObjectName("deviceAddName");
   m_addName->setMaxLength(255);
   nameLabel->setBuddy(m_addName);
-  m_addName->setPlaceholderText(tr("Match the name shown in the other Deskflow"));
+  m_addName->setPlaceholderText(tr("Match the name shown in the other busymouse"));
   formLayout->addWidget(nameLabel);
   formLayout->addWidget(m_addName);
   m_addressRow = new QWidget(form);

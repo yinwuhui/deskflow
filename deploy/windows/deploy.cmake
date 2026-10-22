@@ -31,15 +31,15 @@ set(CPACK_PACKAGE_NAME "${CMAKE_PROJECT_PROPER_NAME}")
 
 # Menu Entry
 set(CPACK_WIX_PROGRAM_MENU_FOLDER "${CMAKE_PROJECT_PROPER_NAME}")
-set(CPACK_PACKAGE_EXECUTABLES "deskflow" "${CMAKE_PROJECT_PROPER_NAME}")
+set(CPACK_PACKAGE_EXECUTABLES "${CMAKE_PROJECT_NAME}" "${CMAKE_PROJECT_PROPER_NAME}")
 
 # Default Install Path
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_PROPER_NAME}")
 
 # Wix Specific Values
-set(CPACK_WIX_UPGRADE_GUID "027D1C8A-E7A5-4754-BB93-B2D45BFDBDC8")
+set(CPACK_WIX_UPGRADE_GUID "0A42BD71-0E5F-4BDA-A82E-B868BD1D1B9F")
 set(CPACK_WIX_UI_BANNER "${MY_DIR}/wix-banner.png")
-set(CPACK_WIX_UI_DIALOG "${MY_DIR}/wix-dialog.png")
+# Use the standard WiX dialog artwork; the old custom image contains "Deskflow".
 
 # Required Extra Extenstions
 list(APPEND CPACK_WIX_EXTENSIONS "WixToolset.Util.wixext" "WixToolset.Firewall.wixext")

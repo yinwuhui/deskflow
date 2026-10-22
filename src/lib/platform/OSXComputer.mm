@@ -803,7 +803,7 @@ void OSXComputer::enter()
     m_buttonState.reset();
 
     const auto result = IOPMAssertionDeclareUserActivity(
-        CFSTR("Deskflow client entry"), kIOPMUserActiveLocal, &m_userActivityAssertionID
+        CFSTR("busymouse client entry"), kIOPMUserActiveLocal, &m_userActivityAssertionID
     );
     if (result != kIOReturnSuccess) {
       LOG_WARN("failed to declare user activity: %d", result);

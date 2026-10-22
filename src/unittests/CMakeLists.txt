@@ -40,6 +40,12 @@ function(create_test)
   endif()
   add_test(NAME ${m_NAME} COMMAND $<TARGET_FILE:${m_NAME}> WORKING_DIRECTORY ${m_WORKING_DIRECTORY})
   set_tests_properties(${m_NAME} PROPERTIES DEPENDS ${m_DEPENDS})
+  if(NOT WIN32)
+    # Settings is a singleton: even tests that later select a fixture must not
+    # initialize or migrate a profile in the developer's real home directory.
+    set_tests_properties(${m_NAME} PROPERTIES ENVIRONMENT
+      "XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-profiles/${m_NAME}/config;XDG_STATE_HOME=${CMAKE_BINARY_DIR}/test-profiles/${m_NAME}/state")
+  endif()
   set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests ${m_NAME})
 
   if(ENABLE_COVERAGE)
@@ -75,9 +81,9 @@ endif()
 get_property(PROJECT_TESTS GLOBAL PROPERTY ${CMAKE_PROJECT_NAME}_tests)
 
 if(APPLE)
-  set(guiApp Deskflow)
+  set(guiApp ${CMAKE_PROJECT_PROPER_NAME})
 else()
-  set(guiApp deskflow)
+  set(guiApp ${CMAKE_PROJECT_NAME})
 endif()
 
 option(SKIP_BUILD_TESTS "Skip build time test" OFF)

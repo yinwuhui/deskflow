@@ -1,27 +1,28 @@
-# macOS → Linux RFCOMM 原型
+# busymouse 蓝牙诊断工具（macOS → Linux RFCOMM）
 
-本原型用于两台已配对的电脑，支持独立 RTT 探测、现有 Deskflow 数据转发、断线关闭和重新建连。
+本原型用于两台已配对的电脑，支持独立 RTT 探测、现有 busymouse 数据转发、断线关闭和重新建连。
 当前按需求仅完成并验证 Mac 端，暂不进行 Linux 联调。本工具与已接入核心的蓝牙后端共享实现，便于独立诊断；尚未改动产品 UI。核心直接使用蓝牙的方式见 [后端说明](../../docs/dev/bluetooth.md)。
 
 数据路径：
 
 ```text
-Mac Deskflow 服务端 ← 本机 TCP 127.0.0.1:24800 → Mac 桥接程序
+Mac busymouse 服务端 ← 本机 TCP 127.0.0.1:24800 → Mac 桥接程序
                                                ⇅ 蓝牙 RFCOMM
-Linux Deskflow 客户端 ← 本机 TCP 127.0.0.1:24800 → Linux 桥接程序
+Linux busymouse 客户端 ← 本机 TCP 127.0.0.1:24800 → Linux 桥接程序
 ```
 
-两台电脑之间使用蓝牙；TCP 仅用于每台电脑内部。桥接不解析键鼠消息或 TLS，现有 Deskflow 核心负责设备证书、键鼠处理和断线后的输入状态清理。实际按键释放仍需硬件实测。
+两台电脑之间使用蓝牙；TCP 仅用于每台电脑内部。桥接不解析键鼠消息或 TLS，现有 busymouse 核心负责设备证书、键鼠处理和断线后的输入状态清理。实际按键释放仍需硬件实测。
 
 ## Mac 现成包
 
-本机交付位于仓库 `dist/rfcomm-prototype/`，包含已部署依赖的 `deskflow-rfcomm.app` 和 `run-macos-server.command`。
+本机交付位于仓库 `dist/busymouse-rfcomm/`，包含已部署依赖的 `busymouse-rfcomm.app` 和 `run-macos-server.command`。
+应用标识为 `org.busymouse.rfcomm-prototype`。改名保留服务 UUID 和握手协议，兼容原诊断工具。
 这是命令行程序，直接双击 app 不会出现配置窗口。需要运行服务端时，双击 `.command` 并填写允许接入的 Linux 蓝牙地址；Ctrl+C 停止。
 
 当前不联调时，可在仓库根目录仅验证 Mac 监听启动（测试地址不会连接任何远端）：
 
 ```sh
-BT="$PWD/dist/rfcomm-prototype/deskflow-rfcomm.app/Contents/MacOS/deskflow-rfcomm"
+BT="$PWD/dist/busymouse-rfcomm/busymouse-rfcomm.app/Contents/MacOS/busymouse-rfcomm"
 "$BT" --server --peer 02:00:00:00:00:01 --duration 3
 ```
 
@@ -35,24 +36,24 @@ Mac 端还需要 Qt Gui 来显示系统蓝牙授权弹窗（原型本身没有�
 从仓库根目录运行（路径含空格时加引号）：
 
 ```sh
-cmake -S tools/rfcomm-prototype -B build/rfcomm -DCMAKE_PREFIX_PATH="你的 Qt 安装目录"
-cmake --build build/rfcomm
-ctest --test-dir build/rfcomm --output-on-failure
+cmake -S tools/rfcomm-prototype -B build/busymouse-rfcomm -DCMAKE_PREFIX_PATH="你的 Qt 安装目录"
+cmake --build build/busymouse-rfcomm
+ctest --test-dir build/busymouse-rfcomm --output-on-failure
 ```
 
 本机使用 Qt 6.8.3 + macOS 15.2 SDK 构建；较新的 SDK 如果已移除 AGL，可安装兼容 SDK 并在配置时添加 `-DCMAKE_OSX_SYSROOT=SDK完整路径`，或使用适配新 SDK 的 Qt。
 
-macOS 二进制位于 `build/rfcomm/deskflow-rfcomm.app/Contents/MacOS/deskflow-rfcomm`；
-Linux 位于 `build/rfcomm/deskflow-rfcomm`。以下命令用 `BT` 环境变量代表该程序的完整路径。
+macOS 二进制位于 `build/busymouse-rfcomm/busymouse-rfcomm.app/Contents/MacOS/busymouse-rfcomm`；
+Linux 位于 `build/busymouse-rfcomm/busymouse-rfcomm`。以下命令用 `BT` 环境变量代表该程序的完整路径。
 macOS 如需独立运行，先用 Qt 的 `macdeployqt` 部署整个 app，并进行本地签名：
 
 ```sh
-macdeployqt build/rfcomm/deskflow-rfcomm.app
-codesign --force --deep --sign - build/rfcomm/deskflow-rfcomm.app
+macdeployqt build/busymouse-rfcomm/busymouse-rfcomm.app
+codesign --force --deep --sign - build/busymouse-rfcomm/busymouse-rfcomm.app
 ```
 
 首次运行 macOS 端会请求蓝牙权限。请在系统隐私设置允许该原型使用蓝牙。
-Mac Deskflow 本身仍需要辅助功能/输入监控权限。Linux Wayland 的输入权限沿用当前 Deskflow 的要求。
+Mac busymouse 本身仍需要辅助功能/输入监控权限。Linux Wayland 的输入权限沿用当前 busymouse 的要求。
 
 ## 1. 系统配对和地址
 
@@ -68,7 +69,7 @@ Mac Deskflow 本身仍需要辅助功能/输入监控权限。Linux Wayland 的�
 记录 Mac 与 Linux 的蓝牙地址，格式为 `AA:BB:CC:DD:EE:FF`。Mac 端使用 Linux 的地址作为允许接入的设备；Linux 端使用 Mac 的地址。
 系统发现可见性与服务注册不是同一回事；扫描不到时先检查系统蓝牙可发现设置。
 
-## 2. 先测链路，不启动 Deskflow
+## 2. 先测链路，不启动 busymouse
 
 Mac（将示例地址替换成 Linux 的蓝牙地址）：
 
@@ -88,15 +89,15 @@ python3 tools/rfcomm-prototype/analyze-log.py linux-probe.log
 `--duration` 仅控制运行时间，进程退出成功不代表曾连接成功；必须检查 ready 和样本数。
 
 服务端只接受指定蓝牙地址、一次一条连接，识别固定服务 UUID `7e349c68-6726-4b5c-a1d4-6c80f21cd980`。
-地址白名单用于限制原型接入，不能替代 Deskflow 的证书身份验证。Qt 在 macOS 上不支持手动设置蓝牙 socket 安全标志，链路安全由系统管理；Deskflow 的 TLS 与证书检查仍需保持启用。
+地址白名单用于限制原型接入，不能替代 busymouse 的证书身份验证。Qt 在 macOS 上不支持手动设置蓝牙 socket 安全标志，链路安全由系统管理；busymouse 的 TLS 与证书检查仍需保持启用。
 
 ## 3. 接入真实键鼠
 
 结束 Linux 探测进程后，Mac 端可保持运行。
 
-1. 在 Mac 现有 Deskflow GUI 中配置服务端，添加 Linux 的电脑名称并设置相对屏幕位置。
+1. 在 Mac 现有 busymouse GUI 中配置服务端，添加 Linux 的电脑名称并设置相对屏幕位置。
 2. Mac 服务端的监听地址设为 `127.0.0.1`，端口 `24800`，启动服务端。可在配置文件中检查 `[core] interface=127.0.0.1` 和 `port=24800`。
-3. 两端均保留 TLS 加密和设备证书指纹检查。首次连接时按现有 Deskflow GUI 流程核对并信任对端证书。
+3. 两端均保留 TLS 加密和设备证书指纹检查。首次连接时按现有 busymouse GUI 流程核对并信任对端证书。
 4. 初次键鼠测试先关闭剪贴板共享，排除大数据传输的影响。
 5. Linux 启动桥接监听：
 
@@ -104,11 +105,11 @@ python3 tools/rfcomm-prototype/analyze-log.py linux-probe.log
 "$BT" --peer 11:22:33:44:55:66 --port 24800 2>&1 | tee linux-bridge.log
 ```
 
-6. Linux Deskflow GUI 选择客户端，远端主机填写 `127.0.0.1`、端口 `24800`。电脑名称必须与 Mac 布局中一致，启用客户端自动重试连接。不要同时运行另一个占用该端口的服务端。
+6. Linux busymouse GUI 选择客户端，远端主机填写 `127.0.0.1`、端口 `24800`。电脑名称必须与 Mac 布局中一致，启用客户端自动重试连接。不要同时运行另一个占用该端口的服务端。
 7. 移动鼠标跨越 Mac 屏幕边缘，在 Linux 编辑器输入、拖动窗口、滚动，确认输入正确、无重复字符和卡键。
 
-若两端端口需不同，例如 Linux 24801，只需同时修改 Linux 桥接 `--port` 和 Linux Deskflow 客户端端口；Mac 设置保持不变。
-桥接的 `--port` 在 Mac 端表示要连接的本机 Deskflow 服务端端口，在 Linux 端表示本机桥接的监听端口。
+若两端端口需不同，例如 Linux 24801，只需同时修改 Linux 桥接 `--port` 和 Linux busymouse 客户端端口；Mac 设置保持不变。
+桥接的 `--port` 在 Mac 端表示要连接的本机 busymouse 服务端端口，在 Linux 端表示本机桥接的监听端口。
 
 RTT 仅衡量传输往返时间，包含排队影响，不能直接当作单向键鼠延迟。实际输入到画面响应可用高帧率摄影记录物理按键与 Linux 画面变化，重复至少 20 次；记录键盘、显示器刷新率和系统版本。
 
@@ -122,7 +123,7 @@ RTT 仅衡量传输往返时间，包含排队影响，不能直接当作单向�
 python3 tools/rfcomm-prototype/analyze-log.py linux-recovery.log
 ```
 
-真实键鼠模式同样支持 `--drop-after 10`。断线后两端关闭本机 TCP 连接，丢弃旧会话队列；Linux Deskflow 客户端下一次连接会触发新的蓝牙连接和 TLS 握手。桥接不会重放断线前的数据。
+真实键鼠模式同样支持 `--drop-after 10`。断线后两端关闭本机 TCP 连接，丢弃旧会话队列；Linux busymouse 客户端下一次连接会触发新的蓝牙连接和 TLS 握手。桥接不会重放断线前的数据。
 
 继续测试真实硬件故障：
 
@@ -132,7 +133,7 @@ python3 tools/rfcomm-prototype/analyze-log.py linux-recovery.log
 
 Mac 端收到监听器错误后，每 2 秒尝试重新注册 RFCOMM 服务；蓝牙电源切换和休眠恢复的实际行为仍需后续硬件验证。
 
-静默链路/握手默认在约 10 秒后超时；系统明确报告断开时立即关闭会话。探测模式重试间隔为 1、2、4、8 秒（上限）；真实键鼠模式的重试时机由 Deskflow 客户端决定。
+静默链路/握手默认在约 10 秒后超时；系统明确报告断开时立即关闭会话。探测模式重试间隔为 1、2、4、8 秒（上限）；真实键鼠模式的重试时机由 busymouse 客户端决定。
 统计脚本的恢复时间从桥接检测到断开开始，到下次桥接 ready 结束，不包含检测前的等待，也不代表 TLS/键鼠已恢复；最后一段需通过核心连接日志及实际操作确认。
 
 ## 验收记录
@@ -154,6 +155,6 @@ Mac 端收到监听器错误后，每 2 秒尝试重新注册 RFCOMM 服务；�
 测试用本机 TCP 字节流替代 RFCOMM，运行相同 RfcommSession 实现，覆盖碎片帧、合并帧、错误协议、超大帧、RTT 回显、超时、双向二进制传输和断线后全新会话。
 它不模拟系统蓝牙驱动、配对、无线干扰、真实键盘注入或系统休眠。
 
-诊断工具支持 `--pair 蓝牙地址` 发起原生配对并按提示确认，支持 `--services 蓝牙地址` 查找 Deskflow 服务。尚无连接方式 UI、多个蓝牙客户端、网络/蓝牙无缝切换或正式发布签名。仅支持 Qt 已支持的经典蓝牙 RFCOMM 硬件/系统组合；尚未在目标 Linux 发行版编译运行。
+诊断工具支持 `--pair 蓝牙地址` 发起原生配对并按提示确认，支持 `--services 蓝牙地址` 查找 busymouse 服务。尚无连接方式 UI、多个蓝牙客户端、网络/蓝牙无缝切换或正式发布签名。仅支持 Qt 已支持的经典蓝牙 RFCOMM 硬件/系统组合；尚未在目标 Linux 发行版编译运行。
 
 API 依据：[Qt 6.8 Bluetooth](https://doc.qt.io/qt-6.8/qtbluetooth-index.html)、[QBluetoothSocket](https://doc.qt.io/qt-6.8/qbluetoothsocket.html)、[QBluetoothServer](https://doc.qt.io/qt-6.8/qbluetoothserver.html)。

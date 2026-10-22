@@ -29,7 +29,7 @@ struct CoreArgs
   inline static const auto bluetoothScanOption =
       QCommandLineOption("bluetooth-scan", "Scan classic Bluetooth devices, then exit (no coremode required)");
   inline static const auto bluetoothServicesOption =
-      QCommandLineOption("bluetooth-services", "Find Deskflow RFCOMM services on a peer, then exit", "address");
+      QCommandLineOption("bluetooth-services", "Find busymouse RFCOMM services on a peer, then exit", "address");
   inline static const auto options = {helpOption,          versionOption,          multiInstanceOption,
                                       configOption,        autoFailoverOption,     bluetoothPeerOption,
                                       bluetoothScanOption, bluetoothServicesOption};

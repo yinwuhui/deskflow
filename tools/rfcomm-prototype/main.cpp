@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 #else
   QCoreApplication app(argc, argv);
 #endif
-  app.setApplicationName("deskflow-rfcomm");
+  app.setApplicationName("busymouse-rfcomm");
   app.setApplicationVersion("0.1");
   QCommandLineParser parser;
   parser.setApplicationDescription("Experimental macOS server / Linux client RFCOMM bridge and RTT probe.");
@@ -38,11 +38,11 @@ int main(int argc, char **argv)
   parser.addOptions({
       {"scan", "Discover nearby classic Bluetooth devices; pair using your system settings."},
       {"pair", "Pair with a device; type yes/no or a PIN when explicitly requested.", "address"},
-      {"services", "Discover Deskflow services on a peer.", "address"},
-      {"server", "Listen for RFCOMM on macOS; connect to the local Deskflow server."},
+      {"services", "Discover busymouse services on a peer.", "address"},
+      {"server", "Listen for RFCOMM on macOS; connect to the local busymouse server."},
       {"peer", "Required: peer Bluetooth address (server: allowed Linux peer; client: Mac).", "address"},
-      {"probe", "Client: measure RTT without running Deskflow; reconnect automatically."},
-      {"port", "Loopback TCP port (server: Deskflow server port; client: bridge listener).", "port", "24800"},
+      {"probe", "Client: measure RTT without running busymouse; reconnect automatically."},
+      {"port", "Loopback TCP port (server: busymouse server port; client: bridge listener).", "port", "24800"},
       {"drop-after", "Simulate one disconnect N seconds after first readiness (client only).", "seconds", "0"},
       {"duration", "Exit after N seconds (0: run until interrupted).", "seconds", "0"},
   });

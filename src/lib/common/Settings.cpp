@@ -5,6 +5,7 @@
  */
 
 #include "Settings.h"
+#include "SettingsMigration.h"
 
 #include "LogLevel.h"
 #include "NetworkProtocol.h"
@@ -69,6 +70,46 @@ void Settings::clearState()
 
 Settings::Settings(QObject *parent) : QObject(parent), m_settingsWatcher{new QFileSystemWatcher(this)}
 {
+  // Tests and embedding tools must not migrate the user's real profile.
+  const auto appName = QCoreApplication::applicationName();
+  const bool migrate = appName == kAppName || appName == QStringLiteral("%1 Core").arg(kAppName) ||
+                       appName == QStringLiteral("%1 Daemon").arg(kAppName);
+  const auto xdgStateHome = qEnvironmentVariable("XDG_STATE_HOME");
+  const auto stateBase = !xdgStateHome.isEmpty()
+                             ? xdgStateHome
+                             : QStandardPaths::standardLocations(QStandardPaths::GenericStateLocation).at(0);
+  const auto stateFile = QStringLiteral("%1/%2.state").arg(stateBase, kAppName);
+  if (migrate) {
+    const auto legacySibling = [](const QString &directory) {
+      return QDir(QFileInfo(directory).absolutePath()).filePath("Deskflow");
+    };
+#ifdef Q_OS_WIN
+    const auto portableDirectory = QCoreApplication::applicationDirPath() + "/settings";
+    const auto legacyPortable = portableDirectory + "/Deskflow.conf";
+    if (QFileInfo::exists(legacyPortable) && !QFileInfo::exists(portableSettingsFile())) {
+      if (QFile::copy(legacyPortable, portableSettingsFile())) {
+        QSettings portable(portableSettingsFile(), QSettings::IniFormat);
+        if (!portable.contains(Security::Certificate) && QFileInfo::exists(portableDirectory + "/tls/deskflow.pem"))
+          portable.setValue(Security::Certificate, portableDirectory + "/tls/deskflow.pem");
+        portable.setValue(Gui::AutoUpdateCheck, false);
+        portable.setValue(Gui::UpdateCheckUrl, QString());
+      }
+    }
+    if (!QFileInfo::exists(portableSettingsFile()))
+#endif
+    {
+#ifndef Q_OS_WIN
+      const auto xdgConfigHome = qEnvironmentVariable("XDG_CONFIG_HOME");
+      const auto userDirectory = xdgConfigHome.isEmpty() ? UserDir : QDir(xdgConfigHome).filePath(kAppName);
+#else
+      const auto userDirectory = UserDir;
+#endif
+      migrateDeskflowProfile(legacySibling(SystemDir), SystemDir);
+      migrateDeskflowProfile(
+          legacySibling(userDirectory), userDirectory, QDir(stateBase).filePath("Deskflow.state"), stateFile
+      );
+    }
+  }
   QString fileToLoad;
 #ifdef Q_OS_WIN
   const auto portableFile = portableSettingsFile();
@@ -93,12 +134,6 @@ Settings::Settings(QObject *parent) : QObject(parent), m_settingsWatcher{new QFi
   m_settingsProxy = std::make_shared<QSettingsProxy>();
   m_settingsProxy->load(fileToLoad);
   qInfo().noquote() << "initial settings file:" << m_settings->fileName();
-
-  const auto xdgStateHome = qEnvironmentVariable("XDG_STATE_HOME");
-  const auto stateBase = !xdgStateHome.isEmpty()
-                             ? xdgStateHome
-                             : QStandardPaths::standardLocations(QStandardPaths::GenericStateLocation).at(0);
-  const auto stateFile = QStringLiteral("%1/%2.state").arg(stateBase, kAppName);
 
   m_stateSettings = new QSettings(stateFile, QSettings::IniFormat, this);
 
@@ -319,8 +354,11 @@ QVariant Settings::defaultValue(const QString &key)
   if (m_defaultTrueValues.contains(key))
     return true;
 
-  if (key == Security::Certificate)
-    return QStringLiteral("%1/%2.pem").arg(Settings::tlsDir(), kAppId);
+  if (key == Security::Certificate) {
+    const auto certificate = QStringLiteral("%1/%2.pem").arg(Settings::tlsDir(), kAppId);
+    const auto legacyCertificate = Settings::tlsDir() + "/deskflow.pem";
+    return !QFileInfo::exists(certificate) && QFileInfo::exists(legacyCertificate) ? legacyCertificate : certificate;
+  }
 
   if (key == Security::KeySize)
     return 2048;
@@ -337,8 +375,12 @@ QVariant Settings::defaultValue(const QString &key)
   if (key == Gui::UpdateCheckUrl)
     return kUrlUpdateCheck;
 
-  if (key == Server::ExternalConfigFile)
-    return QStringLiteral("%1/%2-server.conf").arg(Settings::settingsPath(), kAppId);
+  if (key == Server::ExternalConfigFile) {
+    const auto configuration = QStringLiteral("%1/%2-server.conf").arg(Settings::settingsPath(), kAppId);
+    const auto legacyConfiguration = Settings::settingsPath() + "/deskflow-server.conf";
+    return !QFileInfo::exists(configuration) && QFileInfo::exists(legacyConfiguration) ? legacyConfiguration
+                                                                                       : configuration;
+  }
 
   if (key == Core::Port)
     return 24800;

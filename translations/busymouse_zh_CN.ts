@@ -4,8 +4,8 @@
 <context>
     <name>AboutDialog</name>
     <message>
-        <source>About Deskflow</source>
-        <translation>关于 Deskflow</translation>
+        <source>About busymouse</source>
+        <translation>关于 busymouse</translation>
     </message>
     <message>
         <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
@@ -333,6 +333,305 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
+    <name>DeviceListPage</name>
+    <message>
+        <source>Receiving settings</source>
+        <translation>接收端设置</translation>
+    </message>
+    <message>
+        <source>Arrange screens on the server computer.</source>
+        <translation>请在共享端电脑上配置屏幕排列。</translation>
+    </message>
+    <message>
+        <source>Connect to this server automatically next time</source>
+        <translation>下次自动连接此共享端</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n device(s)</source>
+        <translation>
+            <numerusform>共 %n 台设备</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>A saved device or connection record does not confirm that the computer is currently available.</source>
+        <translation>已保存的设备或连接记录不代表电脑当前可用。</translation>
+    </message>
+    <message>
+        <source>A server was found on your local network. Connect to establish keyboard and mouse sharing.</source>
+        <translation>局域网发现仅表示找到了共享端，连接后才会建立键鼠共享。</translation>
+    </message>
+    <message>
+        <source>Add device</source>
+        <translation>添加设备</translation>
+    </message>
+    <message>
+        <source>Adjust screen position</source>
+        <translation>调整屏幕位置</translation>
+    </message>
+    <message>
+        <source>Advanced settings</source>
+        <translation>高级设置</translation>
+    </message>
+    <message>
+        <source>All states</source>
+        <translation>全部状态</translation>
+    </message>
+    <message>
+        <source>Arrange computer positions and switching directions in screen arrangement.</source>
+        <translation>在屏幕排列中设置电脑的位置与跨屏方向。</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Common actions</source>
+        <translation>常用操作</translation>
+    </message>
+    <message>
+        <source>Computer name</source>
+        <translation>电脑名称</translation>
+    </message>
+    <message>
+        <source>Computer name: %1
+Address: %2</source>
+        <translation>电脑名称：%1
+地址：%2</translation>
+    </message>
+    <message>
+        <source>Connect to server</source>
+        <translation>连接共享端</translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <source>Connecting switches this computer to receiving mode.</source>
+        <translation>连接后，本机将切换为接收端。</translation>
+    </message>
+    <message>
+        <source>Connection diagnosis</source>
+        <translation>连接诊断</translation>
+    </message>
+    <message>
+        <source>Connection history</source>
+        <translation>连接记录</translation>
+    </message>
+    <message>
+        <source>Connection information copied</source>
+        <translation>连接信息已复制</translation>
+    </message>
+    <message>
+        <source>Copy connection information</source>
+        <translation>复制连接信息</translation>
+    </message>
+    <message>
+        <source>Device actions</source>
+        <translation>设备操作</translation>
+    </message>
+    <message>
+        <source>Device is not connected</source>
+        <translation>设备暂未连接</translation>
+    </message>
+    <message>
+        <source>Device purpose</source>
+        <translation>设备用途</translation>
+    </message>
+    <message>
+        <source>Device settings</source>
+        <translation>设备设置</translation>
+    </message>
+    <message>
+        <source>Device source</source>
+        <translation>设备来源</translation>
+    </message>
+    <message>
+        <source>Device status</source>
+        <translation>设备状态</translation>
+    </message>
+    <message>
+        <source>Devices</source>
+        <translation>设备列表</translation>
+    </message>
+    <message>
+        <source>Disconnect</source>
+        <translation>断开连接</translation>
+    </message>
+    <message>
+        <source>Discoverable</source>
+        <translation>可发现</translation>
+    </message>
+    <message>
+        <source>Discoverable does not mean connected</source>
+        <translation>可发现不代表已连接</translation>
+    </message>
+    <message>
+        <source>Enter a valid IP address or hostname and a port from 1 to 65535.</source>
+        <translation>请输入有效 IP 或主机名，端口范围为 1 至 65535。</translation>
+    </message>
+    <message>
+        <source>Enter a valid computer name: letters, numbers, dots, hyphens or underscores.</source>
+        <translation>请输入有效电脑名称：字母、数字、点、连字符或下划线。</translation>
+    </message>
+    <message>
+        <source>Filter connection state</source>
+        <translation>筛选连接状态</translation>
+    </message>
+    <message>
+        <source>For a receiving computer, continue to screen arrangement and save its position. For a server, save its address here and connect when ready.</source>
+        <translation>接收端需继续到屏幕排列中设置位置并保存；共享端可在这里保存地址，需要时再连接。</translation>
+    </message>
+    <message>
+        <source>IP or hostname, optionally with :port</source>
+        <translation>IP 或主机名，可加 :端口</translation>
+    </message>
+    <message>
+        <source>Keyboard and mouse server</source>
+        <translation>共享端</translation>
+    </message>
+    <message>
+        <source>Keyboard and mouse sharing is connected</source>
+        <translation>键鼠共享已连接</translation>
+    </message>
+    <message>
+        <source>Keyboard and mouse sharing is connected.</source>
+        <translation>连接已建立，可以跨屏使用键盘和鼠标。</translation>
+    </message>
+    <message>
+        <source>Local address</source>
+        <translation>连接地址</translation>
+    </message>
+    <message>
+        <source>Local discovery</source>
+        <translation>局域网发现</translation>
+    </message>
+    <message>
+        <source>Local discovery is active</source>
+        <translation>局域网自动发现已开启</translation>
+    </message>
+    <message>
+        <source>Local discovery is starting…</source>
+        <translation>正在启动局域网发现…</translation>
+    </message>
+    <message>
+        <source>Local discovery is unavailable</source>
+        <translation>局域网发现暂不可用</translation>
+    </message>
+    <message>
+        <source>Local network</source>
+        <translation>局域网连接</translation>
+    </message>
+    <message>
+        <source>Match the name shown in the other busymouse</source>
+        <translation>与对方 busymouse 中的电脑名称一致</translation>
+    </message>
+    <message>
+        <source>My devices</source>
+        <translation>我的设备</translation>
+    </message>
+    <message>
+        <source>No matching devices</source>
+        <translation>没有找到匹配的设备</translation>
+    </message>
+    <message>
+        <source>Not available</source>
+        <translation>尚未获取</translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation>未连接</translation>
+    </message>
+    <message>
+        <source>On the other computer, choose receiving mode and enter this computer&apos;s address. Computer names must match those in screen arrangement.</source>
+        <translation>在对方电脑选择“使用其他电脑的键鼠”，填写本机地址。电脑名称需与屏幕排列中的记录一致。</translation>
+    </message>
+    <message>
+        <source>One keyboard and mouse, multiple computers</source>
+        <translation>一套键鼠，连接多台电脑</translation>
+    </message>
+    <message>
+        <source>Receive this computer&apos;s keyboard and mouse</source>
+        <translation>配置接收本机键鼠的电脑</translation>
+    </message>
+    <message>
+        <source>Receiving computer</source>
+        <translation>接收端</translation>
+    </message>
+    <message>
+        <source>Recent connections</source>
+        <translation>最近使用</translation>
+    </message>
+    <message>
+        <source>Refresh local devices</source>
+        <translation>刷新局域网设备</translation>
+    </message>
+    <message>
+        <source>Screen arrangement</source>
+        <translation>屏幕排列</translation>
+    </message>
+    <message>
+        <source>Search name or address</source>
+        <translation>搜索设备名称或地址</translation>
+    </message>
+    <message>
+        <source>Select a device to view its details.</source>
+        <translation>选择设备，查看详情与可用操作。</translation>
+    </message>
+    <message>
+        <source>Server address</source>
+        <translation>共享端地址</translation>
+    </message>
+    <message>
+        <source>Set computer positions and the edges used to switch between them.</source>
+        <translation>设置电脑的位置与跨屏方向。</translation>
+    </message>
+    <message>
+        <source>Share this computer&apos;s keyboard and mouse</source>
+        <translation>共享本机键鼠</translation>
+    </message>
+    <message>
+        <source>This computer</source>
+        <translation>本机</translation>
+    </message>
+    <message>
+        <source>This computer receives input from the selected server. Arrange screens on that server.</source>
+        <translation>本机作为接收端，屏幕位置由共享端配置。</translation>
+    </message>
+    <message>
+        <source>This computer receives your keyboard and mouse. Adjust its position in screen arrangement.</source>
+        <translation>这台电脑正在接收本机键鼠，可在屏幕排列中调整它的位置。</translation>
+    </message>
+    <message>
+        <source>This device</source>
+        <translation>本设备</translation>
+    </message>
+    <message>
+        <source>Use another computer&apos;s keyboard and mouse</source>
+        <translation>使用其他电脑的键鼠</translation>
+    </message>
+    <message>
+        <source>Use this computer&apos;s keyboard and mouse</source>
+        <translation>使用这台电脑的键鼠</translation>
+    </message>
+    <message>
+        <source>View connection instructions</source>
+        <translation>查看连接方法</translation>
+    </message>
+    <message>
+        <source>View screen arrangement</source>
+        <translation>查看屏幕排列</translation>
+    </message>
+    <message>
+        <source>Waiting for this computer to connect.</source>
+        <translation>等待对方启动 busymouse 并连接本机。</translation>
+    </message>
+    <message>
+        <source>Working mode</source>
+        <translation>工作方式</translation>
+    </message>
+</context>
+<context>
     <name>FingerprintDialog</name>
     <message>
         <source>Local Fingerprints</source>
@@ -484,39 +783,39 @@ Do you want to connect to the server?
     <name>MainWindow</name>
     <message>
         <source>This computer&apos;s name:</source>
-        <translation>此计算机名称：</translation>
+        <translation type="vanished">此计算机名称：</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Name can&apos;t have have spaces or special characters&lt;/p&gt;&lt;p&gt;Use Enter to save the name change.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;名称不能包含空格或特殊字符&lt;/p&gt;&lt;p&gt;按 Enter 键保存更改。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;名称不能包含空格或特殊字符&lt;/p&gt;&lt;p&gt;按 Enter 键保存更改。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Edit Computer Name</source>
-        <translation>编辑计算机名称</translation>
+        <translation type="vanished">编辑计算机名称</translation>
     </message>
     <message>
         <source>Use this computer&apos;s keyboard and mouse
 (make this computer the server)</source>
-        <translation>使用此计算机的键盘和鼠标
+        <translation type="vanished">使用此计算机的键盘和鼠标
 (将此计算机设为服务器)</translation>
     </message>
     <message>
         <source>Use another computer’s mouse and keyboard
 (make this computer the client)</source>
-        <translation>使用另一台计算机的鼠标和键盘
+        <translation type="vanished">使用另一台计算机的鼠标和键盘
 (将此计算机设为客户端)</translation>
     </message>
     <message>
         <source>&amp;Configure Server</source>
-        <translation>配置服务器(&amp;C)</translation>
+        <translation type="vanished">配置服务器(&amp;C)</translation>
     </message>
     <message>
         <source>Export server configuration</source>
-        <translation>导出服务器配置</translation>
+        <translation type="vanished">导出服务器配置</translation>
     </message>
     <message>
         <source>You must select a mode</source>
-        <translation>您必须选择一种模式</translation>
+        <translation type="vanished">您必须选择一种模式</translation>
     </message>
     <message>
         <source>&amp;Start</source>
@@ -524,7 +823,7 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>Restart</source>
-        <translation>重启</translation>
+        <translation type="vanished">重启</translation>
     </message>
     <message>
         <source>Your current TLS key is smaller than the minimum allowed size, A new key 2048-bit key will be generated.</source>
@@ -556,11 +855,11 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>Start</source>
-        <translation>启动</translation>
+        <translation type="vanished">启动</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>停止</translation>
+        <translation type="vanished">停止</translation>
     </message>
     <message>
         <source>Connect</source>
@@ -588,32 +887,32 @@ Do you want to connect to the server?
     </message>
     <message>
         <source>No IP Detected</source>
-        <translation>未检测到 IP</translation>
+        <translation type="vanished">未检测到 IP</translation>
     </message>
     <message>
         <source>Unable to detect an IP address. Check your network connection is active.</source>
-        <translation>无法检测到 IP 地址。请检查您的网络连接是否正常。</translation>
+        <translation type="vanished">无法检测到 IP 地址。请检查您的网络连接是否正常。</translation>
     </message>
     <message>
         <source>Using IP: </source>
-        <translation type="unfinished">使用IP地址： </translation>
+        <translation type="obsolete">使用IP地址： </translation>
     </message>
     <message>
         <source>&lt;p&gt;If connecting via the hostname fails, try %1&lt;/p&gt;</source>
-        <translation>&lt;p&gt;如果通过主机名连接失败，请尝试 %1&lt;/p&gt;</translation>
+        <translation type="vanished">&lt;p&gt;如果通过主机名连接失败，请尝试 %1&lt;/p&gt;</translation>
     </message>
     <message>
         <source>the suggested IP.</source>
-        <translation>建议的 IP 地址。</translation>
+        <translation type="vanished">建议的 IP 地址。</translation>
     </message>
     <message>
         <source>one of the following IPs:&lt;br/&gt;%1</source>
-        <translation>以下 IP 地址之一：&lt;br/&gt;%1</translation>
+        <translation type="vanished">以下 IP 地址之一：&lt;br/&gt;%1</translation>
     </message>
     <message>
         <source>
 A bound IP is now invalid, you may need to restart the server.</source>
-        <translation type="unfinished">
+        <translation type="obsolete">
 绑定的IP地址现在无效，您可能需要重启服务器。</translation>
     </message>
     <message>
@@ -697,19 +996,19 @@ Valid names:
     </message>
     <message>
         <source>Suggested IP: </source>
-        <translation type="unfinished">建议 IP： </translation>
+        <translation type="obsolete">建议 IP： </translation>
     </message>
     <message>
         <source>&amp;Configure Client</source>
-        <translation type="unfinished">配置客户端(&amp;C)</translation>
+        <translation type="obsolete">配置客户端(&amp;C)</translation>
     </message>
     <message>
         <source>Connect to:</source>
-        <translation type="unfinished">连接到：</translation>
+        <translation type="obsolete">连接到：</translation>
     </message>
     <message>
         <source>&lt;html&gt;Hostname or IP address of the server computer.&lt;br/&gt;May contain a comma seperated list.&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;服务器计算机的主机名或 IP 地址。&lt;br/&gt;可以包含以逗号分隔的列表。&lt;/html&gt;</translation>
+        <translation type="obsolete">&lt;html&gt;服务器计算机的主机名或 IP 地址。&lt;br/&gt;可以包含以逗号分隔的列表。&lt;/html&gt;</translation>
     </message>
     <message>
         <source>read</source>
@@ -744,16 +1043,8 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Scan the local network for Deskflow servers</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Scan</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>MY WORKSPACE</source>
-        <translation>我的工作空间</translation>
+        <translation type="vanished">我的工作空间</translation>
     </message>
     <message>
         <source>Not running</source>
@@ -841,11 +1132,11 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>Share this computer’s keyboard and mouse</source>
-        <translation>共享本机键鼠</translation>
+        <translation type="vanished">共享本机键鼠</translation>
     </message>
     <message>
         <source>Use another computer’s keyboard and mouse</source>
-        <translation>使用其他电脑的键鼠</translation>
+        <translation type="vanished">使用其他电脑的键鼠</translation>
     </message>
     <message>
         <source>Choose how this computer will work.</source>
@@ -901,7 +1192,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>Manage devices</source>
-        <translation>管理设备</translation>
+        <translation type="vanished">管理设备</translation>
     </message>
     <message>
         <source>Only an established connection confirms that a computer is connected.</source>
@@ -1035,38 +1326,42 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Maximize window</source>
         <translation>最大化窗口</translation>
     </message>
-<message>
-    <source>Local discovery is continuous; newly found computers appear automatically.</source>
-    <translation>局域网发现持续运行，新发现的电脑会自动出现。</translation>
-</message>
-<message>
-    <source>Settings are read-only.</source>
-    <translation>当前配置为只读。</translation>
-</message>
-<message>
-    <source>Device saved. Select Connect when ready.</source>
-    <translation>设备已保存，需要时可点击连接。</translation>
-</message>
-<message>
-    <source>Saved server</source>
-    <translation>已保存的共享端</translation>
-</message>
-<message>
-    <source>Local discovery</source>
-    <translation>局域网发现</translation>
-</message>
-<message>
-    <source>Connection history</source>
-    <translation>连接记录</translation>
-</message>
-<message>
-    <source>Current connection</source>
-    <translation>当前连接</translation>
-</message>
-<message>
-    <source>The server address is invalid or settings are read-only.</source>
-    <translation>共享端地址无效，或当前配置为只读。</translation>
-</message>
+    <message>
+        <source>Local discovery is continuous; newly found computers appear automatically.</source>
+        <translation>局域网发现持续运行，新发现的电脑会自动出现。</translation>
+    </message>
+    <message>
+        <source>Settings are read-only.</source>
+        <translation>当前配置为只读。</translation>
+    </message>
+    <message>
+        <source>Device saved. Select Connect when ready.</source>
+        <translation>设备已保存，需要时可点击连接。</translation>
+    </message>
+    <message>
+        <source>Saved server</source>
+        <translation>已保存的共享端</translation>
+    </message>
+    <message>
+        <source>Local discovery</source>
+        <translation>局域网发现</translation>
+    </message>
+    <message>
+        <source>Connection history</source>
+        <translation>连接记录</translation>
+    </message>
+    <message>
+        <source>Current connection</source>
+        <translation>当前连接</translation>
+    </message>
+    <message>
+        <source>The server address is invalid or settings are read-only.</source>
+        <translation>共享端地址无效，或当前配置为只读。</translation>
+    </message>
+    <message>
+        <source>busymouse</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>
@@ -1252,12 +1547,163 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <translation>请将 %1 拖到“应用程序”文件夹，然后从那里打开。</translation>
     </message>
     <message>
-        <source>Deskflow needs Accessibility permission to share keyboard and mouse input.
+        <source>busymouse needs Accessibility permission to share keyboard and mouse input.
 
-Enable this copy of Deskflow in System Settings &gt; Privacy &amp; Security &gt; Accessibility, then open Deskflow again.</source>
-        <translation>Deskflow 需要辅助功能权限来共享键盘和鼠标。
+Enable this copy of busymouse in System Settings &gt; Privacy &amp; Security &gt; Accessibility, then open busymouse again.</source>
+        <translation type="vanished">busymouse 需要辅助功能权限来共享键盘和鼠标。
 
-请前往“系统设置 &gt; 隐私与安全性 &gt; 辅助功能”，为当前这份 Deskflow 启用权限，然后重新打开。</translation>
+请前往“系统设置 &gt; 隐私与安全性 &gt; 辅助功能”，为当前这份 busymouse 启用权限，然后重新打开。</translation>
+    </message>
+</context>
+<context>
+    <name>ScreenLayoutPage</name>
+    <message>
+        <source>Screen arrangement canvas</source>
+        <translation>屏幕排列画布</translation>
+    </message>
+    <message>
+        <source>This computer</source>
+        <translation>本机</translation>
+    </message>
+    <message>
+        <source>Screen arrangement</source>
+        <translation>屏幕排列</translation>
+    </message>
+    <message>
+        <source>Arrange computers to match their positions on your desk.</source>
+        <translation>按照电脑在桌面上的实际位置，设置鼠标跨屏方向。</translation>
+    </message>
+    <message>
+        <source>Fixed regions</source>
+        <translation>固定区位</translation>
+    </message>
+    <message>
+        <source>Free arrangement</source>
+        <translation>自由排布</translation>
+    </message>
+    <message>
+        <source>Add computer</source>
+        <translation>添加电脑</translation>
+    </message>
+    <message>
+        <source>Remove selected</source>
+        <translation>移除所选电脑</translation>
+    </message>
+    <message>
+        <source>Fit to view</source>
+        <translation>适应画布</translation>
+    </message>
+    <message>
+        <source>Enter the other computer&apos;s busymouse name</source>
+        <translation>输入对方的 busymouse 电脑名称</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Selected computer</source>
+        <translation>所选电脑</translation>
+    </message>
+    <message>
+        <source>Horizontal position</source>
+        <translation>横向位置</translation>
+    </message>
+    <message>
+        <source>Vertical position</source>
+        <translation>纵向位置</translation>
+    </message>
+    <message>
+        <source>Layout width</source>
+        <translation>布局宽度</translation>
+    </message>
+    <message>
+        <source>Layout height</source>
+        <translation>布局高度</translation>
+    </message>
+    <message>
+        <source>Layout units describe relative positions; they do not change display resolution.</source>
+        <translation>布局单位用于表达相对位置，不会更改显示器分辨率。</translation>
+    </message>
+    <message>
+        <source>Discard changes</source>
+        <translation>撤销更改</translation>
+    </message>
+    <message>
+        <source>Save arrangement</source>
+        <translation>保存排列</translation>
+    </message>
+    <message>
+        <source>Drag computers freely. Nearby edges snap together; green edges show where the pointer can cross.</source>
+        <translation>自由拖动电脑，靠近时边缘自动吸附；绿色边缘表示鼠标可跨屏的连接区域。</translation>
+    </message>
+    <message>
+        <source>Drag computers into fixed regions. Adjacent regions define the direction of cross-screen movement.</source>
+        <translation>拖动电脑到固定区位，相邻区位决定鼠标跨屏方向。</translation>
+    </message>
+    <message>
+        <source>That region already contains a computer.</source>
+        <translation>该区位已有电脑，请选择空区位。</translation>
+    </message>
+    <message>
+        <source>Use a valid busymouse computer name: letters, numbers, underscores, dots or hyphens.</source>
+        <translation>请输入有效的 busymouse 电脑名称：字母、数字、下划线、点或连字符。</translation>
+    </message>
+    <message>
+        <source>A computer with this name already exists.</source>
+        <translation>该电脑名称已存在。</translation>
+    </message>
+    <message>
+        <source>This name is already used as a computer alias.</source>
+        <translation>该名称已被用作电脑别名。</translation>
+    </message>
+    <message>
+        <source>All fixed regions are occupied. Remove a computer before adding another.</source>
+        <translation>固定区位已满，请移除一台电脑后再添加。</translation>
+    </message>
+    <message>
+        <source>Remove this computer&apos;s hotkey references before removing it from the layout.</source>
+        <translation>请先在快捷键设置中移除对该电脑的引用，再从排列中移除。</translation>
+    </message>
+    <message>
+        <source>Enter valid layout positions and sizes before saving.</source>
+        <translation>请填写有效的布局位置和尺寸后再保存。</translation>
+    </message>
+    <message>
+        <source>Computers overlap. Separate their rectangles before saving.</source>
+        <translation>电脑区域存在重叠，请分开后再保存。</translation>
+    </message>
+    <message>
+        <source>Arrangement is read-only.</source>
+        <translation>当前排列为只读状态。</translation>
+    </message>
+    <message>
+        <source>Unsaved arrangement. Saving restarts an active sharing service.</source>
+        <translation>排列尚未保存，保存后将重启正在运行的共享服务。</translation>
+    </message>
+    <message>
+        <source>Arrangement saved. Each mode keeps its own positions.</source>
+        <translation>排列已保存，两种模式分别保留各自的位置。</translation>
+    </message>
+    <message>
+        <source>Computer configuration changed while editing. Discard and reopen the arrangement before saving.</source>
+        <translation>编辑期间电脑配置已变化，请撤销并重新打开排列后再保存。</translation>
+    </message>
+    <message>
+        <source>An external configuration file is active. Edit that file or disable external configuration to use this canvas.</source>
+        <translation>当前使用外部配置文件。请直接编辑该文件，或关闭外部配置后使用画布。</translation>
+    </message>
+    <message>
+        <source>Some computers have no connecting edge. Bring their edges together; corner-only contact cannot be crossed.</source>
+        <translation>部分电脑没有相接边缘，请将边缘贴合；仅角点接触无法跨屏。</translation>
+    </message>
+    <message>
+        <source>Precise placement</source>
+        <translation>精确调整</translation>
     </message>
 </context>
 <context>
@@ -1386,8 +1832,8 @@ Enable this copy of Deskflow in System Settings &gt; Privacy &amp; Security &gt;
         <translation>毫秒</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enables compatibility with programs that use either the Synergy or Barrier protocols:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Synergy 3 uses the Synergy protocol.&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Barrier, Input-Leap and Synergy 1 uses the Barrier protocol.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;A Deskflow client will automatically use either the Synergy or Barrier protocol depending on the server protocol.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;启用与使用 Synergy 或 Barrier 协议的程序的兼容性：&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Synergy 3 使用 Synergy 协议。&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Barrier, Input-Leap 和 Synergy 1 使用 Barrier 协议。&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Deskflow 客户端将根据服务器协议自动使用 Synergy 或 Barrier 协议。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enables compatibility with programs that use either the Synergy or Barrier protocols:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Synergy 3 uses the Synergy protocol.&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Barrier, Input-Leap and Synergy 1 uses the Barrier protocol.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;A busymouse client will automatically use either the Synergy or Barrier protocol depending on the server protocol.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;启用与使用 Synergy 或 Barrier 协议的程序的兼容性：&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Synergy 3 使用 Synergy 协议。&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Barrier, Input-Leap 和 Synergy 1 使用 Barrier 协议。&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;busymouse 客户端将根据服务器协议自动使用 Synergy 或 Barrier 协议。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Network protocol</source>
@@ -1658,177 +2104,6 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
 </context>
 <context>
-    <name>StatusBar</name>
-    <message>
-        <source>%1 is not running</source>
-        <translation>%1 未在运行</translation>
-    </message>
-    <message>
-        <source>%1 is starting...</source>
-        <translation>%1 正在启动...</translation>
-    </message>
-    <message>
-        <source>%1 will retry in a moment...</source>
-        <translation>%1 将稍后重试...</translation>
-    </message>
-    <message>
-        <source>%1 is stopping...</source>
-        <translation>%1 正在停止...</translation>
-    </message>
-    <message>
-        <source>%1 is waiting for clients</source>
-        <translation>%1 正在等待客户端连接</translation>
-    </message>
-    <message>
-        <source>%1 is connected as client of %2</source>
-        <translation>%1 已作为 %2 的客户端连接</translation>
-    </message>
-    <message>
-        <source>%1 is disconnected</source>
-        <translation>%1 已断开连接</translation>
-    </message>
-    <message numerus="yes">
-        <source>%1 is connected, with %n client(s): %2</source>
-        <extracomment>Shown when in server mode and at least 1 client is connected %1 is replaced by the app name %2 will be a list of at least one client %n will be replaced by the number of clients (n is &gt;=1), it is not requried to be in the translation</extracomment>
-        <translation>
-            <numerusform>%1 已连接，共有 %n 个客户端：%2</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Clients:
- %1</source>
-        <translation>客户端：
- %1</translation>
-    </message>
-    <message>
-        <source>A new version v%1 is available</source>
-        <translation>新版本 v%1 可用</translation>
-    </message>
-    <message>
-        <source>View local fingerprint</source>
-        <translation>查看本地指纹</translation>
-    </message>
-    <message>
-        <source>Update available</source>
-        <translation>有可用更新</translation>
-    </message>
-    <message>
-        <source>%1 is connecting...</source>
-        <translation>%1 正在连接...</translation>
-    </message>
-    <message>
-        <source>%1 is waiting %2 seconds before the next retry</source>
-        <translation type="unfinished">%1 正在等待 %2 秒，然后进行下一次重试</translation>
-    </message>
-    <message>
-        <source>%1 Encryption Enabled</source>
-        <translation>%1 加密已启用</translation>
-    </message>
-    <message>
-        <source>Encryption Disabled</source>
-        <translation>加密已禁用</translation>
-    </message>
-</context>
-<context>
-    <name>deskflow::gui::ServerBrowserDialog</name>
-    <message>
-        <source>Connect</source>
-        <translation type="unfinished">连接</translation>
-    </message>
-    <message>
-        <source>Rescan</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Connect to this server automatically next time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Deskflow servers on local network</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Scanning…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Discovery not available</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Advertised certificate fingerprint (unverified): %1</source>
-        <translation>广播的证书指纹（未经验证）：%1</translation>
-    </message>
-    <message>
-        <source>No servers found yet — scanning…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message numerus="yes">
-        <source>%n server(s) found</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-        </translation>
-    </message>
-</context>
-<context>
-    <name>i18n</name>
-    <message>
-        <source>LocalizedName</source>
-        <extracomment>Replace with your Language name This is a required string</extracomment>
-        <translation>简体中文</translation>
-    </message>
-</context>
-<context>
-    <name>validators::AliasValidator</name>
-    <message>
-        <source>Computer name cannot contain spaces</source>
-        <translation>计算机名称不能包含空格</translation>
-    </message>
-    <message>
-        <source>Aliases may not be ip addresses</source>
-        <translation>不能用 IP 地址作为别名</translation>
-    </message>
-    <message>
-        <source>Contains invalid characters or is too long</source>
-        <translation>包含无效字符或过长</translation>
-    </message>
-</context>
-<context>
-    <name>validators::ComputerLineNameValidator</name>
-    <message>
-        <source>Computer name cannot be empty</source>
-        <translation type="unfinished">计算机名称不能为空</translation>
-    </message>
-    <message>
-        <source>Computer name cannot contain spaces</source>
-        <translation type="unfinished">计算机名称不能包含空格</translation>
-    </message>
-    <message>
-        <source>Contains invalid characters or is too long</source>
-        <translation type="unfinished">包含无效字符或过长</translation>
-    </message>
-    <message>
-        <source>A computer with this name already exists</source>
-        <translation type="unfinished">一台同名的计算机已经存在</translation>
-    </message>
-</context>
-<context>
-<name>TransportNotifications</name>
-<message><source>Switching connection; control remains local.</source><translation>正在切换连接，鼠标保留在本机。</translation></message>
-<message><source>Offline; retrying automatically.</source><translation>连接不可用，正在自动重试。</translation></message>
-<message><source>Using %1; move to the screen edge to resume.</source><translation>当前使用%1，移至屏幕边缘继续操作。</translation></message>
-<message><source>Reconnecting to the other computer automatically...</source><translation>正在自动重新连接另一台电脑…</translation></message>
-<message><source>Connection interrupted</source><translation>连接中断</translation></message>
-<message><source>Remote control has stopped. Deskflow is automatically trying another connection.</source><translation>远端控制已暂停，Deskflow 正在自动尝试其他连接。</translation></message>
-<message><source>Connection interrupted; automatically switching. Control returns to this computer.</source><translation>连接已中断，鼠标已回到本机，正在自动切换连接。</translation></message>
-<message><source>Unable to connect to the other computer. Control remains local; Deskflow will keep retrying automatically.</source><translation>暂时无法连接另一台电脑，鼠标保留在本机，Deskflow 正在自动重试。</translation></message>
-<message><source>Waiting for a connection</source><translation>等待连接恢复</translation></message>
-<message><source>network</source><translation>网络</translation></message>
-<message><source>Bluetooth</source><translation>蓝牙</translation></message>
-<message><source>Connected via %1. Move the mouse to the screen edge to control the other computer.</source><translation>已通过%1连接。将鼠标移至屏幕边缘，即可继续控制另一台电脑。</translation></message>
-<message><source>Connection restored</source><translation>连接已恢复</translation></message>
-</context>
-<context>
     <name>SettingsPage</name>
     <message>
         <source>Browse</source>
@@ -1871,8 +2146,8 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>开机自动启动</translation>
     </message>
     <message>
-        <source>Run Deskflow automatically after signing in to this computer.</source>
-        <translation>登录本机账户后自动运行 Deskflow。</translation>
+        <source>Run busymouse automatically after signing in to this computer.</source>
+        <translation>登录本机账户后自动运行 busymouse。</translation>
     </message>
     <message>
         <source>When the application starts</source>
@@ -1880,7 +2155,7 @@ Enabling this setting will disable the server config GUI.</source>
     </message>
     <message>
         <source>Choose whether to show the main window or run in the background.</source>
-        <translation>选择打开 Deskflow 后的显示方式。</translation>
+        <translation>选择打开 busymouse 后的显示方式。</translation>
     </message>
     <message>
         <source>Show main window</source>
@@ -1915,8 +2190,8 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>界面语言</translation>
     </message>
     <message>
-        <source>Select the language used by Deskflow.</source>
-        <translation>选择 Deskflow 使用的语言。</translation>
+        <source>Select the language used by busymouse.</source>
+        <translation>选择 busymouse 使用的语言。</translation>
     </message>
     <message>
         <source>Tray icon style</source>
@@ -2039,7 +2314,7 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>接收端的键盘与滚动设置</translation>
     </message>
     <message>
-        <source>Use the sharing computer's keyboard language</source>
+        <source>Use the sharing computer&apos;s keyboard language</source>
         <translation>使用共享端的键盘语言</translation>
     </message>
     <message>
@@ -2171,7 +2446,7 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>兼容协议</translation>
     </message>
     <message>
-        <source>The receiving computer selects the sharing computer's protocol automatically.</source>
+        <source>The receiving computer selects the sharing computer&apos;s protocol automatically.</source>
         <translation>接收端会根据共享端自动选择协议。</translation>
     </message>
     <message>
@@ -2327,8 +2602,8 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>清除本机配置并重新启动应用，此操作不可撤销。</translation>
     </message>
     <message>
-        <source>Clear all settings and restart Deskflow?</source>
-        <translation>确定清除全部设置并重启 Deskflow？</translation>
+        <source>Clear all settings and restart busymouse?</source>
+        <translation>确定清除全部设置并重启 busymouse？</translation>
     </message>
     <message>
         <source>Confirm clear and restart</source>
@@ -2523,7 +2798,7 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>XTest / Xinerama 兼容</translation>
     </message>
     <message>
-        <source>Configure the sharing computer's address on Home. Saving network changes restarts an active sharing service.</source>
+        <source>Configure the sharing computer&apos;s address on Home. Saving network changes restarts an active sharing service.</source>
         <translation>共享端地址在首页配置；保存网络设置后，将重启正在运行的共享服务。</translation>
     </message>
     <message>
@@ -2542,352 +2817,251 @@ Enabling this setting will disable the server config GUI.</source>
         <source>Could not create the login startup directory.</source>
         <translation>无法创建开机自动启动目录。</translation>
     </message>
-    <message><source>No hotkeys configured. Add a rule for frequently used cross-screen actions.</source><translation>还没有配置快捷键，添加一条规则，为常用跨屏操作指定按键。</translation></message>
-    <message><source>Click to record a key combination or mouse button.</source><translation>点击下方按钮录入按键组合或鼠标按钮。</translation></message>
-    <message><source>Confirm rule</source><translation>确认规则</translation></message>
-    <message><source>Use an external server configuration</source><translation>使用外部服务端配置</translation></message>
-    <message><source>An external file replaces the arrangement canvas and its generated links.</source><translation>外部配置文件会替代排列画布生成的跨屏连接。</translation></message>
-    <message><source>Server configuration file</source><translation>服务端配置文件</translation></message>
-    <message><source>Choose an existing readable Deskflow server configuration file.</source><translation>选择现有且可读取的 Deskflow 服务端配置文件。</translation></message>
-    <message><source>Choose a readable external configuration file before saving.</source><translation>保存前请选择可读取的外部配置文件。</translation></message>
-</context>
-<context>
-    <name>ScreenLayoutPage</name>
-    <message><source>Screen arrangement canvas</source><translation>屏幕排列画布</translation></message>
-    <message><source>This computer</source><translation>本机</translation></message>
-    <message><source>Screen arrangement</source><translation>屏幕排列</translation></message>
-    <message><source>Arrange computers to match their positions on your desk.</source><translation>按照电脑在桌面上的实际位置，设置鼠标跨屏方向。</translation></message>
-    <message><source>Fixed regions</source><translation>固定区位</translation></message>
-    <message><source>Free arrangement</source><translation>自由排布</translation></message>
-    <message><source>Add computer</source><translation>添加电脑</translation></message>
-    <message><source>Remove selected</source><translation>移除所选电脑</translation></message>
-    <message><source>Fit to view</source><translation>适应画布</translation></message>
-    <message><source>Enter the other computer's Deskflow name</source><translation>输入对方的 Deskflow 电脑名称</translation></message>
-    <message><source>Add</source><translation>添加</translation></message>
-    <message><source>Cancel</source><translation>取消</translation></message>
-    <message><source>Selected computer</source><translation>所选电脑</translation></message>
-    <message><source>Horizontal position</source><translation>横向位置</translation></message>
-    <message><source>Vertical position</source><translation>纵向位置</translation></message>
-    <message><source>Layout width</source><translation>布局宽度</translation></message>
-    <message><source>Layout height</source><translation>布局高度</translation></message>
-    <message><source>Layout units describe relative positions; they do not change display resolution.</source><translation>布局单位用于表达相对位置，不会更改显示器分辨率。</translation></message>
-    <message><source>Discard changes</source><translation>撤销更改</translation></message>
-    <message><source>Save arrangement</source><translation>保存排列</translation></message>
-    <message><source>Drag computers freely. Nearby edges snap together; green edges show where the pointer can cross.</source><translation>自由拖动电脑，靠近时边缘自动吸附；绿色边缘表示鼠标可跨屏的连接区域。</translation></message>
-    <message><source>Drag computers into fixed regions. Adjacent regions define the direction of cross-screen movement.</source><translation>拖动电脑到固定区位，相邻区位决定鼠标跨屏方向。</translation></message>
-    <message><source>That region already contains a computer.</source><translation>该区位已有电脑，请选择空区位。</translation></message>
-    <message><source>Use a valid Deskflow computer name: letters, numbers, underscores, dots or hyphens.</source><translation>请输入有效的 Deskflow 电脑名称：字母、数字、下划线、点或连字符。</translation></message>
-    <message><source>A computer with this name already exists.</source><translation>该电脑名称已存在。</translation></message>
-    <message><source>This name is already used as a computer alias.</source><translation>该名称已被用作电脑别名。</translation></message>
-    <message><source>All fixed regions are occupied. Remove a computer before adding another.</source><translation>固定区位已满，请移除一台电脑后再添加。</translation></message>
-    <message><source>Remove this computer's hotkey references before removing it from the layout.</source><translation>请先在快捷键设置中移除对该电脑的引用，再从排列中移除。</translation></message>
-    <message><source>Enter valid layout positions and sizes before saving.</source><translation>请填写有效的布局位置和尺寸后再保存。</translation></message>
-    <message><source>Computers overlap. Separate their rectangles before saving.</source><translation>电脑区域存在重叠，请分开后再保存。</translation></message>
-    <message><source>Arrangement is read-only.</source><translation>当前排列为只读状态。</translation></message>
-    <message><source>Unsaved arrangement. Saving restarts an active sharing service.</source><translation>排列尚未保存，保存后将重启正在运行的共享服务。</translation></message>
-    <message><source>Arrangement saved. Each mode keeps its own positions.</source><translation>排列已保存，两种模式分别保留各自的位置。</translation></message>
-    <message><source>Computer configuration changed while editing. Discard and reopen the arrangement before saving.</source><translation>编辑期间电脑配置已变化，请撤销并重新打开排列后再保存。</translation></message>
-    <message><source>An external configuration file is active. Edit that file or disable external configuration to use this canvas.</source><translation>当前使用外部配置文件。请直接编辑该文件，或关闭外部配置后使用画布。</translation></message>
-    <message><source>Some computers have no connecting edge. Bring their edges together; corner-only contact cannot be crossed.</source><translation>部分电脑没有相接边缘，请将边缘贴合；仅角点接触无法跨屏。</translation></message>
-    <message><source>Precise placement</source><translation>精确调整</translation></message>
-</context>
-<context>
-    <name>DeviceListPage</name>
     <message>
-        <source>Receiving settings</source>
-        <translation>接收端设置</translation>
+        <source>No hotkeys configured. Add a rule for frequently used cross-screen actions.</source>
+        <translation>还没有配置快捷键，添加一条规则，为常用跨屏操作指定按键。</translation>
     </message>
     <message>
-        <source>Arrange screens on the server computer.</source>
-        <translation>请在共享端电脑上配置屏幕排列。</translation>
+        <source>Click to record a key combination or mouse button.</source>
+        <translation>点击下方按钮录入按键组合或鼠标按钮。</translation>
     </message>
     <message>
-        <source>Connect to this server automatically next time</source>
-        <translation>下次自动连接此共享端</translation>
+        <source>Confirm rule</source>
+        <translation>确认规则</translation>
+    </message>
+    <message>
+        <source>Use an external server configuration</source>
+        <translation>使用外部服务端配置</translation>
+    </message>
+    <message>
+        <source>An external file replaces the arrangement canvas and its generated links.</source>
+        <translation>外部配置文件会替代排列画布生成的跨屏连接。</translation>
+    </message>
+    <message>
+        <source>Server configuration file</source>
+        <translation>服务端配置文件</translation>
+    </message>
+    <message>
+        <source>Choose an existing readable busymouse server configuration file.</source>
+        <translation>选择现有且可读取的 busymouse 服务端配置文件。</translation>
+    </message>
+    <message>
+        <source>Choose a readable external configuration file before saving.</source>
+        <translation>保存前请选择可读取的外部配置文件。</translation>
+    </message>
+    <message>
+        <source>Automatic update checks are unavailable in this build.</source>
+        <translation>此版本暂不支持自动检查更新。</translation>
+    </message>
+</context>
+<context>
+    <name>StatusBar</name>
+    <message>
+        <source>%1 is not running</source>
+        <translation>%1 未在运行</translation>
+    </message>
+    <message>
+        <source>%1 is starting...</source>
+        <translation>%1 正在启动...</translation>
+    </message>
+    <message>
+        <source>%1 will retry in a moment...</source>
+        <translation>%1 将稍后重试...</translation>
+    </message>
+    <message>
+        <source>%1 is stopping...</source>
+        <translation>%1 正在停止...</translation>
+    </message>
+    <message>
+        <source>%1 is waiting for clients</source>
+        <translation>%1 正在等待客户端连接</translation>
+    </message>
+    <message>
+        <source>%1 is connected as client of %2</source>
+        <translation>%1 已作为 %2 的客户端连接</translation>
+    </message>
+    <message>
+        <source>%1 is disconnected</source>
+        <translation>%1 已断开连接</translation>
     </message>
     <message numerus="yes">
-        <source>%n device(s)</source>
+        <source>%1 is connected, with %n client(s): %2</source>
+        <extracomment>Shown when in server mode and at least 1 client is connected %1 is replaced by the app name %2 will be a list of at least one client %n will be replaced by the number of clients (n is &gt;=1), it is not requried to be in the translation</extracomment>
         <translation>
-            <numerusform>共 %n 台设备</numerusform>
+            <numerusform>%1 已连接，共有 %n 个客户端：%2</numerusform>
         </translation>
     </message>
     <message>
-        <source>A saved device or connection record does not confirm that the computer is currently available.</source>
-        <translation>已保存的设备或连接记录不代表电脑当前可用。</translation>
+        <source>Clients:
+ %1</source>
+        <translation>客户端：
+ %1</translation>
     </message>
     <message>
-        <source>A server was found on your local network. Connect to establish keyboard and mouse sharing.</source>
-        <translation>局域网发现仅表示找到了共享端，连接后才会建立键鼠共享。</translation>
+        <source>A new version v%1 is available</source>
+        <translation>新版本 v%1 可用</translation>
     </message>
     <message>
-        <source>Add device</source>
-        <translation>添加设备</translation>
+        <source>View local fingerprint</source>
+        <translation>查看本地指纹</translation>
     </message>
     <message>
-        <source>Adjust screen position</source>
-        <translation>调整屏幕位置</translation>
+        <source>Update available</source>
+        <translation>有可用更新</translation>
     </message>
     <message>
-        <source>Advanced settings</source>
-        <translation>高级设置</translation>
+        <source>%1 is connecting...</source>
+        <translation>%1 正在连接...</translation>
     </message>
     <message>
-        <source>All states</source>
-        <translation>全部状态</translation>
+        <source>%1 is waiting %2 seconds before the next retry</source>
+        <translation type="unfinished">%1 正在等待 %2 秒，然后进行下一次重试</translation>
     </message>
     <message>
-        <source>Arrange computer positions and switching directions in screen arrangement.</source>
-        <translation>在屏幕排列中设置电脑的位置与跨屏方向。</translation>
+        <source>%1 Encryption Enabled</source>
+        <translation>%1 加密已启用</translation>
     </message>
     <message>
-        <source>Cancel</source>
-        <translation>取消</translation>
+        <source>Encryption Disabled</source>
+        <translation>加密已禁用</translation>
     </message>
+</context>
+<context>
+    <name>TransportNotifications</name>
     <message>
-        <source>Common actions</source>
-        <translation>常用操作</translation>
+        <source>Switching connection; control remains local.</source>
+        <translation>正在切换连接，鼠标保留在本机。</translation>
     </message>
     <message>
-        <source>Computer name</source>
-        <translation>电脑名称</translation>
+        <source>Offline; retrying automatically.</source>
+        <translation>连接不可用，正在自动重试。</translation>
     </message>
     <message>
-        <source>Computer name: %1
-Address: %2</source>
-        <translation>电脑名称：%1
-地址：%2</translation>
+        <source>Using %1; move to the screen edge to resume.</source>
+        <translation>当前使用%1，移至屏幕边缘继续操作。</translation>
     </message>
     <message>
-        <source>Connect to server</source>
-        <translation>连接共享端</translation>
+        <source>Reconnecting to the other computer automatically...</source>
+        <translation>正在自动重新连接另一台电脑…</translation>
     </message>
     <message>
-        <source>Connected</source>
-        <translation>已连接</translation>
+        <source>Connection interrupted</source>
+        <translation>连接中断</translation>
     </message>
     <message>
-        <source>Connecting switches this computer to receiving mode.</source>
-        <translation>连接后，本机将切换为接收端。</translation>
+        <source>Remote control has stopped. busymouse is automatically trying another connection.</source>
+        <translation>远端控制已暂停，busymouse 正在自动尝试其他连接。</translation>
     </message>
     <message>
-        <source>Connection diagnosis</source>
-        <translation>连接诊断</translation>
+        <source>Connection interrupted; automatically switching. Control returns to this computer.</source>
+        <translation type="vanished">连接已中断，鼠标已回到本机，正在自动切换连接。</translation>
     </message>
     <message>
-        <source>Connection history</source>
-        <translation>连接记录</translation>
+        <source>Unable to connect to the other computer. Control remains local; busymouse will keep retrying automatically.</source>
+        <translation>暂时无法连接另一台电脑，鼠标保留在本机，busymouse 正在自动重试。</translation>
     </message>
     <message>
-        <source>Connection information copied</source>
-        <translation>连接信息已复制</translation>
+        <source>Waiting for a connection</source>
+        <translation>等待连接恢复</translation>
     </message>
     <message>
-        <source>Copy connection information</source>
-        <translation>复制连接信息</translation>
+        <source>network</source>
+        <translation>网络</translation>
     </message>
     <message>
-        <source>Device actions</source>
-        <translation>设备操作</translation>
+        <source>Bluetooth</source>
+        <translation>蓝牙</translation>
     </message>
     <message>
-        <source>Device is not connected</source>
-        <translation>设备暂未连接</translation>
+        <source>Connected via %1. Move the mouse to the screen edge to control the other computer.</source>
+        <translation>已通过%1连接。将鼠标移至屏幕边缘，即可继续控制另一台电脑。</translation>
     </message>
     <message>
-        <source>Device purpose</source>
-        <translation>设备用途</translation>
+        <source>Connection restored</source>
+        <translation>连接已恢复</translation>
     </message>
+</context>
+<context>
+    <name>deskflow::gui::ServerBrowserDialog</name>
     <message>
-        <source>Device settings</source>
-        <translation>设备设置</translation>
+        <source>Connect</source>
+        <translation type="unfinished">连接</translation>
     </message>
     <message>
-        <source>Device source</source>
-        <translation>设备来源</translation>
+        <source>Rescan</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Device status</source>
-        <translation>设备状态</translation>
+        <source>Connect to this server automatically next time</source>
+        <translation type="unfinished">下次自动连接此共享端</translation>
     </message>
     <message>
-        <source>Devices</source>
-        <translation>设备列表</translation>
+        <source>busymouse servers on local network</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Disconnect</source>
-        <translation>断开连接</translation>
+        <source>Scanning…</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Discoverable</source>
-        <translation>可发现</translation>
+        <source>Discovery not available</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Discoverable does not mean connected</source>
-        <translation>可发现不代表已连接</translation>
+        <source>Advertised certificate fingerprint (unverified): %1</source>
+        <translation>广播的证书指纹（未经验证）：%1</translation>
     </message>
     <message>
-        <source>Enter a valid IP address or hostname and a port from 1 to 65535.</source>
-        <translation>请输入有效 IP 或主机名，端口范围为 1 至 65535。</translation>
+        <source>No servers found yet — scanning…</source>
+        <translation type="unfinished"></translation>
     </message>
-    <message>
-        <source>Enter a valid computer name: letters, numbers, dots, hyphens or underscores.</source>
-        <translation>请输入有效电脑名称：字母、数字、点、连字符或下划线。</translation>
-    </message>
-    <message>
-        <source>Filter connection state</source>
-        <translation>筛选连接状态</translation>
-    </message>
-    <message>
-        <source>For a receiving computer, continue to screen arrangement and save its position. For a server, save its address here and connect when ready.</source>
-        <translation>接收端需继续到屏幕排列中设置位置并保存；共享端可在这里保存地址，需要时再连接。</translation>
-    </message>
-    <message>
-        <source>IP or hostname, optionally with :port</source>
-        <translation>IP 或主机名，可加 :端口</translation>
-    </message>
-    <message>
-        <source>Keyboard and mouse server</source>
-        <translation>共享端</translation>
-    </message>
-    <message>
-        <source>Keyboard and mouse sharing is connected</source>
-        <translation>键鼠共享已连接</translation>
-    </message>
-    <message>
-        <source>Keyboard and mouse sharing is connected.</source>
-        <translation>连接已建立，可以跨屏使用键盘和鼠标。</translation>
-    </message>
-    <message>
-        <source>Local address</source>
-        <translation>连接地址</translation>
-    </message>
-    <message>
-        <source>Local discovery</source>
-        <translation>局域网发现</translation>
-    </message>
-    <message>
-        <source>Local discovery is active</source>
-        <translation>局域网自动发现已开启</translation>
-    </message>
-    <message>
-        <source>Local discovery is starting…</source>
-        <translation>正在启动局域网发现…</translation>
-    </message>
-    <message>
-        <source>Local discovery is unavailable</source>
-        <translation>局域网发现暂不可用</translation>
-    </message>
-    <message>
-        <source>Local network</source>
-        <translation>局域网连接</translation>
-    </message>
-    <message>
-        <source>Match the name shown in the other Deskflow</source>
-        <translation>与对方 Deskflow 中的电脑名称一致</translation>
-    </message>
-    <message>
-        <source>My devices</source>
-        <translation>我的设备</translation>
-    </message>
-    <message>
-        <source>No matching devices</source>
-        <translation>没有找到匹配的设备</translation>
-    </message>
-    <message>
-        <source>Not available</source>
-        <translation>尚未获取</translation>
-    </message>
-    <message>
-        <source>Not connected</source>
-        <translation>未连接</translation>
-    </message>
-    <message>
-        <source>On the other computer, choose receiving mode and enter this computer's address. Computer names must match those in screen arrangement.</source>
-        <translation>在对方电脑选择“使用其他电脑的键鼠”，填写本机地址。电脑名称需与屏幕排列中的记录一致。</translation>
-    </message>
-    <message>
-        <source>One keyboard and mouse, multiple computers</source>
-        <translation>一套键鼠，连接多台电脑</translation>
-    </message>
-    <message>
-        <source>Receive this computer's keyboard and mouse</source>
-        <translation>配置接收本机键鼠的电脑</translation>
-    </message>
-    <message>
-        <source>Receiving computer</source>
-        <translation>接收端</translation>
-    </message>
-    <message>
-        <source>Recent connections</source>
-        <translation>最近使用</translation>
-    </message>
-    <message>
-        <source>Refresh local devices</source>
-        <translation>刷新局域网设备</translation>
-    </message>
-    <message>
-        <source>Screen arrangement</source>
-        <translation>屏幕排列</translation>
-    </message>
-    <message>
-        <source>Search name or address</source>
-        <translation>搜索设备名称或地址</translation>
-    </message>
-    <message>
-        <source>Select a device to view its details.</source>
-        <translation>选择设备，查看详情与可用操作。</translation>
-    </message>
-    <message>
-        <source>Server address</source>
-        <translation>共享端地址</translation>
-    </message>
-    <message>
-        <source>Set computer positions and the edges used to switch between them.</source>
-        <translation>设置电脑的位置与跨屏方向。</translation>
-    </message>
-    <message>
-        <source>Share this computer's keyboard and mouse</source>
-        <translation>共享本机键鼠</translation>
-    </message>
-    <message>
-        <source>This computer</source>
-        <translation>本机</translation>
-    </message>
-    <message>
-        <source>This computer receives input from the selected server. Arrange screens on that server.</source>
-        <translation>本机作为接收端，屏幕位置由共享端配置。</translation>
+    <message numerus="yes">
+        <source>%n server(s) found</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
     </message>
+</context>
+<context>
+    <name>i18n</name>
     <message>
-        <source>This computer receives your keyboard and mouse. Adjust its position in screen arrangement.</source>
-        <translation>这台电脑正在接收本机键鼠，可在屏幕排列中调整它的位置。</translation>
+        <source>LocalizedName</source>
+        <extracomment>Replace with your Language name This is a required string</extracomment>
+        <translation>简体中文</translation>
     </message>
+</context>
+<context>
+    <name>validators::AliasValidator</name>
     <message>
-        <source>This device</source>
-        <translation>本设备</translation>
+        <source>Computer name cannot contain spaces</source>
+        <translation>计算机名称不能包含空格</translation>
     </message>
     <message>
-        <source>Use another computer's keyboard and mouse</source>
-        <translation>使用其他电脑的键鼠</translation>
+        <source>Aliases may not be ip addresses</source>
+        <translation>不能用 IP 地址作为别名</translation>
     </message>
     <message>
-        <source>Use this computer's keyboard and mouse</source>
-        <translation>使用这台电脑的键鼠</translation>
+        <source>Contains invalid characters or is too long</source>
+        <translation>包含无效字符或过长</translation>
     </message>
+</context>
+<context>
+    <name>validators::ComputerLineNameValidator</name>
     <message>
-        <source>View connection instructions</source>
-        <translation>查看连接方法</translation>
+        <source>Computer name cannot be empty</source>
+        <translation type="unfinished">计算机名称不能为空</translation>
     </message>
     <message>
-        <source>View screen arrangement</source>
-        <translation>查看屏幕排列</translation>
+        <source>Computer name cannot contain spaces</source>
+        <translation type="unfinished">计算机名称不能包含空格</translation>
     </message>
     <message>
-        <source>Waiting for this computer to connect.</source>
-        <translation>等待对方启动 Deskflow 并连接本机。</translation>
+        <source>Contains invalid characters or is too long</source>
+        <translation type="unfinished">包含无效字符或过长</translation>
     </message>
     <message>
-        <source>Working mode</source>
-        <translation>工作方式</translation>
+        <source>A computer with this name already exists</source>
+        <translation type="unfinished">一台同名的计算机已经存在</translation>
     </message>
 </context>
 </TS>

@@ -46,11 +46,11 @@ def main():
         resources.append("brand/" + name)
         theme = "light" if variant == "dark" else "dark"
         theme_dir = ROOT / f"src/apps/res/icons/deskflow-{theme}/apps/64"
-        (theme_dir / "org.deskflow.deskflow.svg").write_text(svg, encoding="utf-8")
-        (theme_dir / "org.deskflow.deskflow-symbolic.svg").write_text(symbolic, encoding="utf-8")
+        (theme_dir / "org.busymouse.busymouse.svg").write_text(svg, encoding="utf-8")
+        (theme_dir / "org.busymouse.busymouse-symbolic.svg").write_text(symbolic, encoding="utf-8")
     large = Image.open(io.BytesIO(render(svg, 1024)))
     large.save(ROOT / "src/apps/res/deskflow.ico", format="ICO", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)])
-    (ROOT / "deploy/linux/org.deskflow.deskflow.png").write_bytes(render(svg, 512))
+    (ROOT / "deploy/linux/org.busymouse.busymouse.png").write_bytes(render(svg, 512))
     if sys.platform == "darwin":
         with tempfile.TemporaryDirectory(prefix="deskflow-icons-") as temp:
             iconset = Path(temp) / "Deskflow.iconset"

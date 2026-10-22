@@ -14,6 +14,7 @@ public:
   explicit LoginStartup(QString executable = {}, QString directory = {}, QString identifier = {});
   bool isEnabled() const;
   bool setEnabled(bool enabled, QString &error) const;
+  bool migrateLegacyRegistration(QString &error) const;
   QString registrationPath() const;
 
 private:

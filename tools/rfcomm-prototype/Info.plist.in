@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>deskflow-rfcomm</string>
-<key>CFBundleIdentifier</key><string>org.deskflow.rfcomm-prototype</string>
-<key>CFBundleName</key><string>Deskflow RFCOMM Prototype</string>
+<key>CFBundleExecutable</key><string>busymouse-rfcomm</string>
+<key>CFBundleIdentifier</key><string>org.busymouse.rfcomm-prototype</string>
+<key>CFBundleName</key><string>busymouse RFCOMM Prototype</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>NSBluetoothAlwaysUsageDescription</key><string>Connect to your Linux computer to test Deskflow keyboard and mouse sharing over Bluetooth.</string>
+<key>NSBluetoothAlwaysUsageDescription</key><string>Connect to your Linux computer to test busymouse keyboard and mouse sharing over Bluetooth.</string>
 </dict></plist>

@@ -28,6 +28,8 @@ add_library(common STATIC
   PlatformInfo.h
   Settings.h
   Settings.cpp
+  SettingsMigration.cpp
+  SettingsMigration.h
   QSettingsProxy.cpp
   QSettingsProxy.h
   UrlConstants.h

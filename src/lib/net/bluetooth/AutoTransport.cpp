@@ -120,7 +120,7 @@ void AutoTransport::listenBluetooth()
       }
     }
   });
-  m_service = m_bluetoothServer->listen(DualService, "Deskflow automatic transport v1");
+  m_service = m_bluetoothServer->listen(DualService, "busymouse automatic transport v1");
   if (!m_service.isRegistered())
     m_listenerRetry.start();
 }

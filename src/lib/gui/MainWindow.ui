@@ -455,7 +455,7 @@
              <item>
               <widget class="QLabel" name="lblBrand">
                <property name="text">
-                <string>Deskflow</string>
+                <string>busymouse</string>
                </property>
                <property name="textFormat">
                 <enum>Qt::TextFormat::PlainText</enum>
