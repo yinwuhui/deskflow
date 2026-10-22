@@ -34,6 +34,10 @@ class QLocalServer;
 class DeskflowApplication;
 class LogDock;
 class StatusBar;
+class SettingsPage;
+class ScreenLayoutPage;
+class DeviceListPage;
+class QStackedWidget;
 
 namespace Ui {
 class MainWindow;
@@ -69,6 +73,7 @@ public:
     return m_coreProcess.mode();
   }
   void open();
+  void listenForOtherInstances();
   ServerConfig &serverConfig()
   {
     return m_serverConfig;
@@ -77,6 +82,7 @@ public:
   void hide();
 
 protected:
+  void resizeEvent(QResizeEvent *event) override;
   void changeEvent(QEvent *e) override;
   bool eventFilter(QObject *obj, QEvent *event) override;
 
@@ -134,6 +140,16 @@ private:
   void showConfigureClient();
   void restoreWindow();
   void setupControls();
+  void setupHome();
+  void openDevices();
+  void updateDevicesPage();
+  void ensureDeviceDiscovery();
+  void connectDeviceServer(const QString &address, const QString &name, bool autoConnect);
+  void updateHomeDevices();
+  void updateHomeStatus();
+  void refreshPermissionStatus();
+  void updateHomeMetrics();
+  void rememberHomeDevice(const QString &name);
   void showFirstConnectedMessage();
   void updateStatus();
   void showAndActivate();
@@ -171,6 +187,12 @@ private:
 
   VersionChecker m_versionChecker;
   bool m_secureSocket = false;
+  QStringList m_connectedClients;
+  bool m_homeReady = false;
+  SettingsPage *m_settingsPage = nullptr;
+  ScreenLayoutPage *m_layoutPage = nullptr;
+  DeviceListPage *m_devicesPage = nullptr;
+  QStackedWidget *m_pageStack = nullptr;
   bool m_saveOnExit = true;
   bool m_clientErrorVisible = false;
   ServerConfig m_serverConfig;
@@ -178,7 +200,6 @@ private:
   QSet<QString> m_ignoredClients;
   bool m_newClientPromptShowing = false;
   bool m_serverConfigDialogVisible = false;
-  QSize m_expandedSize = QSize();
   QStringList m_checkedClients;
   QStringList m_checkedServers;
   QSystemTrayIcon *m_trayIcon = nullptr;

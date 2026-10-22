@@ -23,6 +23,8 @@ add_library(${target} STATIC
   FileTail.h
   Logger.cpp
   Logger.h
+  LoginStartup.cpp
+  LoginStartup.h
   MainWindow.cpp
   MainWindow.h
   MainWindow.ui
@@ -40,6 +42,12 @@ add_library(${target} STATIC
   config/ComputerList.h
   config/ServerConfig.cpp
   config/ServerConfig.h
+  config/ScreenLayout.cpp
+  config/ScreenLayout.h
+  widgets/ScreenLayoutPage.cpp
+  widgets/ScreenLayoutPage.h
+  widgets/DeviceListPage.cpp
+  widgets/DeviceListPage.h
   core/CoreProcess.cpp
   core/CoreProcess.h
   core/NetworkMonitor.cpp
@@ -99,6 +107,10 @@ add_library(${target} STATIC
   validators/IpAddressValidator.h
   widgets/ComputerSetupView.cpp
   widgets/ComputerSetupView.h
+  widgets/HomeIcons.h
+  widgets/BrandIcons.h
+  widgets/HomeModeButton.h
+  widgets/HomeDeviceList.h
   widgets/FingerprintPreview.cpp
   widgets/FingerprintPreview.h
   widgets/KeySequenceWidget.cpp
@@ -115,6 +127,8 @@ add_library(${target} STATIC
   widgets/SearchWidget.cpp
   widgets/StatusBar.cpp
   widgets/StatusBar.h
+  widgets/SettingsPage.cpp
+  widgets/SettingsPage.h
   widgets/SettingsDialogButtonBox.cpp
   widgets/SettingsDialogButtonBox.h
 )

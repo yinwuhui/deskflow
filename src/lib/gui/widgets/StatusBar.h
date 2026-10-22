@@ -31,8 +31,10 @@ public:
   void setSecurityLevel(const QString &securityLevel);
   void setBtnFingerprintVisible(bool visible);
   void updateFound(const QString &version);
+  QString statusText() const;
 
 Q_SIGNALS:
+  void statusTextChanged(const QString &text);
   void requestShowMyFingerprints();
   void requestUpdateVersion();
 
@@ -40,6 +42,7 @@ protected:
   void changeEvent(QEvent *e) override;
 
 private:
+  void setStatusText(const QString &text);
   void updateText();
   void updateTimerLabel();
   QPushButton *m_btnFingerprint = nullptr;

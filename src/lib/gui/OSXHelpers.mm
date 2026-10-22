@@ -6,6 +6,7 @@
 
 #import "OSXHelpers.h"
 
+#import <ApplicationServices/ApplicationServices.h>
 #import <Cocoa/Cocoa.h>
 #import <CoreData/CoreData.h>
 #import <Foundation/Foundation.h>
@@ -101,6 +102,11 @@ bool isOSXInterfaceStyleDark()
   NSDictionary *dict = [[NSUserDefaults standardUserDefaults] persistentDomainForName:NSGlobalDomain];
   id style = [dict objectForKey:@"AppleInterfaceStyle"];
   return (style && [style isKindOfClass:[NSString class]] && NSOrderedSame == [style caseInsensitiveCompare:@"dark"]);
+}
+
+bool hasOSXAccessibilityPermission()
+{
+  return AXIsProcessTrusted();
 }
 
 void forceAppActive()

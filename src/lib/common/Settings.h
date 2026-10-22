@@ -88,6 +88,9 @@ public:
     inline static const auto LogExpanded = QStringLiteral("gui/logExpanded");
     inline static const auto SymbolicTrayIcon = QStringLiteral("gui/symbolicTrayIcon");
     inline static const auto WindowGeometry = QStringLiteral("gui/windowGeometry");
+    inline static const auto RecentComputers = QStringLiteral("gui/recentComputers");
+    inline static const auto KnownServers = QStringLiteral("gui/knownServers");
+    inline static const auto RecentServers = QStringLiteral("gui/recentServers");
     inline static const auto ShownFirstConnectedMessage = QStringLiteral("gui/shownFirstConnectedMessage");
     inline static const auto ShownServerFirstStartMessage = QStringLiteral("gui/shownServerFirstStartMessage");
     inline static const auto ShowVersionInTitle = QStringLiteral("gui/showVersionInTitle");
@@ -109,6 +112,8 @@ public:
   };
   struct Server
   {
+    inline static const auto FreeLayout = QStringLiteral("server/freeLayout");
+    inline static const auto LayoutRectangles = QStringLiteral("server/layoutRectangles");
     inline static const auto ClipboardSize = QStringLiteral("server/clipboardSize");
     inline static const auto DefaultLockToComputerState = QStringLiteral("server/defaultLockToComputerState");
     inline static const auto DisableLockToComputer = QStringLiteral("server/disableLockToComputer");
@@ -322,6 +327,8 @@ private:
     , Gui::CloseToTray
     , Gui::LogExpanded
     , Gui::SymbolicTrayIcon
+    , Gui::KnownServers
+    , Gui::RecentServers
     , Gui::ShownFirstConnectedMessage
     , Gui::ShownServerFirstStartMessage
     , Gui::ShowVersionInTitle
@@ -331,6 +338,8 @@ private:
     , Security::KeySize
     , Security::TlsEnabled
     , Server::ClipboardSize
+    , Server::FreeLayout
+    , Server::LayoutRectangles
     , Server::DefaultLockToComputerState
     , Server::DisableLockToComputer
     , Server::EnableClipboard
@@ -394,6 +403,9 @@ private:
   // Settings saved in our State file
   inline static const QStringList m_stateKeys = {
       Gui::WindowGeometry
+    , Gui::RecentComputers
+    , Gui::KnownServers
+    , Gui::RecentServers
     , Client::XdpClipboardRetried
     , Client::XdpRestoreToken
     , Server::XdpClipboardRetried

@@ -12,6 +12,7 @@
 #include "common/Constants.h"
 #include "common/Settings.h"
 #include "common/VersionInfo.h"
+#include "gui/widgets/BrandIcons.h"
 
 #include <QClipboard>
 
@@ -23,8 +24,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui{std::make_unique
   const QSize pixmapSize(px, px);
   ui->lblIcon->setFixedSize(pixmapSize);
 
-  ui->lblIcon->setPixmap(QPixmap(QIcon::fromTheme(kRevFqdnName).pixmap(QSize().scaled(pixmapSize, Qt::KeepAspectRatio)))
-  );
+  ui->lblIcon->setPixmap(deskflow::gui::brandIcon().pixmap(pixmapSize));
 
   ui->btnCopyVersion->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditCopy));
   connect(ui->btnCopyVersion, &QPushButton::clicked, this, &AboutDialog::copyVersionText);

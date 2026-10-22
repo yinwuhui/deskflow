@@ -1,5 +1,14 @@
 <RCC>
     <qresource prefix="/">
+        <file>brand/deskflow-logo.svg</file>
+        <file>brand/deskflow-32.png</file>
+        <file>brand/deskflow-64.png</file>
+        <file>brand/deskflow-128.png</file>
+        <file>brand/deskflow-256.png</file>
+        <file>brand/deskflow-512.png</file>
+        <file>brand/deskflow-1024.png</file>
+        <file>brand/deskflow-symbolic-dark.png</file>
+        <file>brand/deskflow-symbolic-light.png</file>
         <file>icons/deskflow-dark/actions/16/configure.svg</file>
         <file>icons/deskflow-dark/actions/16/edit-copy.svg</file>
         <file>icons/deskflow-dark/actions/16/document-edit.svg</file>

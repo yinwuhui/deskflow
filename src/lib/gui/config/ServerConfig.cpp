@@ -52,7 +52,7 @@ bool ServerConfig::save(const QString &fileName) const
 bool ServerConfig::operator==(const ServerConfig &sc) const
 {
   return m_computers == sc.m_computers && //
-         m_Hotkeys == sc.m_Hotkeys;       //
+         m_Hotkeys == sc.m_Hotkeys && m_freeLayout == sc.m_freeLayout && m_layoutRectangles == sc.m_layoutRectangles;
 }
 
 void ServerConfig::save(QFile &file) const
@@ -75,6 +75,15 @@ void ServerConfig::setupComputers()
 void ServerConfig::commit()
 {
   qDebug("committing server config");
+  Settings::setValue(Settings::Server::FreeLayout, m_freeLayout);
+  QVariantMap rectangles;
+  for (auto it = m_layoutRectangles.cbegin(); it != m_layoutRectangles.cend(); ++it) {
+    if (!computerExists(it.key()))
+      continue;
+    const auto r = it.value();
+    rectangles.insert(it.key(), QVariantList{r.x(), r.y(), r.width(), r.height()});
+  }
+  Settings::setValue(Settings::Server::LayoutRectangles, rectangles);
 
   settings().beginGroup("internalConfig");
   settings().remove("");
@@ -104,6 +113,15 @@ void ServerConfig::commit()
 void ServerConfig::recall()
 {
   qDebug("recalling server config");
+  m_freeLayout = Settings::value(Settings::Server::FreeLayout).toBool();
+  const auto rectangles = Settings::value(Settings::Server::LayoutRectangles).toMap();
+  for (auto it = rectangles.cbegin(); it != rectangles.cend(); ++it) {
+    const auto values = it.value().toList();
+    if (values.size() == 4)
+      m_layoutRectangles.insert(
+          it.key(), QRectF(values[0].toDouble(), values[1].toDouble(), values[2].toDouble(), values[3].toDouble())
+      );
+  }
 
   settings().beginGroup("internalConfig");
 
@@ -159,16 +177,33 @@ QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config)
 {
   outStream << "section: links" << Qt::endl;
 
-  for (int i = 0; const auto &computer : config.computers()) {
-    if (!computer.isNull()) {
-      outStream << "\t" << computer.name() << ":\n";
-      for (const auto &neighbour : std::as_const(neighbourDirs)) {
-        int idx = config.adjacentComputerIndex(i, neighbour.x, neighbour.y);
-        if (idx != -1 && !config.computers()[idx].isNull())
-          outStream << "\t\t" << neighbour.name << " = " << config.computers()[idx].name() << Qt::endl;
-      }
+  if (config.freeLayout()) {
+    screenlayout::Rectangles rectangles;
+    for (const auto &computer : config.computers())
+      if (!computer.isNull() && config.layoutRectangles().contains(computer.name()))
+        rectangles.insert(computer.name(), config.layoutRectangles().value(computer.name()));
+    const auto links = screenlayout::links(rectangles);
+    for (const auto &computer : config.computers()) {
+      if (computer.isNull())
+        continue;
+      outStream << '\t' << computer.name() << ":\n";
+      for (const auto &link : links)
+        if (link.source == computer.name())
+          outStream << "\t\t" << screenlayout::linkText(link) << Qt::endl;
     }
-    i++;
+  } else {
+
+    for (int i = 0; const auto &computer : config.computers()) {
+      if (!computer.isNull()) {
+        outStream << "\t" << computer.name() << ":\n";
+        for (const auto &neighbour : std::as_const(neighbourDirs)) {
+          int idx = config.adjacentComputerIndex(i, neighbour.x, neighbour.y);
+          if (idx != -1 && !config.computers()[idx].isNull())
+            outStream << "\t\t" << neighbour.name << " = " << config.computers()[idx].name() << Qt::endl;
+        }
+      }
+      i++;
+    }
   }
 
   outStream << "end" << Qt::endl << Qt::endl;
@@ -204,6 +239,10 @@ void ServerConfig::updateServerName()
 {
   for (auto &computer : computers()) {
     if (computer.isServer()) {
+      if (m_layoutRectangles.contains(computer.name())) {
+        const auto rectangle = m_layoutRectangles.take(computer.name());
+        m_layoutRectangles.insert(Settings::value(Settings::Core::ComputerName).toString(), rectangle);
+      }
       computer.setName(Settings::value(Settings::Core::ComputerName).toString());
       break;
     }
@@ -260,6 +299,21 @@ void ServerConfig::addClient(const QString &clientName)
   }
 
   m_computers.addComputerByPriority(Computer(clientName));
+  if (m_freeLayout && computerExists(clientName) && !m_layoutRectangles.contains(clientName)) {
+    if (m_layoutRectangles.isEmpty()) {
+      for (int i = 0; i < m_computers.size(); ++i)
+        if (!m_computers[i].isNull())
+          m_layoutRectangles.insert(
+              m_computers[i].name(), QRectF((i % m_columns) * 320, (i / m_columns) * 200, 320, 200)
+          );
+    } else {
+      auto right = m_layoutRectangles.first();
+      for (const auto &rectangle : std::as_const(m_layoutRectangles))
+        if (rectangle.right() > right.right())
+          right = rectangle;
+      m_layoutRectangles.insert(clientName, QRectF(right.right(), right.top(), 320, 200));
+    }
+  }
 }
 
 void ServerConfig::setConfigFile(const QString &configFile) const

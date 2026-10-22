@@ -37,7 +37,7 @@ StatusBar::StatusBar(QWidget *parent)
   m_lblSecurityIcon->setScaledContents(true);
   insertPermanentWidget(1, m_lblSecurityIcon);
 
-  m_lblStatus->setText(tr("%1 is not running").arg(kAppName));
+  setStatusText(tr("%1 is not running").arg(kAppName));
   insertPermanentWidget(2, m_lblStatus, 1);
 
   m_btnUpdate->setVisible(false);
@@ -67,22 +67,22 @@ void StatusBar::setStatus(ConnectionState connectionState, ProcessState processS
     using enum ProcessState;
     case Starting:
       m_connectionInterval = -1;
-      m_lblStatus->setText(tr("%1 is starting...").arg(kAppName));
+      setStatusText(tr("%1 is starting...").arg(kAppName));
       break;
 
     case RetryPending:
       m_connectionInterval = -1;
-      m_lblStatus->setText(tr("%1 will retry in a moment...").arg(kAppName));
+      setStatusText(tr("%1 will retry in a moment...").arg(kAppName));
       break;
 
     case Stopping:
         m_connectionInterval = -1;
-      m_lblStatus->setText(tr("%1 is stopping...").arg(kAppName));
+      setStatusText(tr("%1 is stopping...").arg(kAppName));
       break;
 
     case Stopped:
       m_connectionInterval = -1;
-      m_lblStatus->setText(tr("%1 is not running").arg(kAppName));
+      setStatusText(tr("%1 is not running").arg(kAppName));
       break;
 
     case Started: {
@@ -92,7 +92,7 @@ void StatusBar::setStatus(ConnectionState connectionState, ProcessState processS
         case Listening: {
           if (isServer) {
             setSecurityIconVisible(true);
-            m_lblStatus->setText(tr("%1 is waiting for clients").arg(kAppName));
+            setStatusText(tr("%1 is waiting for clients").arg(kAppName));
           }
           break;
         }
@@ -107,14 +107,14 @@ void StatusBar::setStatus(ConnectionState connectionState, ProcessState processS
           setSecurityIconVisible(true);
           m_connectionInterval = -1;
           if (!isServer) {
-            m_lblStatus->setText(tr("%1 is connected as client of %2")
+            setStatusText(tr("%1 is connected as client of %2")
                                      .arg(kAppName, Settings::value(Settings::Client::RemoteHost).toString()));
           }
           break;
         }
 
         case Disconnected:
-          m_lblStatus->setText(tr("%1 is disconnected").arg(kAppName));
+          setStatusText(tr("%1 is disconnected").arg(kAppName));
           m_connectionInterval = -1;
           break;
       }
@@ -125,7 +125,7 @@ void StatusBar::setStatus(ConnectionState connectionState, ProcessState processS
 void StatusBar::setServerClients(const QStringList &clients)
 {
   if (clients.isEmpty()) {
-    m_lblStatus->setText(tr("%1 is waiting for clients").arg(kAppName));
+    setStatusText(tr("%1 is waiting for clients").arg(kAppName));
     m_lblStatus->setToolTip("");
     return;
   }
@@ -137,7 +137,7 @@ void StatusBar::setServerClients(const QStringList &clients)
   //: %2 will be a list of at least one client
   //: %n will be replaced by the number of clients (n is >=1), it is not requried to be in the translation
   const auto text = tr("%1 is connected, with %n client(s): %2", "", clientCount).arg(kAppName, clients.join(comma));
-  m_lblStatus->setText(text);
+  setStatusText(text);
 
   const auto toolTipString = clientCount == 1 ? "" : tr("Clients:\n %1").arg(clients.join(newLine));
   m_lblStatus->setToolTip(toolTipString);
@@ -192,7 +192,7 @@ void StatusBar::updateTimerLabel()
     text = tr("%1 is waiting %2 seconds before the next retry").arg(kAppName, QString::number(m_connectionInterval));
     m_connectionInterval--;
   }
-  m_lblStatus->setText(text);
+  setStatusText(text);
 }
 
 void StatusBar::setSecurityIcon(bool encrypted)
@@ -208,4 +208,15 @@ void StatusBar::setSecurityLevel(const QString &securityLevel)
   m_securityLevel = securityLevel;
   const auto txt = m_encrypted ? tr("%1 Encryption Enabled").arg(m_securityLevel) : tr("Encryption Disabled");
   m_lblSecurityIcon->setToolTip(txt);
+}
+
+QString StatusBar::statusText() const
+{
+  return m_lblStatus->text();
+}
+
+void StatusBar::setStatusText(const QString &text)
+{
+  m_lblStatus->setText(text);
+  Q_EMIT statusTextChanged(text);
 }

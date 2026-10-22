@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1280" viewBox="0 0 1280 1280" fill="none">
+  <title>Deskflow logo — first concept</title>
+  <desc>Three panels form a mouse: Windows blue at upper left, macOS silver gray at upper right, and Ubuntu orange below. Transparent background; editable vector paths.</desc>
+  <path id="windows" fill="#0078D4" d="M477 115H600Q620 115 620 135V571Q620 591 600 591H287Q267 591 267 571V325C267 209 361 115 477 115Z"/>
+  <path id="macos" fill="#AEB5BE" d="M657 115H778C894 115 988 209 988 325V571Q988 591 968 591H657Q637 591 637 571V135Q637 115 657 115Z"/>
+  <path id="ubuntu" fill="#E95420" d="M287 609H968Q988 609 988 629V941C988 1051 898 1141 788 1141H467C357 1141 267 1051 267 941V629Q267 609 287 609Z"/>
+</svg>

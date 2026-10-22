@@ -35,7 +35,8 @@ public:
   enum class Error
   {
     AddressMissing,
-    StartFailed
+    StartFailed,
+    AccessibilityRequired
   };
 
   explicit CoreProcess(const ServerConfig &serverConfig);

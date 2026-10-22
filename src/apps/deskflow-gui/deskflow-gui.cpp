@@ -22,6 +22,7 @@
 #include <QLocalSocket>
 #include <QMessageBox>
 #include <QSharedMemory>
+#include <QStorageInfo>
 
 #if defined(Q_OS_MACOS)
 #include <Carbon/Carbon.h>
@@ -37,10 +38,6 @@
 #endif
 
 using namespace deskflow::gui;
-
-#if defined(Q_OS_MACOS)
-bool checkMacAssistiveDevices();
-#endif
 
 const static auto kHeader = QStringLiteral("%1: %2\n").arg(kAppName, kDisplayVersion);
 
@@ -131,18 +128,33 @@ int main(int argc, char *argv[])
 
 #if defined(Q_OS_MACOS)
 
-  if (app.applicationDirPath().startsWith("/Volumes/")) {
-    QString msgBody = QStringLiteral(
+  // Finder can launch us behind other windows. Startup alerts need a foreground app,
+  // before MainWindow::showAndActivate() has had a chance to run.
+  forceAppActive();
+  const auto showStartupNotice = [](const QString &text) {
+    QMessageBox notice(QMessageBox::Information, kAppName, text, QMessageBox::Ok);
+    // A parentless native NSAlert before the main window exists can remain hidden
+    // while blocking startup. Use an explicit Qt window and bring it to the front.
+    notice.setOption(QMessageBox::Option::DontUseNativeDialog);
+    notice.show();
+    forceAppActive();
+    notice.raise();
+    notice.activateWindow();
+    notice.exec();
+  };
+
+  // External writable disks also live under /Volumes. Only require installation
+  // when the application really is on read-only media, such as an installer image.
+  const QStorageInfo applicationVolume(app.applicationDirPath());
+  if (applicationVolume.isValid() && applicationVolume.isReadOnly()) {
+    const auto msgBody = QObject::tr(
         "Please drag %1 to the Applications folder, "
         "and open it from there."
     );
-    QMessageBox::information(nullptr, kAppName, msgBody.arg(kAppName));
+    showStartupNotice(msgBody.arg(kAppName));
     return 1;
   }
 
-  if (!checkMacAssistiveDevices()) {
-    return 1;
-  }
 #endif
 
   // --no-reset
@@ -151,30 +163,8 @@ int main(int argc, char *argv[])
   }
 
   MainWindow mainWindow;
+  mainWindow.listenForOtherInstances();
   mainWindow.open();
 
   return QApplication::exec();
 }
-
-#if defined(Q_OS_MACOS)
-bool checkMacAssistiveDevices()
-{
-  // new in mavericks, applications are trusted individually
-  // with use of the accessibility api. this call will show a
-  // prompt which can show the security/privacy/accessibility
-  // tab, with a list of allowed applications. deskflow should
-  // show up there automatically, but will be unchecked.
-
-  if (AXIsProcessTrusted()) {
-    return true;
-  }
-
-  const void *keys[] = {kAXTrustedCheckOptionPrompt};
-  const void *trueValue[] = {kCFBooleanTrue};
-  CFDictionaryRef options = CFDictionaryCreate(nullptr, keys, trueValue, 1, nullptr, nullptr);
-
-  bool result = AXIsProcessTrustedWithOptions(options);
-  CFRelease(options);
-  return result;
-}
-#endif

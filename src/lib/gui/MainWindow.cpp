@@ -17,9 +17,11 @@
 #include "dialogs/ClientConfigDialog.h"
 #include "dialogs/FingerprintDialog.h"
 #include "dialogs/HelpDialog.h"
-#include "dialogs/ServerBrowserDialog.h"
-#include "dialogs/ServerConfigDialog.h"
-#include "dialogs/SettingsDialog.h"
+#include "widgets/BrandIcons.h"
+#include "widgets/DeviceListPage.h"
+#include "widgets/ScreenLayoutPage.h"
+#include "widgets/SettingsPage.h"
+#include <QStackedWidget>
 
 #include "common/PlatformInfo.h"
 #include "common/Settings.h"
@@ -35,24 +37,32 @@
 #include "gui/ipc/DaemonIpcClient.h"
 #include "gui/widgets/LogDock.h"
 #include "net/FingerprintDatabase.h"
+#include "widgets/HomeIcons.h"
 #include "widgets/StatusBar.h"
 
 #include <QCheckBox>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFocusEvent>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QNetworkAccessManager>
 #include <QNetworkInterface>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QScreen>
+#include <QScrollArea>
 #include <QScrollBar>
+#include <QStyle>
+#include <QSysInfo>
+#include <QWindow>
 
 #include <memory>
 
@@ -86,7 +96,11 @@ MainWindow::MainWindow()
       m_actionShowHelp{new QAction(this)},
       m_networkMonitor{new NetworkMonitor(this)}
 {
+  setWindowFlag(Qt::FramelessWindowHint);
+  setAttribute(Qt::WA_TranslucentBackground);
+  setStyleSheet(QStringLiteral("QMainWindow#MainWindow { background: transparent; }"));
   ui->setupUi(this);
+  setupHome();
   m_transportNotifications = new TransportNotifications(this);
   connect(
       &m_coreProcess, &CoreProcess::transportStateChanged, m_transportNotifications, &TransportNotifications::update
@@ -110,7 +124,8 @@ MainWindow::MainWindow()
       }
   );
 
-  setWindowIcon(QIcon::fromTheme(kRevFqdnName));
+  setWindowIcon(brandIcon());
+  QGuiApplication::setWindowIcon(brandIcon());
 
   addDockWidget(Qt::BottomDockWidgetArea, m_logDock);
 
@@ -150,10 +165,7 @@ MainWindow::MainWindow()
   m_actionShowHelp->setMenuRole(QAction::NoRole);
   m_actionShowHelp->setShortcut(QKeySequence::HelpContents);
 
-  // Setup the Instance Checking
-  // In case of a previous crash remove first
-  QLocalServer::removeServer(m_guiSocketName);
-  m_guiDupeChecker->listen(m_guiSocketName);
+  m_guiDupeChecker->setObjectName("guiInstanceServer");
 
   createMenuBar();
   setupControls();
@@ -184,14 +196,32 @@ MainWindow::MainWindow()
   applyConfig();
   m_statusBar->setSecurityIcon(TlsUtility::isEnabled());
   restoreWindow();
+  refreshPermissionStatus();
+}
 
+void MainWindow::listenForOtherInstances()
+{
+  if (m_guiDupeChecker->isListening())
+    return;
+  // Only the production entry point, after acquiring its instance lock, owns this
+  // process-wide endpoint. Constructing a test/preview window must not unlink it.
+  QLocalServer::removeServer(m_guiSocketName);
+  if (!m_guiDupeChecker->listen(m_guiSocketName))
+    qWarning() << "Unable to listen for duplicate GUI instances:" << m_guiDupeChecker->errorString();
 #ifdef Q_OS_MACOS
-  // Route native quits (Cmd+Q / Apple menu Quit / Dock "Quit") to the usual close-to-tray decision instead.
-  installQuitHandler([this] { return !maybeHideToTray(); });
+  // An explicit native Quit must exit. Closing a window can still hide to tray.
+  // Install the process-wide hook once, rather than for every test window.
+  installQuitHandler([this] { return close(); });
 #endif
 }
 MainWindow::~MainWindow()
 {
+  if (m_mdnsBrowser) {
+    // Finish discovery while MainWindow's slots and device page are still alive.
+    m_mdnsBrowser->disconnect(this);
+    m_mdnsBrowser->stop();
+    m_mdnsBrowser->wait();
+  }
   // Stop network monitoring
   if (m_networkMonitor) {
     m_networkMonitor->stopMonitoring();
@@ -205,29 +235,28 @@ void MainWindow::restoreWindow()
 {
   auto windowGeometry = Settings::value(Settings::Gui::WindowGeometry).toRect();
   const auto totalGeometry = QGuiApplication::primaryScreen()->availableGeometry();
-  if (!windowGeometry.isValid()) {
-    adjustSize();
+  if (!windowGeometry.isValid() || windowGeometry.width() < minimumWidth() || windowGeometry.height() < 500) {
+    resize(QSize(1060, 790).boundedTo(totalGeometry.size()));
     windowGeometry = geometry();
   } else {
     setGeometry(windowGeometry);
   }
-  m_expandedSize = geometry().size();
 
   if (!totalGeometry.contains(windowGeometry)) {
     QRect screenGeometry = QGuiApplication::primaryScreen()->geometry();
     move(screenGeometry.center() - rect().center());
   }
 
-  if (!Settings::value(Settings::Gui::LogExpanded).toBool())
-    setFixedSize(size());
+  // Old releases stored the compact toolbar-sized window. Grow it to the new homepage minimum.
+  resize(size().expandedTo(minimumSize()));
 }
 
 void MainWindow::setupControls()
 {
   secureSocket(false);
 
-  ui->btnConfigureServer->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
-  ui->btnConfigureClient->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
+  ui->btnConfigureServer->setIcon(homeIcon(HomeIcon::Panel, QColor("#267ed9")));
+  ui->btnConfigureClient->setIcon(homeIcon(HomeIcon::Settings, QColor("#267ed9")));
 
   if (Settings::value(Settings::Core::LastVersion).toString() != kVersion) {
     Settings::setValue(Settings::Core::LastVersion, kVersion);
@@ -251,11 +280,517 @@ void MainWindow::setupControls()
   if (deskflow::platform::isMac()) {
     ui->rbModeServer->setAttribute(Qt::WA_MacShowFocusRect, false);
     ui->rbModeClient->setAttribute(Qt::WA_MacShowFocusRect, false);
-    ui->btnSaveServerConfig->setFixedWidth(ui->btnSaveServerConfig->height());
   } else {
     ui->btnSaveServerConfig->setIconSize(QSize(22, 22));
   }
   setStatusBar(m_statusBar);
+  m_statusBar->hide();
+}
+
+void MainWindow::setupHome()
+{
+  // Keep the homepage light like the approved prototype, independently of native dialog appearance.
+  auto homePalette = ui->topLevelWidget->palette();
+  homePalette.setColor(QPalette::Window, QColor("#ffffff"));
+  homePalette.setColor(QPalette::WindowText, QColor("#292d33"));
+  homePalette.setColor(QPalette::Base, QColor("#ffffff"));
+  homePalette.setColor(QPalette::Text, QColor("#292d33"));
+  homePalette.setColor(QPalette::ButtonText, QColor("#292d33"));
+  ui->topLevelWidget->setPalette(homePalette);
+  ui->lblVersion->setText(QStringLiteral("v%1").arg(kVersion));
+  ui->lblVersion->setToolTip(kDisplayVersion);
+#ifdef Q_OS_MACOS
+  ui->lblLocalPlatform->setText(tr("macOS · This computer"));
+#else
+  ui->lblLocalPlatform->setText(QSysInfo::prettyProductName());
+#endif
+  ui->lblComputerName->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  ui->lblIpAddresses->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  ui->nameColumn->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  ui->addressColumn->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  ui->localCardLayout->setStretch(0, 1);
+  ui->localCardLayout->setStretch(2, 1);
+  ui->optionsLayout->setStretch(0, 1);
+  ui->btnToggleCore->setMinimumWidth(136);
+  ui->btnRestartCore->setFixedWidth(38);
+  ui->btnRestartCore->setIcon(homeIcon(HomeIcon::Refresh));
+  ui->btnRestartCore->hide();
+
+  ui->lblAvatar->setPixmap(homeIcon(HomeIcon::Monitor, QColor("#087fff")).pixmap(20, 20));
+  ui->lblBrandIcon->setFixedSize(24, 28);
+  ui->lblBrandIcon->setAlignment(Qt::AlignCenter);
+  ui->lblBrandIcon->setPixmap(brandIcon().pixmap(28, 28));
+  ui->modeFieldsLayout->setAlignment(Qt::AlignVCenter);
+  ui->lblShareTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+  ui->lblShareHint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+  ui->btnHome->setIcon(homeIcon(HomeIcon::Monitor, QColor("#087fff")));
+  ui->btnDevices->setIcon(homeIcon(HomeIcon::Panel));
+  ui->btnLayout->setIcon(homeIcon(HomeIcon::Layout));
+  ui->btnSettings->setIcon(homeIcon(HomeIcon::Settings));
+  ui->btnCopyAddress->setIcon(homeIcon(HomeIcon::Copy, QColor("#267ed9")));
+  ui->btnEditName->setIcon(homeIcon(HomeIcon::Edit, QColor("#267ed9")));
+  ui->btnHelp->setIcon(homeIcon(HomeIcon::Help));
+  ui->btnLogs->setIcon(homeIcon(HomeIcon::Logs));
+  ui->btnSecurity->setIcon(homeIcon(HomeIcon::Shield, QColor("#438b7c")));
+  ui->btnSharingTab->setIcon(homeIcon(HomeIcon::MonitorUp, Qt::white));
+  ui->btnLayoutTab->setIcon(homeIcon(HomeIcon::Layout, QColor("#267ed9")));
+  ui->btnQuickSettings->setIcon(homeIcon(HomeIcon::Adjust, QColor("#267ed9")));
+  ui->btnBrowseServers->setIcon(homeIcon(HomeIcon::Search, QColor("#267ed9")));
+  ui->btnMore->setIcon(homeIcon(HomeIcon::Menu));
+  ui->rbModeServer->setIcon(homeIcon(HomeIcon::Keyboard, QColor("#087fff")));
+  ui->rbModeClient->setIcon(homeIcon(HomeIcon::MonitorDown));
+  ui->btnManageDevices->setIcon(homeIcon(HomeIcon::ChevronRight));
+  ui->btnManageDevices->setLayoutDirection(Qt::RightToLeft);
+  for (auto button : {ui->btnHome, ui->btnDevices, ui->btnLayout, ui->btnSettings})
+    button->setIconSize(QSize(22, 22));
+  for (auto button : {ui->btnHelp, ui->btnLogs, ui->btnMore})
+    button->setIconSize(QSize(21, 21));
+  for (auto button : {ui->btnSharingTab, ui->btnLayoutTab, ui->btnQuickSettings})
+    button->setIconSize(QSize(19, 19));
+  ui->btnEditName->setIconSize(QSize(16, 16));
+  ui->btnCopyAddress->setIconSize(QSize(16, 16));
+  connect(ui->btnWindowClose, &QPushButton::clicked, this, [this] {
+    if (!maybeHideToTray())
+      close();
+  });
+  connect(ui->btnWindowMinimize, &QPushButton::clicked, this, &MainWindow::showMinimized);
+  connect(ui->btnWindowZoom, &QPushButton::clicked, this, [this] { isMaximized() ? showNormal() : showMaximized(); });
+  qApp->installEventFilter(this);
+  m_homeReady = true;
+  m_pageStack = new QStackedWidget(ui->rightPanel);
+  m_pageStack->setObjectName("mainPages");
+  ui->rightPanelLayout->removeWidget(ui->homeScroll);
+  m_pageStack->addWidget(ui->homeScroll);
+  ui->rightPanelLayout->addWidget(m_pageStack, 1);
+  for (auto button : {ui->btnHome, ui->btnDevices, ui->btnLayout, ui->btnSettings}) {
+    button->setCheckable(true);
+    button->setAutoExclusive(true);
+  }
+  updateHomeMetrics();
+  connect(m_statusBar, &StatusBar::statusTextChanged, ui->lblHomeStatus, &QLabel::setText);
+  connect(m_statusBar, &QStatusBar::messageChanged, this, [this](const QString &text) {
+    ui->lblHomeStatus->setText(text.isEmpty() ? m_statusBar->statusText() : text);
+    if (m_devicesPage)
+      m_devicesPage->message(text.isEmpty() ? m_statusBar->statusText() : text);
+  });
+  ui->lblHomeStatus->setText(m_statusBar->statusText());
+
+  const auto showHome = [this] {
+    m_pageStack->setCurrentWidget(ui->homeScroll);
+    ui->btnHome->setChecked(true);
+    ui->btnSettings->setChecked(false);
+    ui->homeScroll->verticalScrollBar()->setValue(0);
+  };
+  connect(ui->btnHome, &QPushButton::clicked, this, showHome);
+  connect(ui->btnHome, &QPushButton::toggled, this, [showHome](bool checked) {
+    if (checked)
+      showHome();
+  });
+  connect(ui->btnSharingTab, &QPushButton::clicked, ui->btnHome, &QPushButton::click);
+  connect(ui->btnDevices, &QPushButton::toggled, this, [this](bool checked) {
+    if (checked && (!m_devicesPage || m_pageStack->currentWidget() != m_devicesPage))
+      openDevices();
+  });
+  const auto openLayout = [this] { showConfigureServer(""); };
+  connect(ui->btnLayout, &QPushButton::toggled, this, [this, openLayout](bool checked) {
+    if (checked && (!m_layoutPage || m_pageStack->currentWidget() != m_layoutPage))
+      openLayout();
+  });
+  connect(ui->btnLayoutTab, &QPushButton::clicked, this, openLayout);
+  connect(ui->btnManageDevices, &QPushButton::clicked, this, &MainWindow::openDevices);
+  connect(ui->deviceList, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+    if (item->data(HomeDeviceList::Empty).toBool())
+      return;
+    const auto name = item->data(HomeDeviceList::Name).toString();
+    openDevices();
+    const auto endpoint = DeviceListPage::normalizedAddress(name, Settings::value(Settings::Core::Port).toInt());
+    m_devicesPage->selectDevice(
+        m_coreProcess.mode() == CoreMode::Client && !endpoint.isEmpty() ? "server:" + endpoint : "computer:" + name
+    );
+  });
+  connect(ui->btnSettings, &QPushButton::toggled, this, [this](bool checked) {
+    if (checked && (!m_settingsPage || m_pageStack->currentWidget() != m_settingsPage))
+      openSettings();
+  });
+  connect(ui->btnQuickSettings, &QPushButton::clicked, this, &MainWindow::openSettings);
+  connect(ui->btnPermissionRecheck, &QPushButton::clicked, this, &MainWindow::refreshPermissionStatus);
+  connect(ui->btnPermissionSettings, &QPushButton::clicked, this, [] {
+    QDesktopServices::openUrl(QUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"));
+  });
+#ifdef Q_OS_MACOS
+  auto permissionTimer = new QTimer(this);
+  permissionTimer->setInterval(2000);
+  connect(permissionTimer, &QTimer::timeout, this, [this] {
+    if (isVisible() && !ui->permissionBanner->isHidden())
+      refreshPermissionStatus();
+  });
+  permissionTimer->start();
+#endif
+  connect(ui->btnHelp, &QPushButton::clicked, this, &MainWindow::showHelpViewer);
+  connect(ui->btnLogs, &QPushButton::clicked, this, [this] { m_logDock->setVisible(!m_logDock->isVisible()); });
+  auto more = new QMenu(ui->btnMore);
+  more->addAction(m_actionAbout);
+  more->addAction(m_actionRestartCore);
+  more->addAction(tr("Export configuration"), this, &MainWindow::saveServerConfig);
+  more->addAction(tr("Client settings"), this, &MainWindow::showConfigureClient);
+  more->addSeparator();
+  more->addAction(m_actionQuit);
+  ui->btnMore->setMenu(more);
+  connect(ui->btnSecurity, &QPushButton::clicked, this, [this] {
+    if (TlsUtility::isEnabled())
+      showMyFingerprint();
+    else
+      openSettings();
+  });
+  connect(ui->btnCopyAddress, &QPushButton::clicked, this, [this] {
+    if (!m_currentIpAddress.isEmpty()) {
+      QGuiApplication::clipboard()->setText(m_currentIpAddress);
+      m_statusBar->showMessage(tr("Address copied"), 2500);
+    }
+  });
+}
+
+void MainWindow::updateHomeDevices()
+{
+  ui->deviceList->clear();
+  QStringList names;
+  const bool server = m_coreProcess.mode() == CoreMode::Server;
+  if (server) {
+    if (!m_serverConfig.useExternalConfig()) {
+      for (const auto &computer : std::as_const(m_serverConfig).computers()) {
+        if (!computer.isNull() && computer.name() != Settings::value(Settings::Core::ComputerName).toString())
+          names.append(computer.name());
+      }
+    }
+    names.append(m_connectedClients);
+  } else if (m_coreProcess.mode() == CoreMode::Client) {
+    names = ui->lineHostname->text().split(',', Qt::SkipEmptyParts);
+    for (auto &name : names)
+      name = name.trimmed();
+  }
+  names.removeAll(QString());
+  auto recent = Settings::value(Settings::Gui::RecentComputers).toStringList();
+  recent.append(names);
+  names = recent;
+  names.removeDuplicates();
+  ui->lblDevicesHeading->setText(
+      Settings::value(Settings::Gui::RecentComputers).toStringList().isEmpty() ? tr("Your computers")
+                                                                               : tr("Recent computers")
+  );
+  for (const auto &name : names) {
+    const bool connected =
+        m_coreProcess.isStarted() &&
+        (server ? m_connectedClients.contains(name)
+                : (names.size() == 1 && m_coreProcess.connectionState() == ConnectionState::Connected));
+    auto item = new QListWidgetItem(
+        QStringLiteral("%1    ·    %2").arg(name, connected ? tr("Connected") : tr("Not connected")), ui->deviceList
+    );
+    item->setToolTip(name);
+    item->setData(HomeDeviceList::Name, name);
+    item->setData(HomeDeviceList::Detail, server ? tr("Configured computer") : tr("Keyboard and mouse source"));
+    item->setData(HomeDeviceList::Connected, connected);
+  }
+  if (names.isEmpty()) {
+    auto item = new QListWidgetItem(
+        tr("No computers yet. Arrange your screens or find a computer to connect."), ui->deviceList
+    );
+    item->setFlags(Qt::NoItemFlags);
+    item->setData(HomeDeviceList::Empty, true);
+  }
+  ui->deviceList->fitCards();
+  ui->lblDeviceHint->setText(
+      m_serverConfig.useExternalConfig() && server
+          ? tr("An external configuration file is in use. Its devices appear here when connected.")
+          : tr("Only an established connection confirms that a computer is connected.")
+  );
+  ui->lblDeviceHint->setVisible(server && m_serverConfig.useExternalConfig());
+  updateDevicesPage();
+}
+
+void MainWindow::ensureDeviceDiscovery()
+{
+  if (m_mdnsBrowser && m_mdnsBrowser->isFinished()) {
+    delete m_mdnsBrowser;
+    m_mdnsBrowser = nullptr;
+  }
+  if (!m_mdnsBrowser) {
+    m_mdnsBrowser = new deskflow::mdns::MdnsBrowser(this);
+    connect(m_mdnsBrowser, &deskflow::mdns::MdnsBrowser::serversChanged, this, &MainWindow::updateDevicesPage);
+    connect(m_mdnsBrowser, &QThread::finished, this, [this] {
+      if (m_devicesPage)
+        m_devicesPage->setDiscoveryAvailable(false);
+    });
+    m_mdnsBrowser->start();
+  }
+}
+
+void MainWindow::openDevices()
+{
+  if (!m_devicesPage) {
+    m_devicesPage = new DeviceListPage(m_pageStack);
+    m_pageStack->addWidget(m_devicesPage);
+    connect(m_devicesPage, &DeviceListPage::layoutRequested, this, [this](const QString &name) {
+      showConfigureServer("");
+      if (!name.isEmpty())
+        m_layoutPage->focusComputer(name);
+    });
+    connect(m_devicesPage, &DeviceListPage::settingsRequested, this, [this](const QString &name) {
+      openSettings();
+      if (!name.isEmpty())
+        m_settingsPage->activateComputer(name);
+    });
+    connect(m_devicesPage, &DeviceListPage::diagnosisRequested, this, [this] {
+      openSettings();
+      m_settingsPage->activate(SettingsPage::Logs);
+      m_logDock->show();
+    });
+    connect(m_devicesPage, &DeviceListPage::inputSettingsRequested, this, &MainWindow::showConfigureClient);
+    connect(m_devicesPage, &DeviceListPage::refreshRequested, this, [this] {
+      ensureDeviceDiscovery();
+      m_mdnsBrowser->requestRefresh();
+      updateDevicesPage();
+      m_devicesPage->message(tr("Local discovery is continuous; newly found computers appear automatically."));
+    });
+    connect(m_devicesPage, &DeviceListPage::connectRequested, this, &MainWindow::connectDeviceServer);
+    connect(m_devicesPage, &DeviceListPage::disconnectRequested, this, &MainWindow::stopCore);
+    connect(
+        m_devicesPage, &DeviceListPage::addServerRequested, this,
+        [this](const QString &name, const QString &address) {
+          if (!Settings::isWritable()) {
+            m_devicesPage->message(tr("Settings are read-only."), true);
+            return;
+          }
+          auto known = Settings::value(Settings::Gui::KnownServers).toMap();
+          known.insert(address, name);
+          Settings::setValue(Settings::Gui::KnownServers, known);
+          Settings::save();
+          updateDevicesPage();
+          m_devicesPage->selectDevice("server:" + address);
+          m_devicesPage->message(tr("Device saved. Select Connect when ready."));
+        }
+    );
+  }
+  ensureDeviceDiscovery();
+  updateDevicesPage();
+  m_pageStack->setCurrentWidget(m_devicesPage);
+  ui->btnDevices->setChecked(true);
+}
+
+void MainWindow::updateDevicesPage()
+{
+  if (!m_devicesPage)
+    return;
+  using Kind = DeviceListPage::Kind;
+  using State = DeviceListPage::State;
+  using Device = DeviceListPage::Device;
+  const auto local = Settings::value(Settings::Core::ComputerName).toString();
+  const bool sharing = m_coreProcess.mode() == CoreMode::Server;
+  const bool started = m_coreProcess.isStarted();
+  const auto process = m_coreProcess.processState();
+  const bool busy = process == ProcessState::Starting || process == ProcessState::Stopping;
+  const auto recent = Settings::value(Settings::Gui::RecentComputers).toStringList();
+  const auto recentServers = Settings::value(Settings::Gui::RecentServers).toStringList();
+  const auto localAddress =
+      m_currentIpAddress.isEmpty()
+          ? QString()
+          : QStringLiteral("%1:%2").arg(m_currentIpAddress).arg(Settings::value(Settings::Core::Port).toInt());
+  QList<Device> devices{{"local", local, localAddress, tr("This computer"), Kind::Local, State::Local}};
+  QMap<QString, Device> receivers, servers;
+  if (!m_serverConfig.useExternalConfig()) {
+    for (const auto &c : std::as_const(m_serverConfig).computers()) {
+      if (c.isNull() || c.name() == local)
+        continue;
+      receivers.insert(
+          c.name(), {"computer:" + c.name(),
+                     c.name(),
+                     {},
+                     tr("Configured computer"),
+                     Kind::Receiver,
+                     State::Offline,
+                     recent.contains(c.name()),
+                     true}
+      );
+    }
+  }
+  const auto known = Settings::value(Settings::Gui::KnownServers).toMap();
+  auto addServer = [&](const QString &address, const QString &name) {
+    const auto key = DeviceListPage::normalizedAddress(address, Settings::value(Settings::Core::Port).toInt());
+    if (key.isEmpty())
+      return;
+    if (!servers.contains(key))
+      servers.insert(
+          key, {"server:" + key, name.isEmpty() ? address : name, key, tr("Saved server"), Kind::Server, State::Offline,
+                recentServers.contains(key), true}
+      );
+  };
+  for (auto it = known.cbegin(); it != known.cend(); ++it)
+    addServer(it.key(), it.value().toString());
+  for (const auto &endpoint : recentServers)
+    addServer(endpoint, known.value(endpoint).toString());
+  const auto targets = ui->lineHostname->text().split(',', Qt::SkipEmptyParts);
+  for (const auto &target : targets)
+    addServer(
+        target,
+        known.value(DeviceListPage::normalizedAddress(target, Settings::value(Settings::Core::Port).toInt())).toString()
+    );
+  if (m_mdnsBrowser) {
+    const auto ownAddresses = NetworkMonitor::validAddresses();
+    for (const auto &s : m_mdnsBrowser->servers()) {
+      if (s.ipAddress.isEmpty() || s.port < 1 || s.port > 65535 ||
+          (s.name == local && ownAddresses.contains(s.ipAddress)))
+        continue;
+      const auto key = DeviceListPage::normalizedAddress(QStringLiteral("%1:%2").arg(s.ipAddress).arg(s.port));
+      if (key.isEmpty())
+        continue;
+      if (!servers.contains(key))
+        servers.insert(
+            key, {"server:" + key, s.name.isEmpty() ? s.hostName : s.name, key, tr("Local discovery"), Kind::Server,
+                  State::Discovered, recentServers.contains(key), false, true}
+        );
+      else {
+        auto &d = servers[key];
+        d.discovered = true;
+        d.state = State::Discovered;
+        if (d.name == d.address && !s.name.isEmpty())
+          d.name = s.name;
+      }
+    }
+  }
+  for (const auto &name : recent) {
+    if (name == local || receivers.contains(name))
+      continue;
+    // Legacy records have no role or endpoint metadata. Never offer them as a connectable server.
+    if (servers.contains(DeviceListPage::normalizedAddress(name, Settings::value(Settings::Core::Port).toInt())))
+      continue;
+    receivers.insert(
+        name, {"computer:" + name, name, {}, tr("Connection history"), Kind::History, State::Offline, true}
+    );
+  }
+  if (sharing && started) {
+    for (const auto &name : m_connectedClients) {
+      if (!receivers.contains(name))
+        receivers.insert(name, {"computer:" + name, name, {}, tr("Current connection"), Kind::Receiver});
+      receivers[name].state = State::Connected;
+    }
+  } else if (!sharing && started && m_coreProcess.connectionState() == ConnectionState::Connected &&
+             targets.size() == 1) {
+    const auto key = DeviceListPage::normalizedAddress(targets.first(), Settings::value(Settings::Core::Port).toInt());
+    if (servers.contains(key))
+      servers[key].state = State::Connected;
+  }
+  for (const auto &d : receivers)
+    devices.append(d);
+  for (const auto &d : servers)
+    devices.append(d);
+  m_devicesPage->setDevices(devices, sharing, m_statusBar->statusText(), busy);
+  m_devicesPage->setDiscoveryAvailable(m_mdnsBrowser && m_mdnsBrowser->isRunning());
+}
+
+void MainWindow::connectDeviceServer(const QString &address, const QString &name, bool autoConnect)
+{
+  const auto endpoint = DeviceListPage::normalizedAddress(address);
+  if (endpoint.isEmpty() || !Settings::isWritable()) {
+    m_devicesPage->message(tr("The server address is invalid or settings are read-only."), true);
+    return;
+  }
+  if (m_coreProcess.processState() == ProcessState::Starting || m_coreProcess.processState() == ProcessState::Stopping)
+    return;
+  auto known = Settings::value(Settings::Gui::KnownServers).toMap();
+  known.insert(endpoint, name);
+  Settings::setValue(Settings::Gui::KnownServers, known);
+  Settings::setValue(Settings::Client::AutoConnect, autoConnect);
+  ui->lineHostname->setText(endpoint);
+  // Radio toggling uses the existing mode transition and stops sharing before switching to receiving.
+  ui->rbModeClient->setChecked(true);
+  Settings::save();
+  if (m_coreProcess.processState() == ProcessState::Stopped)
+    startCore();
+  else
+    resetCore();
+  updateDevicesPage();
+}
+
+void MainWindow::rememberHomeDevice(const QString &name)
+{
+  if (name.isEmpty())
+    return;
+  auto recent = Settings::value(Settings::Gui::RecentComputers).toStringList();
+  recent.removeAll(name);
+  recent.prepend(name);
+  while (recent.size() > 8)
+    recent.removeLast();
+  Settings::setValue(Settings::Gui::RecentComputers, recent);
+}
+
+void MainWindow::updateHomeMetrics()
+{
+  const bool compact = width() <= 800;
+  ui->sidebar->setFixedWidth(compact ? 170 : 202);
+  ui->contentLayout->setContentsMargins(compact ? 29 : 42, 20, compact ? 29 : 42, 16);
+  const int cardMargin = compact ? 22 : 24;
+  ui->localCardLayout->setContentsMargins(cardMargin, cardMargin, cardMargin, cardMargin);
+  ui->localCardLayout->setSpacing(compact ? 15 : 24);
+  const auto name = Settings::value(Settings::Core::ComputerName).toString();
+  ui->lblSidebarName->setMaximumWidth(compact ? 142 : 174);
+  ui->lblSidebarName->setText(ui->lblSidebarName->fontMetrics().elidedText(name, Qt::ElideRight, compact ? 142 : 174));
+  if (ui->topLevelWidget->property("compact").toBool() != compact) {
+    ui->topLevelWidget->setProperty("compact", compact);
+    ui->topLevelWidget->setStyleSheet(ui->topLevelWidget->styleSheet());
+  }
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+  QMainWindow::resizeEvent(event);
+  if (m_homeReady)
+    updateHomeMetrics();
+}
+
+void MainWindow::updateHomeStatus()
+{
+  QString text;
+  switch (m_coreProcess.processState()) {
+    using enum ProcessState;
+  case Stopped:
+    text = tr("Not running");
+    break;
+  case Starting:
+    text = tr("Starting…");
+    break;
+  case Stopping:
+    text = tr("Stopping…");
+    break;
+  case RetryPending:
+    text = tr("Waiting to retry…");
+    break;
+  case Started:
+    if (m_coreProcess.connectionState() == ConnectionState::Connected)
+      text = tr("Connected");
+    else if (m_coreProcess.mode() == CoreMode::Server)
+      text = tr("Waiting for computers");
+    else if (m_coreProcess.connectionState() == ConnectionState::Connecting)
+      text = tr("Connecting…");
+    else
+      text = tr("Disconnected");
+    break;
+  }
+  ui->lblSidebarStatus->setText(text);
+  ui->lblStateDot->setProperty("ready", m_coreProcess.isStarted());
+  ui->lblStateDot->style()->unpolish(ui->lblStateDot);
+  ui->lblStateDot->style()->polish(ui->lblStateDot);
+  ui->btnSecurity->setText(TlsUtility::isEnabled() ? tr("TLS enabled") : tr("Encryption disabled"));
+  ui->btnSecurity->setIcon(homeIcon(HomeIcon::Shield, TlsUtility::isEnabled() ? QColor("#438b7c") : QColor("#bf8a38")));
+  ui->btnSecurity->setToolTip(tr("View encryption settings and this computer’s certificate fingerprint."));
+}
+
+void MainWindow::refreshPermissionStatus()
+{
+#ifdef Q_OS_MACOS
+  ui->permissionBanner->setVisible(!hasOSXAccessibilityPermission());
+#else
+  ui->permissionBanner->hide();
+#endif
+  toggleCanRunCore(canRunCore());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -314,7 +849,14 @@ void MainWindow::connectSlots()
 
   connect(ui->btnRestartCore, &QPushButton::clicked, this, &MainWindow::resetCore);
 
-  connect(ui->lineHostname, &QLineEdit::returnPressed, ui->btnRestartCore, &QPushButton::click);
+  connect(ui->lineHostname, &QLineEdit::returnPressed, this, [this] {
+    if (!canRunCore())
+      return;
+    if (m_coreProcess.isStarted())
+      resetCore();
+    else
+      startCore();
+  });
   connect(ui->lineHostname, &QLineEdit::textChanged, this, &MainWindow::remoteHostChanged);
   connect(ui->btnBrowseServers, &QPushButton::clicked, this, &MainWindow::browseServers);
 
@@ -350,25 +892,8 @@ void MainWindow::toggleLogVisible(bool visible)
     return;
   }
 
-  setFixedSize(16777215, 16777215);
   Settings::setValue(Settings::Gui::LogExpanded, visible);
-  if (visible) {
-    if (m_logDock->isFloating()) {
-      adjustSize();
-      setFixedSize(size());
-    } else {
-      QTimer::singleShot(15, this, [&] { resize(m_expandedSize); });
-    }
-  } else {
-    if (!m_logDock->isFloating()) {
-      m_expandedSize = geometry().size();
-    }
-    m_logDock->hide();
-    if (!m_logDock->isFloating()) {
-      adjustSize();
-    }
-    setFixedSize(size());
-  }
+  // The homepage remains resizable with either a docked or floating log panel.
   Settings::setValue(Settings::Gui::WindowGeometry, geometry());
 }
 
@@ -393,6 +918,7 @@ void MainWindow::settingsChanged(const QString &key)
       updateFingerprintButton();
     }
     updateSecurityIcon(m_statusBar->securityIconVisible());
+    updateHomeStatus();
     return;
   }
 }
@@ -400,6 +926,7 @@ void MainWindow::settingsChanged(const QString &key)
 void MainWindow::serverConfigSaving()
 {
   m_serverConfig.commit();
+  updateHomeDevices();
 }
 
 void MainWindow::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
@@ -411,7 +938,14 @@ void MainWindow::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void MainWindow::coreProcessError(CoreProcess::Error error)
 {
-  if (error == CoreProcess::Error::AddressMissing) {
+  if (error == CoreProcess::Error::AccessibilityRequired) {
+    refreshPermissionStatus();
+    m_actionStartCore->setVisible(true);
+    m_actionRestartCore->setVisible(false);
+    updateModeControlLabels();
+    showAndActivate();
+    ui->homeScroll->ensureWidgetVisible(ui->permissionBanner);
+  } else if (error == CoreProcess::Error::AddressMissing) {
     QMessageBox::warning(
         this, tr("Address missing"), tr("Please enter the hostname or IP address of the other computer.")
     );
@@ -496,19 +1030,21 @@ void MainWindow::openGetNewVersionUrl() const
 
 void MainWindow::openSettings()
 {
-  auto dialog = SettingsDialog(this, m_serverConfig);
-
-  connect(&dialog, &SettingsDialog::requestRemoveAllSettings, this, &MainWindow::clearSettings, Qt::UniqueConnection);
-  if (dialog.exec() == QDialog::Accepted) {
-    Settings::save();
-    disconnect(&dialog, &SettingsDialog::requestRemoveAllSettings, nullptr, nullptr);
-
-    applyConfig();
-
-    if (m_coreProcess.isStarted()) {
-      m_coreProcess.restart();
-    }
+  if (!m_settingsPage) {
+    m_settingsPage = new SettingsPage(m_serverConfig, m_pageStack);
+    m_pageStack->addWidget(m_settingsPage);
+    connect(m_settingsPage, &SettingsPage::clearSettingsRequested, this, &MainWindow::clearSettings);
+    connect(m_settingsPage, &SettingsPage::showLogsRequested, m_logDock, &QWidget::show);
+    connect(m_settingsPage, &SettingsPage::saved, this, [this](bool restart) {
+      applyConfig();
+      if (restart && m_coreProcess.isStarted())
+        m_coreProcess.restart();
+    });
   }
+  m_settingsPage->activate();
+  m_pageStack->setCurrentWidget(m_settingsPage);
+  ui->btnHome->setChecked(false);
+  ui->btnSettings->setChecked(true);
 }
 
 void MainWindow::resetCore()
@@ -558,20 +1094,21 @@ void MainWindow::updateModeControls()
   ui->serverOptions->setVisible(isServer);
   ui->clientOptions->setVisible(isClient);
   ui->lblNoMode->setVisible(!isServer && !isClient);
-  toggleCanRunCore(canRunCore());
-
-  ui->lblIpAddresses->setVisible(
-      (isClient && !Settings::value(Settings::Core::Interface).toString().isEmpty()) || isServer
+  ui->btnConfigureServer->setVisible(isServer);
+  ui->btnConfigureServer->setText(tr("Arrange computers and screen edges") + QStringLiteral("    ›"));
+  ui->btnSaveServerConfig->hide();
+  ui->btnConfigureClient->hide();
+  ui->btnBrowseServers->setVisible(isClient);
+  ui->lblModeDescription->setText(
+      isServer   ? tr("Use this computer’s keyboard and mouse to control your other computers across screen edges.")
+      : isClient ? tr("Connect to the computer whose keyboard and mouse you want to use on this computer.")
+                 : tr("Choose how this computer will work.")
   );
-
-  if (ui->lblIpAddresses->isVisible())
-    updateNetworkInfo();
-
-  if (isServer) {
-    m_networkMonitor->startMonitoring();
-  } else {
-    m_networkMonitor->stopMonitoring();
-  }
+  toggleCanRunCore(canRunCore());
+  updateNetworkInfo();
+  m_networkMonitor->startMonitoring();
+  updateHomeDevices();
+  updateHomeStatus();
 
   if (isServer || isClient)
     updateModeControlLabels();
@@ -580,7 +1117,10 @@ void MainWindow::updateModeControls()
 void MainWindow::updateModeControlLabels()
 {
   const bool isServer = m_coreProcess.mode() == CoreMode::Server;
-  const bool isStarted = m_coreProcess.isStarted();
+  const auto process = m_coreProcess.processState();
+  const bool isStarted =
+      process == ProcessState::Started || process == ProcessState::Starting || process == ProcessState::RetryPending;
+  ui->btnRestartCore->hide();
 
   QString startText;
   QString stopText;
@@ -588,15 +1128,15 @@ void MainWindow::updateModeControlLabels()
   QIcon stopIcon;
 
   if (isServer) {
-    startText = tr("Start");
-    stopText = tr("Stop");
-    startIcon = QIcon::fromTheme(QStringLiteral("system-run"));
-    stopIcon = QIcon::fromTheme(QIcon::ThemeIcon::ProcessStop);
+    startText = tr("Start sharing");
+    stopText = tr("Stop sharing");
+    startIcon = homeIcon(HomeIcon::Play, Qt::white);
+    stopIcon = homeIcon(HomeIcon::Stop, Qt::white);
   } else {
     startText = tr("Connect");
     stopText = tr("Disconnect");
-    startIcon = QIcon::fromTheme(QStringLiteral("network-connect"));
-    stopIcon = QIcon::fromTheme(QStringLiteral("network-disconnect"));
+    startIcon = homeIcon(HomeIcon::Monitor, Qt::white);
+    stopIcon = homeIcon(HomeIcon::Stop, Qt::white);
   }
 
   m_actionStartCore->setText(startText);
@@ -611,6 +1151,9 @@ void MainWindow::updateModeControlLabels()
     ui->btnToggleCore->setText(startText);
     ui->btnToggleCore->setIcon(startIcon);
   }
+  ui->btnToggleCore->setFixedWidth(
+      qMax(136, ui->btnToggleCore->fontMetrics().horizontalAdvance(ui->btnToggleCore->text()) + 52)
+  );
 }
 
 void MainWindow::updateSecurityIcon(bool visible)
@@ -623,25 +1166,13 @@ void MainWindow::updateSecurityIcon(bool visible)
 
 void MainWindow::updateNetworkInfo()
 {
-  const auto mode = m_coreProcess.mode();
-  if (mode == CoreMode::None) {
-    return;
-  }
-
-  if (mode == CoreMode::Server)
-    updateIpLabel(NetworkMonitor::validAddresses());
-  else
-    updateIpLabel({Settings::value(Settings::Core::Interface).toString()});
+  updateIpLabel(NetworkMonitor::validAddresses());
 }
 
 void MainWindow::serverConnectionConfigureClient(const QString &clientName)
 {
-  m_serverConfigDialogVisible = true;
-  ServerConfigDialog dialog(this, m_serverConfig);
-  if (dialog.addClient(clientName) && dialog.exec() == QDialog::Accepted) {
-    m_coreProcess.restart();
-  }
-  m_serverConfigDialogVisible = false;
+  showConfigureServer("");
+  m_layoutPage->suggestComputer(clientName);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -760,19 +1291,10 @@ void MainWindow::saveSettings() const
 
 void MainWindow::setTrayIcon()
 {
-  static const auto fallbackPath = QStringLiteral(":/icons/%1-%2/apps/64/%3");
-
-  QString themeIcon = kRevFqdnName;
   if (!Settings::value(Settings::Gui::SymbolicTrayIcon).toBool()) {
-    if (deskflow::platform::isMac())
-      m_trayIcon->setIcon(QIcon::fromTheme(themeIcon));
-    else
-      m_trayIcon->setIcon(QIcon(fallbackPath.arg(kAppId, QStringLiteral("dark"), themeIcon)));
+    m_trayIcon->setIcon(brandIcon());
     return;
   }
-
-  themeIcon.append(QStringLiteral("-symbolic"));
-
   if (deskflow::platform::isWindows()) {
     QSettings settings(
         QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
@@ -780,13 +1302,10 @@ void MainWindow::setTrayIcon()
     );
     const QString theme = settings.value(QStringLiteral("SystemUsesLightTheme"), 1).toBool() ? QStringLiteral("light")
                                                                                              : QStringLiteral("dark");
-    m_trayIcon->setIcon(QIcon(fallbackPath.arg(kAppId, theme, themeIcon)));
+    m_trayIcon->setIcon(brandTrayIcon(theme == QStringLiteral("dark")));
     return;
   }
-
-  auto icon = QIcon::fromTheme(themeIcon, QIcon(fallbackPath.arg(kAppId, iconMode(), themeIcon)));
-  icon.setIsMask(true);
-  m_trayIcon->setIcon(icon);
+  m_trayIcon->setIcon(brandTrayIcon(iconMode() == QStringLiteral("dark"), deskflow::platform::isMac()));
 }
 
 void MainWindow::handleLogLine(const QString &line)
@@ -971,6 +1490,10 @@ void MainWindow::updateStatus()
     ui->btnEditName->setVisible(process == Stopped);
   }
   m_statusBar->setStatus(connection, process, isServer);
+  if (process == Stopped || !isServer)
+    m_connectedClients.clear();
+  updateHomeStatus();
+  updateHomeDevices();
 }
 
 void MainWindow::coreProcessStateChanged(ProcessState state)
@@ -1024,8 +1547,23 @@ void MainWindow::coreConnectionStateChanged(ConnectionState state)
   // when the correct TLS version string is detected.
   if (state != ConnectionState::Connected) {
     secureSocket(false);
-  } else if (isVisible()) {
-    showFirstConnectedMessage();
+  } else {
+    if (m_coreProcess.mode() == CoreMode::Client && !ui->lineHostname->text().contains(',')) {
+      rememberHomeDevice(ui->lineHostname->text().trimmed());
+      const auto endpoint =
+          DeviceListPage::normalizedAddress(ui->lineHostname->text(), Settings::value(Settings::Core::Port).toInt());
+      if (!endpoint.isEmpty()) {
+        auto recent = Settings::value(Settings::Gui::RecentServers).toStringList();
+        recent.removeAll(endpoint);
+        recent.prepend(endpoint);
+        while (recent.size() > 8)
+          recent.removeLast();
+        Settings::setValue(Settings::Gui::RecentServers, recent);
+      }
+    }
+    updateDevicesPage();
+    if (isVisible())
+      showFirstConnectedMessage();
   }
 }
 
@@ -1048,22 +1586,63 @@ void MainWindow::hide()
 void MainWindow::changeEvent(QEvent *e)
 {
   QMainWindow::changeEvent(e);
-  if (e->type() == QEvent::PaletteChange) {
+  if (e->type() == QEvent::ActivationChange && isActiveWindow()) {
+    refreshPermissionStatus();
+  } else if (e->type() == QEvent::PaletteChange) {
     updateIconTheme();
-    setWindowIcon(QIcon::fromTheme(kRevFqdnName));
+    setWindowIcon(brandIcon());
     setTrayIcon();
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
-    updateModeControlLabels();
-    updateNetworkInfo();
+    updateModeControls();
     updateStatus();
-    serverClientsChanged({});
+    serverClientsChanged(m_connectedClients);
     updateText();
+    refreshPermissionStatus();
   }
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
+  if (event->type() == QEvent::FocusIn || event->type() == QEvent::FocusOut) {
+    auto button = qobject_cast<QPushButton *>(obj);
+    if (button && button->window() == this) {
+      const auto reason = static_cast<QFocusEvent *>(event)->reason();
+      button->setProperty(
+          "keyboardFocus",
+          event->type() == QEvent::FocusIn && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason)
+      );
+      button->style()->unpolish(button);
+      button->style()->polish(button);
+    }
+  }
+  if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) {
+    auto widget = qobject_cast<QWidget *>(obj);
+    auto mouse = static_cast<QMouseEvent *>(event);
+    if (widget && widget->window() == this && mouse->button() == Qt::LeftButton) {
+      const auto point = mapFromGlobal(mouse->globalPosition().toPoint());
+      Qt::Edges edges;
+      if (point.x() < 6)
+        edges |= Qt::LeftEdge;
+      if (point.x() > width() - 6)
+        edges |= Qt::RightEdge;
+      if (point.y() < 6)
+        edges |= Qt::TopEdge;
+      if (point.y() > height() - 6)
+        edges |= Qt::BottomEdge;
+      if (edges && windowHandle() && !isMaximized())
+        return windowHandle()->startSystemResize(edges);
+      const bool title =
+          obj == ui->toolbar || obj == ui->lblWorkspaceTitle || obj == ui->sideTitleBar || obj == ui->lblVersion;
+      if (title && windowHandle()) {
+        if (event->type() == QEvent::MouseButtonDblClick)
+          isMaximized() ? showNormal() : showMaximized();
+        else
+          windowHandle()->startSystemMove();
+        return true;
+      }
+    }
+  }
   if (obj != ui->lineEditName || event->type() != QEvent::KeyPress)
     return false;
   if (const auto keyEvent = static_cast<QKeyEvent *>(event); keyEvent->key() != Qt::Key_Escape)
@@ -1113,19 +1692,28 @@ void MainWindow::updateText()
 
 void MainWindow::showConfigureServer(const QString &message)
 {
-  ServerConfigDialog dialog(this, serverConfig());
-  dialog.message(message);
-  if ((dialog.exec() == QDialog::Accepted) && m_coreProcess.isStarted()) {
-    m_coreProcess.restart();
+  Q_UNUSED(message);
+  if (!m_layoutPage) {
+    m_layoutPage = new ScreenLayoutPage(m_serverConfig, m_pageStack);
+    m_pageStack->addWidget(m_layoutPage);
+    connect(m_layoutPage, &ScreenLayoutPage::saved, this, [this] {
+      updateHomeDevices();
+      if (m_coreProcess.isStarted())
+        m_coreProcess.restart();
+    });
+    connect(m_pageStack, &QStackedWidget::currentChanged, this, [this] {
+      m_serverConfigDialogVisible = m_pageStack->currentWidget() == m_layoutPage;
+    });
   }
+  m_layoutPage->activate();
+  m_pageStack->setCurrentWidget(m_layoutPage);
+  ui->btnLayout->setChecked(true);
 }
 
 void MainWindow::showConfigureClient()
 {
-  ClientConfigDialog dialog(this);
-  if ((dialog.exec() == QDialog::Accepted) && m_coreProcess.isStarted()) {
-    m_coreProcess.restart();
-  }
+  openSettings();
+  m_settingsPage->activate(SettingsPage::Input);
 }
 
 void MainWindow::secureSocket(bool secureSocket)
@@ -1139,6 +1727,10 @@ void MainWindow::updateComputerName()
   const auto computerName = Settings::value(Settings::Core::ComputerName).toString();
   ui->lblComputerName->setText(computerName);
   ui->lineEditName->setText(computerName);
+  ui->lblSidebarName->setText(
+      ui->lblSidebarName->fontMetrics().elidedText(computerName, Qt::ElideRight, width() <= 800 ? 142 : 174)
+  );
+  ui->lblSidebarName->setToolTip(computerName);
   m_serverConfig.updateServerName();
 }
 
@@ -1234,7 +1826,11 @@ void MainWindow::serverClientsChanged(const QStringList &clients)
 {
   if (m_coreProcess.mode() != CoreMode::Server || !m_coreProcess.isStarted())
     return;
+  m_connectedClients = clients;
+  for (const auto &client : clients)
+    rememberHomeDevice(client);
   m_statusBar->setServerClients(clients);
+  updateHomeDevices();
 }
 
 void MainWindow::daemonIpcClientConnectionFailed()
@@ -1247,10 +1843,18 @@ void MainWindow::daemonIpcClientConnectionFailed()
 void MainWindow::toggleCanRunCore(bool enableButtons)
 {
   const bool isStarted = m_coreProcess.isStarted();
-  ui->btnToggleCore->setEnabled(enableButtons);
+  bool permission = true;
+#ifdef Q_OS_MACOS
+  permission = hasOSXAccessibilityPermission();
+#endif
+  enableButtons = enableButtons && permission;
+  // Stopping an existing session must remain possible even if permission is revoked.
+  const auto process = m_coreProcess.processState();
+  const bool canStop = isStarted || process == ProcessState::Starting || process == ProcessState::RetryPending;
+  ui->btnToggleCore->setEnabled(enableButtons || canStop);
   ui->btnRestartCore->setEnabled(enableButtons && isStarted);
   m_actionStartCore->setEnabled(enableButtons);
-  m_actionStopCore->setEnabled(enableButtons && isStarted);
+  m_actionStopCore->setEnabled(canStop);
 }
 
 void MainWindow::remoteHostChanged(const QString &newRemoteHost)
@@ -1262,73 +1866,29 @@ void MainWindow::remoteHostChanged(const QString &newRemoteHost)
   } else {
     Settings::setValue(Settings::Client::RemoteHost, newRemoteHost);
   }
+  updateHomeDevices();
 }
 
 void MainWindow::browseServers()
 {
-  if (!m_mdnsBrowser) {
-    m_mdnsBrowser = new deskflow::mdns::MdnsBrowser(this);
-    m_mdnsBrowser->start();
-  }
-
-  deskflow::gui::ServerBrowserDialog dialog(m_mdnsBrowser, this);
-  if (dialog.exec() == QDialog::Accepted) {
-    const QString host = dialog.selectedAddress();
-    if (!host.isEmpty()) {
-      ui->lineHostname->setText(host);
-      Settings::setValue(Settings::Client::AutoConnect, dialog.autoConnectRequested());
-      // Trigger a reconnect with the discovered host.
-      if (m_coreProcess.mode() == CoreMode::Client)
-        resetCore();
-    }
-  }
+  openDevices();
 }
 
 void MainWindow::updateIpLabel(const QStringList &addresses)
 {
-  const auto mode = m_coreProcess.mode();
-  if (mode == CoreMode::None) {
-    return;
-  }
-
-  static const auto colorText = QStringLiteral(R"(<span style="color:%1;">%2</span>)");
-  const bool serverStarted = m_coreProcess.isStarted();
-  const bool fixedIP = !Settings::value(Settings::Core::Interface).toString().isEmpty();
-
-  if (!fixedIP && addresses.isEmpty() && !serverStarted || (serverStarted && m_serverStartSuggestedIP.isEmpty())) {
-    ui->lblIpAddresses->setText(colorText.arg(palette().linkVisited().color().name(), tr("No IP Detected")));
-    ui->lblIpAddresses->setToolTip(tr("Unable to detect an IP address. Check your network connection is active."));
-    return;
-  }
-
-  QString labelText = fixedIP ? tr("Using IP: ") : tr("Suggested IP: ");
-  QString toolTipText = tr("<p>If connecting via the hostname fails, try %1</p>");
-
-  const bool filterIpList = (serverStarted || fixedIP);
-  const QRegularExpression ipListFilter(filterIpList ? QStringLiteral("(%1)").arg(m_serverStartIPs.join("|")) : "");
-  const QStringList ipList = addresses.filter(ipListFilter);
-
-  bool IPValid = true;
-  if (filterIpList && (m_serverStartSuggestedIP != m_currentIpAddress) || !ipList.contains(m_serverStartSuggestedIP)) {
-    IPValid = !ipList.isEmpty();
-  }
-
-  if (IPValid) {
-    m_currentIpAddress = ipList.first();
-    labelText.append(m_currentIpAddress);
-  } else {
-    labelText.append(colorText.arg(palette().linkVisited().color().name(), m_serverStartSuggestedIP));
-    toolTipText.append(tr("\nA bound IP is now invalid, you may need to restart the server."));
-  }
-
-  if (ipList.count() < 2 || fixedIP) {
-    toolTipText = toolTipText.arg(tr("the suggested IP."));
-  } else {
-    toolTipText = toolTipText.arg(tr("one of the following IPs:<br/>%1").arg(ipList.join("<br/>")));
-  }
-
-  ui->lblIpAddresses->setText(labelText);
-  ui->lblIpAddresses->setToolTip(mode == CoreMode::Server ? toolTipText : QString());
+  const auto fixedAddress = Settings::value(Settings::Core::Interface).toString();
+  const bool boundServer = m_coreProcess.mode() == CoreMode::Server && m_coreProcess.isStarted();
+  const auto preferred = fixedAddress.isEmpty() && boundServer ? m_serverStartSuggestedIP : fixedAddress;
+  m_currentIpAddress = preferred.isEmpty() ? addresses.value(0) : preferred;
+  const bool available = !m_currentIpAddress.isEmpty() && addresses.contains(m_currentIpAddress);
+  ui->lblIpAddresses->setText(m_currentIpAddress.isEmpty() ? tr("No network address") : m_currentIpAddress);
+  ui->lblIpAddresses->setToolTip(addresses.join('\n'));
+  ui->lblAddressHint->setText(
+      !available ? tr("Check your network or bound address before connecting.")
+                 : tr("Connect from another computer on your network.")
+  );
+  ui->btnCopyAddress->setEnabled(!m_currentIpAddress.isEmpty());
+  updateDevicesPage();
 }
 
 void MainWindow::updateTimeoutDelay(int newDelay)

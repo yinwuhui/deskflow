@@ -12,6 +12,7 @@
 #include "common/Hotkey.h"
 #include "gui/config/ComputerConfig.h"
 #include "gui/config/ComputerList.h"
+#include "gui/config/ScreenLayout.h"
 
 #include <QList>
 
@@ -24,6 +25,8 @@ class ServerConfigDialog;
 class ServerConfig : public ComputerConfig
 {
   friend class ServerConfigDialog;
+  friend class SettingsPage;
+  friend class ScreenLayoutPage;
   friend QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config);
 
 public:
@@ -56,6 +59,22 @@ public:
   QString configFile() const;
   bool useExternalConfig() const;
   void addClient(const QString &clientName);
+  bool freeLayout() const
+  {
+    return m_freeLayout;
+  }
+  void setFreeLayout(bool enabled)
+  {
+    m_freeLayout = enabled;
+  }
+  const screenlayout::Rectangles &layoutRectangles() const
+  {
+    return m_layoutRectangles;
+  }
+  void setLayoutRectangles(const screenlayout::Rectangles &rectangles)
+  {
+    m_layoutRectangles = rectangles;
+  }
 
 private:
   void recall();
@@ -89,6 +108,8 @@ private:
   ComputerList m_computers;
   int m_columns;
   int m_rows;
+  bool m_freeLayout = false;
+  screenlayout::Rectangles m_layoutRectangles;
 };
 
 QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config);

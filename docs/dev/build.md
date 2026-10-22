@@ -60,6 +60,12 @@ Example cmake configuration:
 
 ### macOS codesign
 
+Locally signed preview builds should use a separate GUI bundle identifier so macOS does not reuse the official
+release's certificate requirements for Accessibility authorization. Configure with
+`-DDESKFLOW_GUI_BUNDLE_ID=org.deskflow.deskflow.homepreview` when building a home UI preview. This does not grant
+any permissions; the user must authorize the resulting preview app separately. The default bundle identifier is
+unchanged for normal release builds. Ad hoc signatures can require authorization again after rebuilding.
+
 The code signing option `APPLE_CODESIGN_DEV` is only for local development and not intended for distributed bundles. 
 
 Signing for local development and signing for the distribution bundle must be different because of development entitlements which are unlikely to be safe for use in production. It is impractical (i.e. very slow and cumbersome) to use the distribution bundle for local development. When developing locally, the app bundle is partial and does not contain dependencies and uses external libs, e.g. installed with Homebrew; the entitlements allow those external libs to be loaded which is not allowed by default.

@@ -380,7 +380,16 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
     qCritical("not starting core process, already started");
     return;
   }
-
+#ifdef Q_OS_MACOS
+  // Opening the GUI is safe without input-control permission. Every path that
+  // starts or restarts keyboard/mouse sharing must still pass the OS check.
+  if (!hasOSXAccessibilityPermission()) {
+    m_retryTimer.stop();
+    setProcessState(ProcessState::Stopped);
+    Q_EMIT error(Error::AccessibilityRequired);
+    return;
+  }
+#endif
   if (m_mode == Settings::CoreMode::None) {
     qCritical("not starting core process, no core mode set");
     return;

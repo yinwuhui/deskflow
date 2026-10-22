@@ -31,6 +31,7 @@ public:
   ~MdnsBrowser() override;
 
   void stop();
+  void requestRefresh();
 
   // Snapshot of currently known servers (thread-safe enough for UI reads
   // after serversChanged is received).

@@ -26,6 +26,7 @@ class ComputerSettingsDialog;
 class Computer : public ComputerConfig
 {
   friend class ComputerSettingsDialog;
+  friend class SettingsPage;
   friend class ComputerSetupModel;
   friend class ComputerSetupView;
 

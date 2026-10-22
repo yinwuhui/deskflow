@@ -55,8 +55,8 @@ struct Entry
 // Aggregated state for the current receive batch. Owned by the browser thread.
 struct BrowserState
 {
-  std::map<std::string, Entry> entries;       // keyed by service instance name
-  std::map<std::string, QString> ipByHost;   // qualified hostname -> IPv4 string
+  std::map<std::string, Entry> entries;    // keyed by service instance name
+  std::map<std::string, QString> ipByHost; // qualified hostname -> IPv4 string
   bool changed = false;
 };
 
@@ -65,11 +65,11 @@ struct BrowserState
 // mDNS response callback: accumulates PTR/SRV/A/TXT records into BrowserState.
 // Must have C language linkage (mdns.h declares the callback type inside an
 // extern "C" block).
-extern "C" int deskflowMdnsBrowserCallback(int sock, const struct sockaddr *from, size_t addrlen,
-                                           mdns_entry_type_t entry, uint16_t query_id, uint16_t rtype,
-                                           uint16_t rclass, uint32_t ttl, const void *data, size_t size,
-                                           size_t name_offset, size_t name_length, size_t record_offset,
-                                           size_t record_length, void *user_data)
+extern "C" int deskflowMdnsBrowserCallback(
+    int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry, uint16_t query_id, uint16_t rtype,
+    uint16_t rclass, uint32_t ttl, const void *data, size_t size, size_t name_offset, size_t name_length,
+    size_t record_offset, size_t record_length, void *user_data
+)
 {
   (void)sock;
   (void)from;
@@ -137,8 +137,8 @@ extern "C" int deskflowMdnsBrowserCallback(int sock, const struct sockaddr *from
     st->changed = true;
   } else if (rtype == MDNS_RECORDTYPE_TXT) {
     mdns_record_txt_t txt[16];
-    size_t parsed = mdns_record_parse_txt(data, size, record_offset, record_length, txt,
-                                          sizeof(txt) / sizeof(mdns_record_txt_t));
+    size_t parsed =
+        mdns_record_parse_txt(data, size, record_offset, record_length, txt, sizeof(txt) / sizeof(mdns_record_txt_t));
     Entry &e = touch(recName);
     for (size_t i = 0; i < parsed; ++i) {
       QString key = QString::fromUtf8(txt[i].key.str, int(txt[i].key.length));
@@ -161,12 +161,16 @@ std::vector<int> openClientSockets()
 #if defined(Q_OS_WIN)
   ULONG size = 8192;
   std::vector<unsigned char> buf(size);
-  DWORD ret = GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST, nullptr,
-                                   reinterpret_cast<IP_ADAPTER_ADDRESSES *>(buf.data()), &size);
+  DWORD ret = GetAdaptersAddresses(
+      AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST, nullptr,
+      reinterpret_cast<IP_ADAPTER_ADDRESSES *>(buf.data()), &size
+  );
   if (ret == ERROR_BUFFER_OVERFLOW) {
     buf.resize(size);
-    ret = GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST, nullptr,
-                               reinterpret_cast<IP_ADAPTER_ADDRESSES *>(buf.data()), &size);
+    ret = GetAdaptersAddresses(
+        AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST, nullptr,
+        reinterpret_cast<IP_ADAPTER_ADDRESSES *>(buf.data()), &size
+    );
   }
   if (ret != NO_ERROR)
     return sockets;
@@ -218,12 +222,15 @@ struct MdnsBrowserPrivate
   // Never reset in run(): stop() may be called before initialization completes.
   std::atomic<bool> stopRequested{false};
   mutable QMutex mutex;
+  std::atomic_bool refreshRequested{false};
   QVector<DiscoveredServer> snapshot;
   alignas(32) char buffer[2048];
   BrowserState state;
 };
 
-MdnsBrowser::MdnsBrowser(QObject *parent) : QThread(parent), d(new MdnsBrowserPrivate) {}
+MdnsBrowser::MdnsBrowser(QObject *parent) : QThread(parent), d(new MdnsBrowserPrivate)
+{
+}
 
 MdnsBrowser::~MdnsBrowser()
 {
@@ -235,6 +242,11 @@ MdnsBrowser::~MdnsBrowser()
 void MdnsBrowser::stop()
 {
   d->stopRequested = true;
+}
+
+void MdnsBrowser::requestRefresh()
+{
+  d->refreshRequested = true;
 }
 
 QVector<DiscoveredServer> MdnsBrowser::servers() const
@@ -258,14 +270,13 @@ void MdnsBrowser::run()
 
   auto sendQuery = [&]() {
     for (int sock : sockets)
-      mdns_query_send(sock, MDNS_RECORDTYPE_PTR, service.c_str(), service.size(), d->buffer,
-                      sizeof(d->buffer), 0);
+      mdns_query_send(sock, MDNS_RECORDTYPE_PTR, service.c_str(), service.size(), d->buffer, sizeof(d->buffer), 0);
   };
 
   while (!d->stopRequested) {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
 
-    if (now >= nextQueryMsec) {
+    if (d->refreshRequested.exchange(false) || now >= nextQueryMsec) {
       sendQuery();
       nextQueryMsec = now + 3000;
     }

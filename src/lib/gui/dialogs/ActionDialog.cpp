@@ -104,6 +104,10 @@ void ActionDialog::accept()
 void ActionDialog::updateSize()
 {
   setMaximumSize(QSize(16777215, 1677215));
+  if (!isWindow()) {
+    updateGeometry();
+    return;
+  }
   adjustSize();
   if (!isKeyAction(ui->comboActionType->currentIndex()))
     setMaximumSize(size());
