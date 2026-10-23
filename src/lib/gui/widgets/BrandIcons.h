@@ -19,6 +19,15 @@ inline QIcon brandIcon()
   return icon;
 }
 
+inline QIcon applicationIcon()
+{
+#ifdef Q_OS_MACOS
+  return QIcon(QStringLiteral(":/brand/deskflow-macos-1024.png"));
+#else
+  return brandIcon();
+#endif
+}
+
 inline QIcon brandTrayIcon(bool light = false, bool mask = false)
 {
   QIcon icon(

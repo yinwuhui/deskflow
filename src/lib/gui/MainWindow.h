@@ -40,6 +40,7 @@ class DeviceListPage;
 class QStackedWidget;
 class QLabel;
 class QPropertyAnimation;
+class BackupConnectionPanel;
 
 namespace Ui {
 class MainWindow;
@@ -199,6 +200,7 @@ private:
   QLabel *m_actionTransitionOverlay = nullptr;
   QPropertyAnimation *m_actionTransition = nullptr;
   QAction *m_copyShareAddress = nullptr;
+  BackupConnectionPanel *m_backupPanel = nullptr;
   bool m_saveOnExit = true;
   bool m_clientErrorVisible = false;
   ServerConfig m_serverConfig;

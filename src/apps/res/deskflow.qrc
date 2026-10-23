@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>brand/deskflow-macos-1024.png</file>
         <file>brand/deskflow-logo.svg</file>
         <file>brand/deskflow-32.png</file>
         <file>brand/deskflow-64.png</file>

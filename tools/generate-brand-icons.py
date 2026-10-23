@@ -34,6 +34,8 @@ def main():
     BRAND.mkdir(parents=True, exist_ok=True)
     (BRAND / "deskflow-logo.svg").write_text(svg, encoding="utf-8")
     resources = ["brand/deskflow-logo.svg"]
+    if (BRAND / "deskflow-macos-1024.png").exists():
+        resources.append("brand/deskflow-macos-1024.png")
     for size in (32, 64, 128, 256, 512, 1024):
         name = f"deskflow-{size}.png"
         (BRAND / name).write_bytes(render(svg, size))
@@ -51,6 +53,12 @@ def main():
     large = Image.open(io.BytesIO(render(svg, 1024)))
     large.save(ROOT / "src/apps/res/deskflow.ico", format="ICO", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)])
     (ROOT / "deploy/linux/org.busymouse.busymouse.png").write_bytes(render(svg, 512))
+    macos_source = BRAND / "deskflow-logo-macos.svg"
+    icon_svg = macos_source.read_text(encoding="utf-8") if macos_source.exists() else svg
+    if macos_source.exists():
+        (BRAND / "deskflow-macos-1024.png").write_bytes(render(icon_svg, 1024))
+        if "brand/deskflow-macos-1024.png" not in resources:
+            resources.append("brand/deskflow-macos-1024.png")
     if sys.platform == "darwin":
         with tempfile.TemporaryDirectory(prefix="deskflow-icons-") as temp:
             iconset = Path(temp) / "Deskflow.iconset"
@@ -58,10 +66,10 @@ def main():
             for size in (16, 32, 128, 256, 512):
                 for scale in (1, 2):
                     suffix = "@2x" if scale == 2 else ""
-                    (iconset / f"icon_{size}x{size}{suffix}.png").write_bytes(render(svg, size * scale))
+                    (iconset / f"icon_{size}x{size}{suffix}.png").write_bytes(render(icon_svg, size * scale))
             subprocess.run(["/usr/bin/iconutil", "-c", "icns", str(iconset), "-o", str(ROOT / "src/apps/res/Deskflow.icns")], check=True)
     else:
-        large.save(ROOT / "src/apps/res/Deskflow.icns", format="ICNS")
+        Image.open(io.BytesIO(render(icon_svg, 1024))).save(ROOT / "src/apps/res/Deskflow.icns", format="ICNS")
     qrc = ROOT / "src/apps/res/deskflow.qrc"
     text = re.sub(r'^\s*<file>brand/[^<]+</file>\n', '', qrc.read_text(), flags=re.MULTILINE)
     entries = ''.join(f'        <file>{name}</file>\n' for name in resources)

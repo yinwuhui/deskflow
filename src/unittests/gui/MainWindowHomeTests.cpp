@@ -5,12 +5,16 @@
  */
 
 #include "gui/MainWindow.h"
+#include "gui/core/BackupConnectionPanel.h"
 #include "gui/widgets/LogDock.h"
 
 #include "gui/widgets/HomeDeviceList.h"
 #include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -37,8 +41,113 @@ static bool inputControlAllowed()
 class MainWindowHomeTests : public QObject
 {
   Q_OBJECT
+  static QJsonObject backupSnapshot(int revision, const QString &backup = "ready", const QString &actionId = {})
+  {
+    return {
+        {"version", 2},
+        {"revision", revision},
+        {"backupPeer", "peer-a"},
+        {"peers", QJsonArray{QJsonObject{
+                      {"peerId", "peer-a"},
+                      {"name", "Test laptop"},
+                      {"requested", true},
+                      {"effective", true},
+                      {"backup", backup},
+                      {"state", "network"},
+                      {"actionId", actionId},
+                      {"action", actionId.isEmpty() ? "" : "confirmPairing"},
+                      {"reason", "428196"},
+                      {"channels", QJsonArray{
+                                       QJsonObject{{"type", "network"}, {"state", "active"}},
+                                       QJsonObject{{"type", "bluetooth"}, {"state", "ready"}}
+                                   }}
+                  }}}
+    };
+  }
 
 private Q_SLOTS:
+  void backupSwitchUpdatesOnlyTheSelectedPeer()
+  {
+    Settings::setValue(Settings::Security::TlsEnabled, true);
+    Settings::setValue(Settings::Security::CheckPeers, true);
+    BackupConnectionPanel panel;
+    panel.setRunning(true);
+    QSignalSpy commands(&panel, &BackupConnectionPanel::command);
+    panel.updateSnapshot(backupSnapshot(1));
+    QCOMPARE(commands.count(), 0);
+    QVERIFY(panel.detailsWidget()->isHidden());
+    auto toggle = panel.findChild<QCheckBox *>("checkAutoBackup");
+    QVERIFY(toggle->isChecked());
+    toggle->click();
+    QCOMPARE(commands.count(), 1);
+    const auto request = commands.takeFirst().first().toJsonObject();
+    QCOMPARE(request.value("kind").toString(), QString("policy"));
+    QCOMPARE(request.value("peerId").toString(), QString("peer-a"));
+    QCOMPARE(request.value("enabled").toBool(), false);
+    QVERIFY(panel.findChild<QLabel *>("lblBackupStatus")->text().contains("Using local network"));
+  }
+
+  void backupSnapshotsRejectOldRevisionsAndResetOnStop()
+  {
+    Settings::setValue(Settings::Security::TlsEnabled, true);
+    Settings::setValue(Settings::Security::CheckPeers, true);
+    BackupConnectionPanel panel;
+    panel.setRunning(true);
+    panel.updateSnapshot(backupSnapshot(5));
+    panel.updateSnapshot(backupSnapshot(4, "unavailable"));
+    QVERIFY(panel.findChild<QLabel *>("lblBackupStatus")->text().contains("Backup ready"));
+    QVERIFY(panel.detailsWidget()->isHidden());
+    panel.setRunning(false);
+    panel.updateSnapshot(backupSnapshot(8));
+    QVERIFY(panel.selectedPeer().isEmpty());
+    panel.setRunning(true);
+    panel.updateSnapshot(backupSnapshot(1, "blockedByPeer"));
+    QVERIFY(panel.findChild<QLabel *>("lblBackupStatus")->text().contains("disabled by the other computer"));
+  }
+
+  void expiredPairingConfirmationCannotBeSubmitted()
+  {
+    BackupConnectionPanel panel;
+    panel.setRunning(true);
+    panel.updateSnapshot(backupSnapshot(1, "needsAction", "old-action"));
+    panel.findChild<QPushButton *>("btnBackupDetails")->click();
+    QSignalSpy commands(&panel, &BackupConnectionPanel::command);
+    panel.updateSnapshot(backupSnapshot(2, "needsAction", "new-action"));
+    panel.findChild<QPushButton *>("btnConfirmBackupAction")->click();
+    QCOMPARE(commands.count(), 0);
+    panel.findChild<QPushButton *>("btnBackupDetails")->click();
+    panel.findChild<QPushButton *>("btnConfirmBackupAction")->click();
+    QCOMPARE(commands.count(), 1);
+    const auto request = commands.takeFirst().first().toJsonObject();
+    QCOMPARE(request.value("actionId").toString(), QString("new-action"));
+    QCOMPARE(request.value("peerId").toString(), QString("peer-a"));
+    QVERIFY(request.value("accepted").toBool());
+  }
+
+  void bothTransportsAndRolesKeepActionAnchors()
+  {
+    MainWindow window;
+    window.resize(740, 600);
+    window.show();
+    QCoreApplication::processEvents();
+    auto action = window.findChild<QPushButton *>("btnToggleCore");
+    auto content = window.findChild<QWidget *>("homeContent");
+    auto local = window.findChild<QWidget *>("localCard");
+    const QRect anchor(action->mapTo(content, QPoint()), action->size());
+    const auto localRect = local->geometry();
+    for (auto role : {"rbModeClient", "rbModeServer"}) {
+      window.findChild<QRadioButton *>(role)->click();
+      for (auto transport : {"btnInitialBluetooth", "btnInitialNetwork"}) {
+        window.findChild<QPushButton *>(transport)->click();
+        QCoreApplication::processEvents();
+        QCOMPARE(QRect(action->mapTo(content, QPoint()), action->size()), anchor);
+        QCOMPARE(local->geometry(), localRect);
+        QCOMPARE(local->height(), 112);
+        QVERIFY(window.findChild<QWidget *>("backupConnectionDetails")->isHidden());
+      }
+    }
+  }
+
   void pagesPreserveRoundedWindowCorner()
   {
     MainWindow window;
@@ -257,6 +366,9 @@ private Q_SLOTS:
 
   void init()
   {
+    Settings::setValue(Settings::Connection::InitialTransport, "network");
+    Settings::setValue(Settings::Connection::BluetoothPeer, "");
+    Settings::setValue(Settings::Connection::AutoBackup, true);
     Settings::setValue(Settings::Gui::AutoStartCore, false);
     Settings::setValue(Settings::Gui::LogExpanded, false);
     Settings::setValue(Settings::Gui::WindowGeometry, QRect(0, 0, 971, 197));

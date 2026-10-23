@@ -1418,6 +1418,26 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Advanced settings</source>
         <translation>高级设置</translation>
     </message>
+    <message>
+        <source>Available</source>
+        <translation>网络可用</translation>
+    </message>
+    <message>
+        <source>Unavailable</source>
+        <translation>不可用</translation>
+    </message>
+    <message>
+        <source>Bluetooth computer</source>
+        <translation>蓝牙电脑</translation>
+    </message>
+    <message>
+        <source>Choose a nearby BMouse computer. Its identity is verified when connecting.</source>
+        <translation>选择附近运行 BMouse 的电脑，连接时将验证其身份。</translation>
+    </message>
+    <message>
+        <source>Find nearby computers</source>
+        <translation>查找附近的电脑</translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>
@@ -3165,5 +3185,150 @@ Enabling this setting will disable the server config GUI.</source>
 <message><source>Use backup for this computer</source><translation>为此电脑启用备用</translation></message>
 <message><source>Using Bluetooth</source><translation>当前使用蓝牙</translation></message>
 <message><source>Using local network</source><translation>当前使用局域网</translation></message>
+    <message>
+        <source>After connecting, prepare the other transport automatically and recover if the current connection fails.</source>
+        <translation>连接成功后，自动尝试另一种连接；当前连接中断时，自动恢复。</translation>
+    </message>
+    <message>
+        <source>Bluetooth address</source>
+        <translation>蓝牙地址</translation>
+    </message>
+    <message>
+        <source>Bluetooth discovery failed. Check system Bluetooth settings.</source>
+        <translation>蓝牙查找失败，请检查系统蓝牙设置。</translation>
+    </message>
+    <message>
+        <source>Choose a nearby computer</source>
+        <translation>选择附近的电脑</translation>
+    </message>
+    <message>
+        <source>Choose the computer with Find Bluetooth computers, or enter its Bluetooth address.</source>
+        <translation>点击“查找蓝牙电脑”选择设备，也可手动输入蓝牙地址。</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Computer protected by backup</source>
+        <translation>启用备用连接的电脑</translation>
+    </message>
+    <message>
+        <source>Connected computer</source>
+        <translation>已连接电脑</translation>
+    </message>
+    <message>
+        <source>Connecting to the other computer…</source>
+        <translation>正在连接对方电脑…</translation>
+    </message>
+    <message>
+        <source>Connection details</source>
+        <translation>连接详情</translation>
+    </message>
+    <message>
+        <source>Connection interrupted; restoring control. Your input remains local.</source>
+        <translation>连接中断，正在恢复；控制已回到本机。</translation>
+    </message>
+    <message>
+        <source>Continue the Bluetooth setup requested by the connection service.</source>
+        <translation>继续完成此电脑的蓝牙连接设置。</translation>
+    </message>
+    <message>
+        <source>Disconnected. Automatic reconnection for this computer is stopped.</source>
+        <translation>已断开，此电脑的自动重连已停止。</translation>
+    </message>
+    <message>
+        <source>Open your system Bluetooth settings and complete the requested action.</source>
+        <translation>请打开系统蓝牙设置，完成所需操作。</translation>
+    </message>
+    <message>
+        <source>Pairing PIN</source>
+        <translation>配对 PIN</translation>
+    </message>
+    <message>
+        <source>Saved Bluetooth computer</source>
+        <translation>已保存的蓝牙电脑</translation>
+    </message>
+    <message>
+        <source>Select a Bluetooth computer; its identity is verified when connecting.</source>
+        <translation>请选择蓝牙电脑，连接时将验证其身份。</translation>
+    </message>
+    <message>
+        <source>Sharing started; waiting for a computer to connect.</source>
+        <translation>共享已开启，等待其他电脑接入。</translation>
+    </message>
+    <message>
+        <source>The backup transport will be prepared after connecting.</source>
+        <translation>连接成功后自动准备备用通道，无需再次输入地址。</translation>
+    </message>
+    <message>
+        <source>Unnamed computer</source>
+        <translation>未命名的电脑</translation>
+    </message>
+    <message>
+        <source>
+This computer's clipboard cap is up to 64 KiB; lower limits are retained.</source>
+        <translation>
+此电脑的剪贴板最多传输 64 KiB，并保留用户更低的限制。</translation>
+    </message>
+</context>
+<context>
+    <name>LocalBluetoothInfo</name>
+    <message>
+        <source>Allow</source>
+        <translation>授权</translation>
+    </message>
+    <message>
+        <source>Bluetooth</source>
+        <translation>蓝牙</translation>
+    </message>
+    <message>
+        <source>Bluetooth information is available after authorization.</source>
+        <translation>授权后显示本机蓝牙信息。</translation>
+    </message>
+    <message>
+        <source>Details</source>
+        <translation>详情</translation>
+    </message>
+    <message>
+        <source>Local Bluetooth</source>
+        <translation>本机蓝牙</translation>
+    </message>
+    <message>
+        <source>Local Bluetooth: %1</source>
+        <translation>本机蓝牙：%1</translation>
+    </message>
+    <message>
+        <source>Name unavailable</source>
+        <translation>名称暂不可获取</translation>
+    </message>
+    <message>
+        <source>Not authorized</source>
+        <translation>未授权</translation>
+    </message>
+    <message>
+        <source>Not supported</source>
+        <translation>不支持</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>已关闭</translation>
+    </message>
+    <message>
+        <source>On</source>
+        <translation>已开启</translation>
+    </message>
+    <message>
+        <source>Open your system Bluetooth settings to inspect the adapter and permissions.</source>
+        <translation>请打开系统蓝牙设置查看适配器与授权状态。</translation>
+    </message>
+    <message>
+        <source>System Bluetooth settings</source>
+        <translation>系统蓝牙设置</translation>
+    </message>
+    <message>
+        <source>Unavailable</source>
+        <translation>不可用</translation>
+    </message>
 </context>
 </TS>

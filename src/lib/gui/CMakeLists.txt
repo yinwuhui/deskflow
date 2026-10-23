@@ -144,6 +144,7 @@ target_link_libraries(${target}
 target_sources(gui PRIVATE core/TransportNotifications.cpp core/TransportNotifications.h)
 
 target_sources(gui PRIVATE core/BackupConnectionPanel.cpp core/BackupConnectionPanel.h)
+target_sources(gui PRIVATE widgets/LocalBluetoothInfo.cpp widgets/LocalBluetoothInfo.h)
 if(BUILD_BLUETOOTH)
   target_link_libraries(gui PUBLIC deskflow-bluetooth)
   target_compile_definitions(gui PRIVATE DESKFLOW_BLUETOOTH)

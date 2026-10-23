@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <title>Deskflow — macOS application icon</title>
+  <desc>First-concept blue, silver and orange mouse logo on a light cool gray rounded-square tile. Transparent outside the tile.</desc>
+  <defs>
+    <filter id="tile-shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#18202C" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect x="56" y="56" width="912" height="912" rx="205" fill="#F5F6F8" filter="url(#tile-shadow)"/>
+  <rect x="56.5" y="56.5" width="911" height="911" rx="204.5" stroke="#DDE1E7"/>
+  <g transform="translate(110.4 110.08) scale(0.64)">
+    <path id="windows" fill="#0078D4" d="M477 115H600Q620 115 620 135V571Q620 591 600 591H287Q267 591 267 571V325C267 209 361 115 477 115Z"/>
+    <path id="macos" fill="#AEB5BE" d="M657 115H778C894 115 988 209 988 325V571Q988 591 968 591H657Q637 591 637 571V135Q637 115 657 115Z"/>
+    <path id="ubuntu" fill="#E95420" d="M287 609H968Q988 609 988 629V941C988 1051 898 1141 788 1141H467C357 1141 267 1051 267 941V629Q267 609 287 609Z"/>
+  </g>
+</svg>
