@@ -249,6 +249,31 @@ private Q_SLOTS:
     devices.beginScan();
     QVERIFY(devices.connectableAddress(1).isEmpty());
   }
+  void selectingBluetoothStartsDiscoveryAndSwitchingBackCancelsIt()
+  {
+    Settings::setValue(Settings::Connection::InitialTransport, "network");
+    BackupConnectionPanel panel;
+    if (!panel.findChild<QPushButton *>("btnInitialBluetooth")->isEnabled()) {
+      Settings::setValue(Settings::Connection::InitialTransport, "bluetooth");
+      BackupConnectionPanel unsupportedPanel;
+      QVERIFY(!unsupportedPanel.bluetoothSelected());
+      QVERIFY(unsupportedPanel.findChild<QPushButton *>("btnInitialNetwork")->isChecked());
+      return;
+    }
+    QSignalSpy visibility(&panel, &BackupConnectionPanel::statusVisibilityChanged);
+    QSignalSpy commands(&panel, &BackupConnectionPanel::command);
+    panel.findChild<QPushButton *>("btnInitialBluetooth")->click();
+    QVERIFY(panel.bluetoothSelected());
+    QCOMPARE(panel.findChild<QLabel *>("lblBackupStatus")->text(),
+             QString("Finding nearby Bluetooth devices…"));
+    QCOMPARE(visibility.last().first().toBool(), true);
+    // Cancel before the asynchronous permission callback can start hardware discovery.
+    panel.findChild<QPushButton *>("btnInitialNetwork")->click();
+    panel.setServerMode(false);
+    QCOMPARE(visibility.last().first().toBool(), false);
+    QCoreApplication::processEvents();
+    QCOMPARE(commands.count(), 0);
+  }
   void choosingBluetoothDevicesOnlyChangesTheTarget()
   {
     MainWindow window;
@@ -1022,6 +1047,8 @@ int main(int argc, char **argv)
   qputenv("XDG_CONFIG_HOME", profile.path().toUtf8());
   qputenv("XDG_STATE_HOME", profile.path().toUtf8());
   QApplication app(argc, argv);
+  // Windows does not use XDG_CONFIG_HOME when selecting its settings file.
+  Settings::setSettingsFile(profile.filePath("settings.conf"));
   MainWindowHomeTests tests;
   return QTest::qExec(&tests, argc, argv);
 }

@@ -18,6 +18,7 @@ private Q_SLOTS:
   void setStateFile();
   void settingsFile();
   void settingsPath();
+  void serverConfigurationPaths();
   void tlsDir();
   void tlsTrustedServersDb();
   void tlsTrustedClientsDb();

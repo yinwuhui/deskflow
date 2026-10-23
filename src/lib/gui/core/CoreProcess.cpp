@@ -238,6 +238,7 @@ void CoreProcess::startForegroundProcess(const QStringList &args)
   if (m_process->waitForStarted()) {
     setProcessState(Started);
   } else {
+    qCritical().noquote() << "could not start core:" << m_appPath << m_process->errorString();
     setProcessState(Stopped);
     Q_EMIT error(Error::StartFailed);
   }
@@ -433,13 +434,13 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
       qCritical("not starting core process, no server config file");
       setProcessState(ProcessState::Stopped);
       setConnectionState(ConnectionState::Disconnected);
-      Q_EMIT error(Error::StartFailed);
+      Q_EMIT error(Error::ConfigUnavailable);
       return;
     }
     if (!hasNeededPermissions) {
       setProcessState(ProcessState::Stopped);
       setConnectionState(ConnectionState::Disconnected);
-      Q_EMIT error(Error::StartFailed);
+      Q_EMIT error(Error::ConfigUnavailable);
       return;
     }
     qInfo("core config file: %s", qPrintable(configFilename));
@@ -603,6 +604,10 @@ QPair<bool, QString> CoreProcess::persistServerConfig() const
   }
 
   const auto configFilePath = Settings::defaultValue(Settings::Server::ExternalConfigFile).toString();
+  if (!QDir().mkpath(QFileInfo(configFilePath).absolutePath())) {
+    qWarning() << "failed to create server config directory:" << configFilePath;
+    return {false, configFilePath};
+  }
   QFile configFile(configFilePath);
   if (!configFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
     qWarning() << "failed to open core config file for write:" << configFilePath;

@@ -4,8 +4,8 @@
 #include "common/Settings.h"
 #include "gui/StyleUtils.h"
 #include "gui/widgets/DiscoveryComboBox.h"
-#include "gui/widgets/HomeIcons.h"
 #include "gui/widgets/HomeCheckBox.h"
+#include "gui/widgets/HomeIcons.h"
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
@@ -25,6 +25,7 @@
 #include "BluetoothDiscovery.h"
 #include <QBluetoothDeviceDiscoveryAgent>
 #include <QBluetoothDeviceInfo>
+#include <QBluetoothLocalDevice>
 #endif
 using namespace deskflow::gui;
 namespace {
@@ -69,11 +70,14 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   m_transport->setStyleSheet(
       "QWidget#initialTransportSelector { background: #ffffff; border: 1px solid #e3e8ef; border-radius: 7px; }"
   );
-  (bluetoothSelected() ? m_bluetoothButton : m_network)->setChecked(true);
 #ifndef DESKFLOW_BLUETOOTH
+  // Settings may have been saved by a build with Bluetooth support.
+  if (bluetoothSelected())
+    Settings::setValue(Settings::Connection::InitialTransport, "network");
   m_bluetoothButton->setEnabled(false);
   m_bluetoothButton->setToolTip(tr("This build does not include Bluetooth support."));
 #endif
+  (bluetoothSelected() ? m_bluetoothButton : m_network)->setChecked(true);
   connect(m_network, &QPushButton::toggled, this, [this](bool checked) {
     if (!checked)
       return;
@@ -85,6 +89,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
       return;
     Settings::setValue(Settings::Connection::InitialTransport, "bluetooth");
     Q_EMIT transportChanged();
+    discover();
   });
   auto *devicePicker = new DiscoveryComboBox(this);
   m_bluetooth = devicePicker;
@@ -476,6 +481,8 @@ void BackupConnectionPanel::openBluetoothSettings()
 {
 #ifdef Q_OS_MACOS
   QDesktopServices::openUrl(QUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"));
+#elif defined(Q_OS_WIN)
+  QDesktopServices::openUrl(QUrl("ms-settings:bluetooth"));
 #else
   m_detailState->setText(tr("Open your system Bluetooth settings and complete the requested action."));
 #endif
@@ -623,50 +630,113 @@ void BackupConnectionPanel::discover()
       finishDiscovery(generation, tr("Bluetooth permission is required for discovery."));
       return;
     }
-    m_deviceDiscovery = new QBluetoothDeviceDiscoveryAgent(this);
-    // Classic inquiry can run before LE discovery on macOS. Allow both phases
-    // to complete instead of truncating the entire operation after 12 seconds.
-    m_deviceDiscovery->setLowEnergyDiscoveryTimeout(40000);
-    const auto record = [this, generation](const QBluetoothDeviceInfo &device) {
-      if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
-        return;
-      const auto address = device.address().isNull() ? QString() : device.address().toString();
-      const auto identity = address.isEmpty() ? device.deviceUuid().toString() : address;
-      if (address.isEmpty() && device.deviceUuid().isNull())
-        return;
-      const bool classic = device.coreConfigurations() != QBluetoothDeviceInfo::LowEnergyCoreConfiguration;
-      applyDiscoveryUpdate([&] { m_devicesModel->addDevice(identity, address, device.name(), classic); });
-    };
-    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, record);
-    connect(
-        m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceUpdated, this,
-        [record](const QBluetoothDeviceInfo &device, QBluetoothDeviceInfo::Fields) { record(device); }
-    );
-    const auto devicesFinished = [this, generation] {
-      if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
-        return;
-      m_deviceDiscovery->disconnect(this);
-      m_deviceDiscovery->stop();
-      m_deviceDiscovery->deleteLater();
-      m_deviceDiscovery = nullptr;
-      finishDiscovery(generation);
-    };
-    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::finished, this, devicesFinished);
-    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::canceled, this, devicesFinished);
-    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this, [this, generation] {
-      qWarning() << "Bluetooth device discovery error:" << m_deviceDiscovery->error()
-                 << m_deviceDiscovery->errorString();
-      finishDiscovery(generation, tr("Bluetooth discovery failed. Check system Bluetooth settings."));
-    });
-    // Watchdog only: use the platform's finished signal for normal completion.
-    QTimer::singleShot(90000, this, devicesFinished);
-    qInfo() << "Starting Bluetooth device discovery; methods:"
-            << QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods();
-    m_deviceDiscovery->start(QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods());
+    prepareDiscovery(generation);
   });
 #else
   m_statusRow->show();
   Q_EMIT statusVisibilityChanged(true);
   m_state->setText(tr("This build does not include Bluetooth support."));
+#endif
+}
+
+void BackupConnectionPanel::prepareDiscovery(quint64 generation)
+{
+#ifdef DESKFLOW_BLUETOOTH
+  auto *adapter = new QBluetoothLocalDevice(this);
+  if (!adapter->isValid()) {
+    adapter->deleteLater();
+    finishDiscovery(generation, tr("No Bluetooth adapter is available. Check system Bluetooth settings."));
+    return;
+  }
+  if (adapter->hostMode() != QBluetoothLocalDevice::HostPoweredOff) {
+    adapter->deleteLater();
+    startDiscovery(generation);
+    return;
+  }
+#ifdef Q_OS_MACOS
+  // macOS does not allow applications to power on Bluetooth through Qt.
+  adapter->deleteLater();
+  finishDiscovery(generation, tr("Bluetooth is off. Turn it on in system Bluetooth settings, then refresh."));
+  QDesktopServices::openUrl(QUrl("x-apple.systempreferences:com.apple.BluetoothSettings"));
+#else
+  m_state->setText(tr("Turning on Bluetooth…"));
+  auto *timer = new QTimer(adapter);
+  timer->setInterval(250);
+  connect(timer, &QTimer::timeout, this, [this, adapter, timer, generation, attempts = 0]() mutable {
+    if (generation != m_scanGeneration || !m_scanRequest) {
+      timer->stop();
+      adapter->deleteLater();
+      return;
+    }
+    const bool powered = adapter->hostMode() != QBluetoothLocalDevice::HostPoweredOff;
+    if (!powered && ++attempts < 40)
+      return;
+    timer->stop();
+    adapter->deleteLater();
+    if (powered)
+      startDiscovery(generation);
+    else {
+      finishDiscovery(
+          generation, tr("Bluetooth could not be turned on. Enable it in system Bluetooth settings, then refresh.")
+      );
+      openBluetoothSettings();
+    }
+  });
+  timer->start();
+  adapter->powerOn();
+#endif
+#else
+  Q_UNUSED(generation);
+#endif
+}
+
+void BackupConnectionPanel::startDiscovery(quint64 generation)
+{
+#ifdef DESKFLOW_BLUETOOTH
+  if (generation != m_scanGeneration || !m_scanRequest)
+    return;
+  m_state->setText(tr("Finding nearby Bluetooth devices…"));
+  m_deviceDiscovery = new QBluetoothDeviceDiscoveryAgent(this);
+  // Classic inquiry can run before LE discovery on macOS. Allow both phases
+  // to complete instead of truncating the entire operation after 12 seconds.
+  m_deviceDiscovery->setLowEnergyDiscoveryTimeout(40000);
+  const auto record = [this, generation](const QBluetoothDeviceInfo &device) {
+    if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
+      return;
+    const auto address = device.address().isNull() ? QString() : device.address().toString();
+    const auto identity = address.isEmpty() ? device.deviceUuid().toString() : address;
+    if (address.isEmpty() && device.deviceUuid().isNull())
+      return;
+    const bool classic = device.coreConfigurations() != QBluetoothDeviceInfo::LowEnergyCoreConfiguration;
+    applyDiscoveryUpdate([&] { m_devicesModel->addDevice(identity, address, device.name(), classic); });
+  };
+  connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, record);
+  connect(
+      m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceUpdated, this,
+      [record](const QBluetoothDeviceInfo &device, QBluetoothDeviceInfo::Fields) { record(device); }
+  );
+  const auto devicesFinished = [this, generation] {
+    if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
+      return;
+    m_deviceDiscovery->disconnect(this);
+    m_deviceDiscovery->stop();
+    m_deviceDiscovery->deleteLater();
+    m_deviceDiscovery = nullptr;
+    finishDiscovery(generation);
+  };
+  connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::finished, this, devicesFinished);
+  connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::canceled, this, devicesFinished);
+  connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this, [this, generation] {
+    qWarning() << "Bluetooth device discovery error:" << m_deviceDiscovery->error() << m_deviceDiscovery->errorString();
+    const auto reason = m_deviceDiscovery->errorString();
+    finishDiscovery(generation, tr("Bluetooth discovery failed: %1. Check system Bluetooth settings.").arg(reason));
+  });
+  // Watchdog only: use the platform's finished signal for normal completion.
+  QTimer::singleShot(90000, this, devicesFinished);
+  qInfo() << "Starting Bluetooth device discovery; methods:"
+          << QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods();
+  m_deviceDiscovery->start(QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods());
+#else
+  Q_UNUSED(generation);
 #endif
 }

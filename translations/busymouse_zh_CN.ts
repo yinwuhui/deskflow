@@ -781,6 +781,8 @@ Do you want to connect to the server?
 </context>
 <context>
     <name>MainWindow</name>
+    <message><source>The server configuration file could not be read: %1</source><translation>无法读取服务器配置文件：%1</translation></message>
+    <message><source>The server configuration file could not be saved: %1</source><translation>无法保存服务器配置文件：%1</translation></message>
     <message>
         <source>This computer&apos;s name:</source>
         <translation type="vanished">此计算机名称：</translation>
@@ -3183,6 +3185,11 @@ Enabling this setting will disable the server config GUI.</source>
 
 <context>
 <name>BackupConnectionPanel</name>
+<message><source>No Bluetooth adapter is available. Check system Bluetooth settings.</source><translation>没有可用的蓝牙适配器，请检查系统蓝牙设置。</translation></message>
+<message><source>Bluetooth is off. Turn it on in system Bluetooth settings, then refresh.</source><translation>蓝牙已关闭，请在系统蓝牙设置中开启后刷新。</translation></message>
+<message><source>Turning on Bluetooth…</source><translation>正在开启蓝牙…</translation></message>
+<message><source>Bluetooth could not be turned on. Enable it in system Bluetooth settings, then refresh.</source><translation>无法自动开启蓝牙，请在系统蓝牙设置中开启后刷新。</translation></message>
+<message><source>Bluetooth discovery failed: %1. Check system Bluetooth settings.</source><translation>蓝牙设备查找失败：%1。请检查系统蓝牙设置。</translation></message>
 <message><source> · Clipboard cap: up to 64 KiB (lower settings retained)</source><translation> · 此电脑剪贴板最多 64 KiB，保留更低设置</translation></message>
 <message><source>Automatic discovery could not locate this computer. Enter its Bluetooth address.</source><translation>自动发现未能定位此电脑，请输入它的蓝牙地址。</translation></message>
 <message><source>Automatically establish a backup connection</source><translation>自动建立备用连接</translation></message>

@@ -43,6 +43,28 @@ void SettingsTests::tlsDir()
   QVERIFY(Settings::tlsDir().endsWith(m_expectedTlsDir));
 }
 
+void SettingsTests::serverConfigurationPaths()
+{
+  const auto oldMode = Settings::value(Settings::Core::ProcessMode);
+  const auto oldExternal = Settings::value(Settings::Server::ExternalConfig);
+  const auto oldFile = Settings::value(Settings::Server::ExternalConfigFile);
+  Settings::setValue(Settings::Server::ExternalConfig, false);
+  Settings::setValue(Settings::Core::ProcessMode, Settings::ProcessMode::Desktop);
+#ifdef Q_OS_WIN
+  QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), QFileInfo(Settings::settingsFile()).absolutePath());
+  Settings::setValue(Settings::Core::ProcessMode, Settings::ProcessMode::Service);
+  QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), Settings::SystemDir);
+#else
+  QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), Settings::settingsPath());
+#endif
+  Settings::setValue(Settings::Server::ExternalConfigFile, "custom/server.conf");
+  Settings::setValue(Settings::Server::ExternalConfig, true);
+  QCOMPARE(Settings::serverConfigFile(), QString("custom/server.conf"));
+  Settings::setValue(Settings::Core::ProcessMode, oldMode);
+  Settings::setValue(Settings::Server::ExternalConfig, oldExternal);
+  Settings::setValue(Settings::Server::ExternalConfigFile, oldFile);
+}
+
 void SettingsTests::tlsTrustedServersDb()
 {
   QVERIFY(Settings::tlsTrustedServersDb().endsWith(m_expectedTlsServerDB));

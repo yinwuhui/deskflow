@@ -99,7 +99,7 @@ project(
   LANGUAGES C CXX
 )
 
-if(APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(default_bluetooth ON)
 else()
   set(default_bluetooth OFF)

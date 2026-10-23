@@ -57,6 +57,8 @@ private:
   void finishDiscovery(quint64 generation, const QString &error = {});
   void applyDiscoveryUpdate(const std::function<void()> &update);
   void updateBluetoothChoice();
+  void prepareDiscovery(quint64 generation);
+  void startDiscovery(quint64 generation);
   QJsonObject m_snapshot, m_peer, m_pendingAction;
   QWidget *m_transport, *m_details, *m_actionForm, *m_sharing, *m_statusRow;
   QCheckBox *m_shareNetwork, *m_shareBluetooth;

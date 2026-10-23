@@ -1133,18 +1133,21 @@ void MainWindow::coreProcessError(CoreProcess::Error error)
     QMessageBox::warning(
         this, tr("Address missing"), tr("Please enter the hostname or IP address of the other computer.")
     );
+  } else if (error == CoreProcess::Error::ConfigUnavailable) {
+    show();
+    QMessageBox::warning(
+        this, kAppName,
+        (Settings::value(Settings::Server::ExternalConfig).toBool()
+             ? tr("The server configuration file could not be read: %1")
+             : tr("The server configuration file could not be saved: %1"))
+            .arg(Settings::serverConfigFile())
+    );
   } else if (error == CoreProcess::Error::StartFailed) {
     show();
     auto message = tr("The Core executable could not be started.\n"
                       "Please check if you have sufficient permissions to run %1.")
                        .arg(kCoreBinName);
 
-    if (Settings::value(Settings::Core::CoreMode) == Settings::CoreMode::Server) {
-      const auto mode =
-          Settings::value(Settings::Server::ExternalConfigFile).toBool() ? tr("read") : tr("read and write");
-      message.append(tr("\nAdditionally, check you are able to %1 the server config file: %2")
-                         .arg(mode, Settings::serverConfigFile()));
-    }
     QMessageBox::warning(this, kAppName, message);
   }
 }

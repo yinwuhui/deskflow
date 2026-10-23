@@ -37,6 +37,7 @@ public:
   {
     AddressMissing,
     StartFailed,
+    ConfigUnavailable,
     AccessibilityRequired
   };
 

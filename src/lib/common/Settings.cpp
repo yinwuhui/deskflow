@@ -394,8 +394,18 @@ QVariant Settings::defaultValue(const QString &key)
     return kUrlUpdateCheck;
 
   if (key == Server::ExternalConfigFile) {
-    const auto configuration = QStringLiteral("%1/%2-server.conf").arg(Settings::settingsPath(), kAppId);
-    const auto legacyConfiguration = Settings::settingsPath() + "/deskflow-server.conf";
+    auto directory = Settings::settingsPath();
+#ifdef Q_OS_WIN
+    // Desktop cores run as the signed-in user, not as the system service.
+    // Both GUI and core derive this path from the same settings and mode.
+    if (!isPortableMode() && value(Core::ProcessMode).value<ProcessMode>() == ProcessMode::Desktop) {
+      directory = QFileInfo(settingsFile()).absolutePath();
+      if (QDir(directory) == QDir(SystemDir))
+        directory = UserDir;
+    }
+#endif
+    const auto configuration = QStringLiteral("%1/%2-server.conf").arg(directory, kAppId);
+    const auto legacyConfiguration = directory + "/deskflow-server.conf";
     return !QFileInfo::exists(configuration) && QFileInfo::exists(legacyConfiguration) ? legacyConfiguration
                                                                                        : configuration;
   }
