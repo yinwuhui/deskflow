@@ -26,6 +26,7 @@
 #include <QFile>
 #include <QMetaEnum>
 #include <QMutexLocker>
+#include <QPointer>
 #include <QRegularExpression>
 
 namespace deskflow::gui {
@@ -280,18 +281,32 @@ void CoreProcess::stopForegroundProcess()
 
   if (!m_process) {
     qCritical("not stopping core desktop process, no process to stop");
+    setProcessState(ProcessState::Stopped);
     return;
   }
+
+  // Capture this process, so a late timeout cannot kill a replacement core.
+  const QPointer<QProcess> stoppingProcess(m_process);
+#ifdef Q_OS_WIN
+  // Windows console cores may ignore terminate() (WM_CLOSE). Keep this hard
+  // deadline Windows-only: Unix cores retain their existing SIGTERM cleanup.
+  QTimer::singleShot(2 * kRetryDelay, this, [stoppingProcess] {
+    if (stoppingProcess && stoppingProcess->state() != QProcess::NotRunning) {
+      qWarning("core did not exit before shutdown deadline, killing process");
+      stoppingProcess->kill();
+    }
+  });
+#endif
 
   qInfo("stopping core desktop process");
   if (m_coreIpcClient && m_coreIpcClient->isConnected()) {
     qDebug("sending stop command to core process");
     m_coreIpcClient->sendStop();
 
-    // Fallback: if the core doesn't confirm shutdown via IPC within the
-    // timeout, force-terminate it so we never hang in the Stopping state.
-    QTimer::singleShot(kRetryDelay, this, [this] {
-      if (m_processState != ProcessState::Stopping) {
+    // Allow IPC shutdown first, then ask the same process to terminate.
+    // On Windows the hard deadline above handles an ignored request.
+    QTimer::singleShot(kRetryDelay, this, [this, stoppingProcess] {
+      if (m_processState != ProcessState::Stopping || m_process != stoppingProcess) {
         return;
       }
 
@@ -315,6 +330,7 @@ void CoreProcess::stopForegroundProcess()
     m_process->terminate();
   } else {
     qDebug("process is not running, skipping terminate");
+    setProcessState(ProcessState::Stopped);
   }
 }
 
