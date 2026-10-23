@@ -5,6 +5,8 @@
  */
 #include "DeviceListPage.h"
 #include "HomeIcons.h"
+#include "HomeCheckBox.h"
+#include "gui/StyleUtils.h"
 #include "common/Settings.h"
 #include "gui/validators/ComputerNameValidator.h"
 #include <QAccessibleWidget>
@@ -201,6 +203,7 @@ DeviceListPage::DeviceListPage(QWidget *parent) : QWidget(parent)
   }();
   Q_UNUSED(factoryInstalled);
   setObjectName("deviceListPage");
+  setPalette(deskflow::gui::lightControlPalette());
   build();
 }
 
@@ -247,7 +250,7 @@ void DeviceListPage::build()
     QWidget#deviceListPage QFrame#deviceContext { background: #f6f8fb; border-radius: 9px; }
     QWidget#deviceListPage QSplitter::handle { background: #e8ebf0; }
     QWidget#deviceListPage QLabel#deviceAddError { color: #bd554b; font-size: 12px; }
-  )"));
+  )") + deskflow::gui::lightScrollBarStyle());
   auto outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);
   outer->setSpacing(0);
@@ -293,7 +296,7 @@ void DeviceListPage::build()
   tools->setContentsMargins(18, 14, 13, 7);
   m_count = label({}, "status", listPane);
   tools->addWidget(m_count, 1);
-  m_filter = new QComboBox(listPane);
+  m_filter = deskflow::gui::lightComboBox(listPane);
   m_filter->setObjectName("deviceFilter");
   m_filter->setAccessibleName(tr("Filter connection state"));
   m_filter->addItem(tr("All states"), -1);
@@ -346,7 +349,7 @@ void DeviceListPage::build()
   formLayout->addWidget(label(tr("Add device"), "title", form));
   auto kindLabel = label(tr("Device purpose"), "muted", form);
   formLayout->addWidget(kindLabel);
-  m_addKind = new QComboBox(form);
+  m_addKind = deskflow::gui::lightComboBox(form);
   m_addKind->setObjectName("deviceAddKind");
   m_addKind->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
   m_addKind->setMinimumContentsLength(12);
@@ -673,7 +676,7 @@ void DeviceListPage::rebuildDetail()
   layout->addWidget(hint);
   QCheckBox *autoConnect = nullptr;
   if (server && !connected) {
-    autoConnect = new QCheckBox(tr("Connect to this server automatically next time"), m_details);
+    autoConnect = new HomeCheckBox(tr("Connect to this server automatically next time"), m_details);
     autoConnect->setObjectName("deviceAutoConnect");
     autoConnect->setChecked(Settings::value(Settings::Client::AutoConnect).toBool());
     autoConnect->setStyleSheet(QStringLiteral("font-size: 11px; color: #8994a1;"));

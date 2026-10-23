@@ -9,7 +9,10 @@
 #include "gui/core/NearbyBluetoothModel.h"
 #include "gui/widgets/DiscoveryComboBox.h"
 #include "gui/widgets/LogDock.h"
+#include "gui/widgets/HomeCheckBox.h"
 
+#include <QAction>
+#include <QAccessible>
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
@@ -22,16 +25,19 @@
 #include <QListWidget>
 #include <QLocalServer>
 #include <QMenuBar>
+#include <QMenu>
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QScopeGuard>
 #include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTranslator>
 #include <QVBoxLayout>
 #include <QtTest>
+#include <algorithm>
 
 static bool inputControlAllowed()
 {
@@ -70,6 +76,93 @@ class MainWindowHomeTests : public QObject
   }
 
 private Q_SLOTS:
+  void checkboxesRemainLegibleAndInteractiveWithADarkPalette()
+  {
+    HomeCheckBox check("Connection method");
+    QPalette dark;
+    dark.setColor(QPalette::Window, Qt::black);
+    dark.setColor(QPalette::Base, Qt::black);
+    dark.setColor(QPalette::Button, Qt::black);
+    dark.setColor(QPalette::Text, Qt::white);
+    dark.setColor(QPalette::ButtonText, Qt::white);
+    check.setPalette(dark);
+    check.resize(check.sizeHint());
+    check.show();
+    check.setFocus();
+    QCoreApplication::processEvents();
+    QTest::keyClick(&check, Qt::Key_Space);
+    QVERIFY(check.isChecked());
+    const auto selected = check.grab().toImage();
+    int bluePixels = 0;
+    int whitePixels = 0;
+    const auto scale = selected.devicePixelRatio();
+    for (int y = int((check.height() / 2 - 6) * scale); y < int((check.height() / 2 + 6) * scale); ++y) {
+      for (int x = int(5 * scale); x < int(17 * scale); ++x) {
+        const auto color = selected.pixelColor(x, y);
+        bluePixels += color.blue() > 180 && color.red() < 80;
+        whitePixels += color.red() > 230 && color.green() > 230 && color.blue() > 230;
+      }
+    }
+    QVERIFY2(bluePixels > 25, "Selected checkbox must have a blue indicator even under a dark desktop palette");
+    QVERIFY2(whitePixels > 3, "Selected checkbox must have a visible white check mark");
+    auto accessible = QAccessible::queryAccessibleInterface(&check);
+    QVERIFY(accessible);
+    QCOMPARE(accessible->role(), QAccessible::CheckBox);
+    QVERIFY(accessible->state().checked);
+    check.setEnabled(false);
+    QTest::keyClick(&check, Qt::Key_Space);
+    QVERIFY(check.isChecked());
+    QVERIFY(check.grab().toImage() != selected);
+    check.setEnabled(true);
+    QTest::mouseClick(&check, Qt::LeftButton, Qt::NoModifier, QPoint(check.width() - 3, check.height() / 2));
+    QVERIFY(!check.isChecked());
+    const auto unchecked = check.grab().toImage();
+    QVERIFY(unchecked.pixelColor(int(9 * scale), int(check.height() / 2 * scale)).lightness() > 230);
+  }
+
+  void lightPagesDoNotInheritDarkNativeControlColors()
+  {
+    const auto original = qApp->palette();
+    const auto restore = qScopeGuard([original] { qApp->setPalette(original); });
+    auto dark = original;
+    dark.setColor(QPalette::Window, QColor("#202020"));
+    dark.setColor(QPalette::Base, QColor("#202020"));
+    dark.setColor(QPalette::Button, QColor("#303030"));
+    dark.setColor(QPalette::Text, Qt::white);
+    dark.setColor(QPalette::ButtonText, Qt::white);
+    qApp->setPalette(dark);
+    MainWindow window;
+    window.show();
+    window.findChild<QPushButton *>("btnSettings")->click();
+    QCoreApplication::processEvents();
+    for (auto combo : window.findChildren<QComboBox *>()) {
+      QVERIFY(combo->palette().color(QPalette::Active, QPalette::Button).lightness() > 200);
+      QVERIFY(combo->palette().color(QPalette::Active, QPalette::ButtonText).lightness() < 150);
+      const auto background = combo->view()->palette().color(QPalette::Active, QPalette::Base);
+      QVERIFY2(background.lightness() > 200, qPrintable(combo->objectName()));
+      QVERIFY2(
+          combo->view()->window()->palette().color(QPalette::Active, QPalette::Window).lightness() > 200,
+          qPrintable(combo->objectName())
+      );
+    }
+    const auto more = window.findChild<QPushButton *>("btnMore")->menu();
+    QVERIFY(more->palette().color(QPalette::Window).lightness() > 200);
+    const auto evidence = qEnvironmentVariable("DESKFLOW_CONTROLS_EVIDENCE");
+    if (!evidence.isEmpty()) {
+      QVERIFY(window.grab().save(evidence + "/settings-dark-desktop.png"));
+      window.findChild<QPushButton *>("btnHome")->click();
+      QCoreApplication::processEvents();
+      QVERIFY(window.grab().save(evidence + "/sharing-checkboxes.png"));
+      window.findChild<QRadioButton *>("rbModeClient")->click();
+      for (const auto name : {"modeSelectionAnimation", "homeActionTransition"}) {
+        if (auto animation = window.findChild<QPropertyAnimation *>(name))
+          animation->setCurrentTime(animation->duration());
+      }
+      QCoreApplication::processEvents();
+      QVERIFY(window.grab().save(evidence + "/backup-checkbox.png"));
+    }
+  }
+
   void bluetoothPopupAcceptsLiveDiscoveryResults()
   {
     NearbyBluetoothModel devices;
@@ -578,8 +671,46 @@ private Q_SLOTS:
     QCOMPARE(window.coreMode(), Settings::CoreMode::Server);
   }
 
+  void runningConnectionDoesNotLockTheModeSelector_data()
+  {
+    QTest::addColumn<deskflow::core::ProcessState>("reportedState");
+    QTest::newRow("running") << deskflow::core::ProcessState::Started;
+    QTest::newRow("retrying") << deskflow::core::ProcessState::RetryPending;
+  }
+
+  void runningConnectionDoesNotLockTheModeSelector()
+  {
+    QFETCH(deskflow::core::ProcessState, reportedState);
+    Settings::setValue(Settings::Gui::ShownServerFirstStartMessage, true);
+    MainWindow window;
+    window.show();
+    QCoreApplication::processEvents();
+    auto core = window.findChild<deskflow::gui::CoreProcess *>();
+    auto server = window.findChild<QRadioButton *>("rbModeServer");
+    auto client = window.findChild<QRadioButton *>("rbModeClient");
+    QVERIFY(core && server && client);
+    QTest::mouseClick(client, Qt::LeftButton);
+    // Exercise the UI response to the same notifications as a live/retrying core,
+    // without starting input capture or connecting to another computer in a unit test.
+    core->processStateChanged(reportedState);
+    QVERIFY(server->isEnabled());
+    QVERIFY(client->isEnabled());
+    QTest::mouseClick(server, Qt::LeftButton);
+    QCOMPARE(window.coreMode(), Settings::CoreMode::Server);
+    QCOMPARE(Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>(), Settings::CoreMode::Server);
+    QVERIFY(window.findChild<QWidget *>("sharingTransportSelector")->isVisible());
+    QVERIFY(window.findChild<QWidget *>("initialTransportSelector")->isHidden());
+    QCOMPARE(window.findChild<QPushButton *>("btnToggleCore")->text(), QString("Start sharing"));
+    core->processStateChanged(reportedState);
+    QTest::mouseClick(client, Qt::LeftButton);
+    QCOMPARE(window.coreMode(), Settings::CoreMode::Client);
+    core->processStateChanged(deskflow::core::ProcessState::Stopped);
+  }
+
   void restoresAResizableHomepageAndLogs()
   {
+    // An old profile must not restore the legacy expanded diagnostics layout.
+    Settings::setValue(Settings::Gui::LogExpanded, true);
     MainWindow window;
     QVERIFY(window.height() >= 600);
     QVERIFY(window.width() >= 740);
@@ -590,14 +721,59 @@ private Q_SLOTS:
     auto logs = window.findChild<QPushButton *>("btnLogs");
     auto dock = window.findChild<LogDock *>();
     QVERIFY(logs && dock);
-    logs->click();
+    QVERIFY(dock->isHidden());
+    const auto initialSize = window.size();
+    QTest::mouseClick(logs, Qt::LeftButton);
+    QCoreApplication::processEvents();
+    QVERIFY(dock->isVisible());
+    QCOMPARE(window.size(), initialSize);
+    QVERIFY(window.centralWidget()->isAncestorOf(dock));
+    const QRect logRect(dock->mapTo(window.centralWidget(), QPoint()), dock->size());
+    QVERIFY(window.centralWidget()->rect().contains(logRect));
+    QVERIFY(dock->toggleViewAction()->isChecked());
+    const auto evidence = qEnvironmentVariable("DESKFLOW_LOG_EVIDENCE");
+    if (!evidence.isEmpty()) {
+      dock->appendLine("INFO: Diagnostic log stays inside the application window.");
+      QVERIFY(window.grab().save(evidence));
+    }
+    window.hide();
+    QCoreApplication::processEvents();
+    QVERIFY(dock->toggleViewAction()->isChecked());
+    window.show();
+    QCoreApplication::processEvents();
     QVERIFY(dock->isVisible());
     logs->click();
     QVERIFY(!dock->isVisible());
+    QVERIFY(!dock->toggleViewAction()->isChecked());
+    dock->toggleViewAction()->trigger();
+    QVERIFY(dock->isVisible());
+    auto close = dock->findChild<QPushButton *>("btnCloseLog");
+    QVERIFY(close);
+    close->click();
+    QVERIFY(dock->isHidden());
+    QVERIFY(!dock->toggleViewAction()->isChecked());
     QVERIFY(window.maximumWidth() > window.minimumWidth());
     window.resize(880, 650);
     QCoreApplication::processEvents();
     QCOMPARE(window.width(), 880);
+  }
+
+  void menusRespectThePlatformAndShortcutsRemainAvailable()
+  {
+    MainWindow window;
+#ifdef Q_OS_MACOS
+    QVERIFY(window.findChild<QMenuBar *>());
+#else
+    QVERIFY(!window.findChild<QMenuBar *>());
+#endif
+    const auto actions = window.actions();
+    QVERIFY(std::any_of(actions.begin(), actions.end(), [](QAction *action) {
+      return action->shortcut() == QKeySequence(QKeySequence::HelpContents);
+    }));
+    auto more = window.findChild<QPushButton *>("btnMore");
+    auto log = window.findChild<LogDock *>();
+    QVERIFY(more && more->menu() && log);
+    QVERIFY(more->menu()->actions().contains(log->toggleViewAction()));
   }
 
   void showsIdentityWithoutInventingAConnection()
@@ -782,7 +958,6 @@ private Q_SLOTS:
     {
       MainWindow window;
       window.show();
-      window.menuBar()->hide();
       window.resize(1060, 790);
       QCoreApplication::processEvents();
       // Visual fixture for the normal, permission-complete layout. Input services remain stopped.

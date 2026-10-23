@@ -2,8 +2,10 @@
 #include "BackupConnectionPanel.h"
 #include "NearbyBluetoothModel.h"
 #include "common/Settings.h"
+#include "gui/StyleUtils.h"
 #include "gui/widgets/DiscoveryComboBox.h"
 #include "gui/widgets/HomeIcons.h"
+#include "gui/widgets/HomeCheckBox.h"
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
@@ -123,12 +125,10 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   auto *sharingLabel = new QLabel(tr("Connection method"), m_sharing);
   sharingLabel->setProperty("role", "muted");
   sharingLayout->addWidget(sharingLabel);
-  m_shareNetwork = new QCheckBox(tr("LAN"), m_sharing);
-  m_shareBluetooth = new QCheckBox(tr("Bluetooth"), m_sharing);
+  m_shareNetwork = new HomeCheckBox(tr("LAN"), m_sharing);
+  m_shareBluetooth = new HomeCheckBox(tr("Bluetooth"), m_sharing);
   m_shareNetwork->setObjectName("checkShareNetwork");
   m_shareBluetooth->setObjectName("checkShareBluetooth");
-  m_shareNetwork->setStyleSheet("font-size: 12px;");
-  m_shareBluetooth->setStyleSheet("font-size: 12px;");
   m_shareNetwork->setChecked(Settings::value(Settings::Connection::ShareNetwork).toBool());
   m_shareBluetooth->setChecked(Settings::value(Settings::Connection::ShareBluetooth).toBool());
 #ifndef DESKFLOW_BLUETOOTH
@@ -162,10 +162,9 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
     });
   auto *policyRow = new QHBoxLayout;
   layout->setContentsMargins(0, 0, 0, 0);
-  m_automatic = new QCheckBox(tr("Automatically establish a backup connection"), this);
+  m_automatic = new HomeCheckBox(tr("Automatically establish a backup connection"), this);
   m_automatic->setObjectName("checkAutoBackup");
   m_automatic->setChecked(Settings::value(Settings::Connection::AutoBackup).toBool());
-  m_automatic->setStyleSheet("font-size: 12px;");
   policyRow->setSpacing(4);
   policyRow->addWidget(m_automatic);
   auto *backupInfo = new QPushButton(QStringLiteral("ⓘ"), this);
@@ -206,7 +205,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   details->addLayout(head);
   connect(close, &QPushButton::clicked, m_details, &QWidget::hide);
   auto *peerRow = new QHBoxLayout;
-  m_peers = new QComboBox(m_details);
+  m_peers = lightComboBox(m_details);
   m_peers->setObjectName("backupPeerSelector");
   m_peers->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
   m_peers->setAccessibleName(tr("Computer protected by backup"));
@@ -223,7 +222,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   m_actionInput = new QLineEdit(m_actionForm);
   m_actionInput->setObjectName("backupActionInput");
   form->addWidget(m_actionLabel);
-  m_actionTargets = new QComboBox(m_actionForm);
+  m_actionTargets = lightComboBox(m_actionForm);
   m_actionTargets->setObjectName("backupActionTarget");
   m_actionTargets->setAccessibleName(tr("Bluetooth computer"));
   m_actionTargets->addItem(tr("Choose a nearby computer"), QString());

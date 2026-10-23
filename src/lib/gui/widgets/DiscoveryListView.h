@@ -34,7 +34,7 @@ public:
     viewport()->setAutoFillBackground(false);
     setSpacing(2);
     setStyleSheet(
-        "QListView { background: transparent; border: none; outline: 0; padding: 6px; }"
+        "QListView { background: #ffffff; color: #555e69; border: none; outline: 0; padding: 6px; }"
         "QScrollBar:vertical { background: transparent; width: 8px; margin: 5px 1px; }"
         "QScrollBar::handle:vertical { background: #d9dfe8; border-radius: 3px; min-height: 24px; }"
         "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"

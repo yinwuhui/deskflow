@@ -122,6 +122,7 @@ MainWindow::MainWindow()
       m_actionShowHelp{new QAction(this)},
       m_networkMonitor{new NetworkMonitor(this)}
 {
+  m_coreProcess.setParent(this);
   setWindowFlag(Qt::FramelessWindowHint);
   setAttribute(Qt::WA_TranslucentBackground);
   setStyleSheet(QStringLiteral("QMainWindow#MainWindow { background: transparent; }"));
@@ -152,8 +153,6 @@ MainWindow::MainWindow()
 
   setWindowIcon(applicationIcon());
   QGuiApplication::setWindowIcon(applicationIcon());
-
-  addDockWidget(Qt::BottomDockWidgetArea, m_logDock);
 
   // Setup Actions
   m_actionAbout->setMenuRole(QAction::AboutRole);
@@ -288,9 +287,8 @@ void MainWindow::setupControls()
     Settings::setValue(Settings::Core::LastVersion, kVersion);
   }
 
-  if (!Settings::value(Settings::Gui::LogExpanded).toBool()) {
-    m_logDock->hide();
-  }
+  // Diagnostics are opt-in for each launch, including profiles from the old dock layout.
+  m_logDock->hide();
 
   ui->serverOptions->setVisible(false);
 
@@ -335,8 +333,10 @@ void MainWindow::setupHome()
   connect(&m_coreProcess, &CoreProcess::processStateChanged, this, [this, backupPanel](ProcessState state) {
     const bool running = state != ProcessState::Stopped;
     backupPanel->setRunning(running);
-    ui->rbModeServer->setEnabled(!running);
-    ui->rbModeClient->setEnabled(!running);
+    // A connecting/running client may switch roles; only an in-flight transition locks the selector.
+    const bool transitioning = state == ProcessState::Starting || state == ProcessState::Stopping;
+    ui->rbModeServer->setEnabled(!transitioning);
+    ui->rbModeClient->setEnabled(!transitioning);
     ui->lineHostname->setReadOnly(running);
     ui->btnBrowseServers->setEnabled(!running);
     if (!running || state == ProcessState::Starting) {
@@ -381,13 +381,8 @@ void MainWindow::setupHome()
   ui->modeFieldsLayout->addWidget(inputStack);
   ui->modeFields->setFixedHeight(44);
   // Keep the homepage light like the approved prototype, independently of native dialog appearance.
-  auto homePalette = ui->topLevelWidget->palette();
-  homePalette.setColor(QPalette::Window, QColor("#ffffff"));
-  homePalette.setColor(QPalette::WindowText, QColor("#292d33"));
-  homePalette.setColor(QPalette::Base, QColor("#ffffff"));
-  homePalette.setColor(QPalette::Text, QColor("#292d33"));
-  homePalette.setColor(QPalette::ButtonText, QColor("#292d33"));
-  ui->topLevelWidget->setPalette(homePalette);
+  ui->topLevelWidget->setPalette(lightControlPalette());
+  ui->topLevelWidget->setStyleSheet(ui->topLevelWidget->styleSheet() + lightScrollBarStyle());
   ui->lblVersion->setText(QStringLiteral("v%1").arg(QString::fromLatin1(kVersion).section('.', 0, 2)));
   ui->lblVersion->setToolTip(kDisplayVersion);
 #ifdef Q_OS_MACOS
@@ -550,6 +545,7 @@ void MainWindow::setupHome()
   ui->rightPanelLayout->removeWidget(ui->homeScroll);
   m_pageStack->addWidget(ui->homeScroll);
   ui->rightPanelLayout->addWidget(m_pageStack, 1);
+  ui->rightPanelLayout->addWidget(m_logDock);
   for (auto button : {ui->btnHome, ui->btnDevices, ui->btnLayout, ui->btnSettings}) {
     button->setCheckable(true);
     button->setAutoExclusive(true);
@@ -603,10 +599,17 @@ void MainWindow::setupHome()
   connect(ui->btnHelp, &QPushButton::clicked, this, &MainWindow::showHelpViewer);
   connect(ui->btnLogs, &QPushButton::clicked, this, [this] { m_logDock->setVisible(!m_logDock->isVisible()); });
   auto more = new QMenu(ui->btnMore);
+  more->setPalette(lightControlPalette());
   more->addAction(m_actionAbout);
+  more->addAction(m_actionStartCore);
   more->addAction(m_actionRestartCore);
+  more->addAction(m_actionStopCore);
   more->addAction(tr("Export configuration"), this, &MainWindow::saveServerConfig);
   more->addAction(tr("Client settings"), this, &MainWindow::showConfigureClient);
+  more->addSeparator();
+  more->addAction(m_actionSettings);
+  more->addAction(m_logDock->toggleViewAction());
+  more->addAction(m_actionShowHelp);
   more->addSeparator();
   more->addAction(m_actionQuit);
   ui->btnMore->setMenu(more);
@@ -1070,7 +1073,7 @@ void MainWindow::toggleLogVisible(bool visible)
   }
 
   Settings::setValue(Settings::Gui::LogExpanded, visible);
-  // The homepage remains resizable with either a docked or floating log panel.
+  // Diagnostics remain inside the resizable homepage shell.
   Settings::setValue(Settings::Gui::WindowGeometry, geometry());
 }
 
@@ -1289,7 +1292,7 @@ void MainWindow::coreModeToggled(bool checked)
 
   qDebug() << QStringLiteral("change mode to: %1").arg(QVariant::fromValue(mode).toString());
 
-  if (m_coreProcess.isStarted() && m_coreProcess.mode() != mode)
+  if (m_coreProcess.processState() != ProcessState::Stopped && m_coreProcess.mode() != mode)
     m_coreProcess.stop();
   m_coreProcess.setMode(mode);
 
@@ -1452,6 +1455,9 @@ void MainWindow::open()
 
 void MainWindow::createMenuBar()
 {
+  // Keep shortcuts active without an in-window menu on Linux and Windows.
+  addActions({m_actionQuit, m_actionSettings, m_actionShowHelp});
+#ifdef Q_OS_MACOS
   m_menuFile->addAction(m_actionStartCore);
   m_menuFile->addAction(m_actionRestartCore);
   m_menuFile->addAction(m_actionStopCore);
@@ -1472,6 +1478,7 @@ void MainWindow::createMenuBar()
   menuBar->addMenu(m_menuHelp);
 
   setMenuBar(menuBar);
+#endif
 }
 
 void MainWindow::setupTrayIcon()
@@ -1766,6 +1773,7 @@ void MainWindow::coreProcessStateChanged(ProcessState state)
     m_actionRestartCore->setVisible(false);
     m_actionStopCore->setEnabled(false);
   }
+  toggleCanRunCore(canRunCore());
   updateModeControlLabels();
 }
 
@@ -2081,9 +2089,9 @@ void MainWindow::toggleCanRunCore(bool enableButtons)
 #ifdef Q_OS_MACOS
   permission = hasOSXAccessibilityPermission();
 #endif
-  enableButtons = enableButtons && permission;
   // Stopping an existing session must remain possible even if permission is revoked.
   const auto process = m_coreProcess.processState();
+  enableButtons = enableButtons && permission && process != ProcessState::Stopping;
   const bool canStop = isStarted || process == ProcessState::Starting || process == ProcessState::RetryPending;
   ui->btnToggleCore->setEnabled(enableButtons || canStop);
   ui->btnRestartCore->setEnabled(enableButtons && isStarted);

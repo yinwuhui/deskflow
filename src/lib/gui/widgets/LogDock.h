@@ -6,29 +6,32 @@
 
 #pragma once
 
-#include <QDockWidget>
+#include <QWidget>
 
 class LogWidget;
 class QLabel;
 class QPushButton;
 class SearchWidget;
+class QAction;
 
-class LogDock : public QDockWidget
+// Inline diagnostics, contained by the same shell and palette as the main pages.
+class LogDock : public QWidget
 {
   Q_OBJECT
 public:
   explicit LogDock(QWidget *parent = nullptr);
   void appendLine(const QString &msg);
-  void setFloating(bool floating);
+  QAction *toggleViewAction() const;
 
 protected:
-  bool eventFilter(QObject *watched, QEvent *event) override;
+  void showEvent(QShowEvent *event) override;
+  void hideEvent(QHideEvent *event) override;
   void changeEvent(QEvent *e) override;
 
 private:
   LogWidget *m_textLog = nullptr;
   QPushButton *m_btnClose = nullptr;
-  QPushButton *m_btnFloat = nullptr;
+  QAction *m_toggleAction = nullptr;
   QLabel *m_lblTitle = nullptr;
   SearchWidget *m_searchWidget = nullptr;
 };

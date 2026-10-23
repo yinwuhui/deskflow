@@ -8,6 +8,7 @@
 #include "LogWidget.h"
 #include "SearchWidget.h"
 
+#include <QAction>
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -15,98 +16,85 @@
 #include <QVBoxLayout>
 
 LogDock::LogDock(QWidget *parent)
-    : QDockWidget(tr("Log"), parent),
+    : QWidget(parent),
       m_textLog{new LogWidget(this)},
       m_btnClose{new QPushButton(this)},
-      m_btnFloat{new QPushButton(this)},
+      m_toggleAction{new QAction(tr("Log"), this)},
       m_lblTitle{new QLabel(tr("Log"), this)},
       m_searchWidget{new SearchWidget(this)}
 {
+  setObjectName("logPanel");
+  setAttribute(Qt::WA_StyledBackground);
+  setFixedHeight(210);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  setStyleSheet(QStringLiteral(
+      "QWidget#logPanel { background: #f7f8fa; border-top: 1px solid #e6e9ee;"
+      " border-bottom-right-radius: 16px; }"
+      "QWidget#logPanel QLabel { color: #555e69; }"
+      "QWidget#logPanel QPlainTextEdit { background: #ffffff; color: #292d33;"
+      " border: 1px solid #e0e5ec; border-radius: 6px; padding: 8px;"
+      " selection-background-color: #087fff; selection-color: #ffffff; font-size: 12px; }"
+  ));
+  m_toggleAction->setCheckable(true);
+  connect(m_toggleAction, &QAction::toggled, this, &QWidget::setVisible);
   connect(m_searchWidget, &SearchWidget::findNext, m_textLog, &LogWidget::findNext);
   connect(m_searchWidget, &SearchWidget::findPrevious, m_textLog, &LogWidget::findPrevious);
 
-  const auto iconSize = QSize(fontMetrics().height() - 2, fontMetrics().height() - 2);
-  const auto maxBtnSize = QSize(fontMetrics().height() + 2, fontMetrics().height() + 2);
-
-  m_btnFloat->setFixedSize(maxBtnSize);
-  m_btnFloat->setCheckable(true);
-  m_btnFloat->setFlat(true);
-  m_btnFloat->setIcon(QIcon::fromTheme(QStringLiteral("window-minimize-pip")));
-  m_btnFloat->setIconSize(iconSize);
-  m_btnFloat->setToolTip(tr("Detach from window"));
-  connect(m_btnFloat, &QPushButton::toggled, this, &LogDock::setFloating);
-
-  m_btnClose->setFixedSize(maxBtnSize);
+  m_btnClose->setObjectName("btnCloseLog");
+  m_btnClose->setFixedSize(26, 26);
   m_btnClose->setFlat(true);
-  m_btnClose->setIcon(QIcon::fromTheme(QStringLiteral("view-close")));
-  m_btnClose->setIconSize(iconSize);
+  m_btnClose->setText(QStringLiteral("×"));
   m_btnClose->setToolTip(tr("Close Log"));
-  connect(m_btnClose, &QPushButton::clicked, this, &QDockWidget::hide);
+  m_btnClose->setAccessibleName(tr("Close Log"));
+  connect(m_btnClose, &QPushButton::clicked, this, &QWidget::hide);
 
-  auto titleWidget = new QWidget(this);
-  titleWidget->installEventFilter(this);
+  auto titleLayout = new QHBoxLayout;
+  titleLayout->addWidget(m_lblTitle);
+  titleLayout->addStretch();
+  titleLayout->addWidget(m_searchWidget);
+  titleLayout->addWidget(m_btnClose);
 
-  auto titleLayout = new QHBoxLayout(titleWidget);
-  titleLayout->addWidget(m_lblTitle, Qt::AlignLeft | Qt::AlignVCenter);
-  titleLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-  titleLayout->addWidget(m_searchWidget, Qt::AlignRight | Qt::AlignVCenter);
-  titleLayout->addWidget(m_btnFloat, Qt::AlignRight | Qt::AlignVCenter);
-  titleLayout->addWidget(m_btnClose, Qt::AlignRight | Qt::AlignVCenter);
-  setTitleBarWidget(titleWidget);
+  auto layout = new QVBoxLayout(this);
+  layout->setContentsMargins(18, 8, 18, 16);
+  layout->setSpacing(4);
+  layout->addLayout(titleLayout);
+  layout->addWidget(m_textLog, 1);
+}
 
-  auto bodyWidget = new QWidget(this);
-  auto bodyLayout = new QVBoxLayout(bodyWidget);
-  bodyLayout->addWidget(m_textLog);
-  setWidget(bodyWidget);
-
-  setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable);
-  setAllowedAreas(Qt::BottomDockWidgetArea);
+QAction *LogDock::toggleViewAction() const
+{
+  return m_toggleAction;
 }
 
 void LogDock::appendLine(const QString &msg)
 {
   m_textLog->appendLine(msg);
-  if (auto p = static_cast<QWidget *>(parent()); p->isVisible() && !p->isMinimized() && !m_searchWidget->isExpanded()) {
+  if (isVisible() && !window()->isMinimized() && !m_searchWidget->isExpanded())
     m_textLog->scrollToBottom();
-  }
 }
 
-void LogDock::setFloating(bool floating)
+void LogDock::showEvent(QShowEvent *event)
 {
-  if (floating) {
-    m_btnFloat->setToolTip(tr("Attach to window"));
-    m_btnFloat->setIcon(QIcon::fromTheme(QStringLiteral("window-restore-pip")));
-    setWindowFlags(Qt::Dialog);
-  } else {
-    m_btnFloat->setToolTip(tr("Detach from window"));
-    m_btnFloat->setIcon(QIcon::fromTheme(QStringLiteral("window-minimize-pip")));
-    setWindowFlags(Qt::Widget);
-  }
-  m_lblTitle->setVisible(!floating);
-  m_btnClose->setVisible(!floating);
-  show();
+  QWidget::showEvent(event);
+  m_toggleAction->setChecked(true);
 }
 
-bool LogDock::eventFilter(QObject *watched, QEvent *event)
+void LogDock::hideEvent(QHideEvent *event)
 {
-  // Filter out doubleclick on the titlebar, we only want the dock to float if the user users the button on the dock
-  if (watched == titleBarWidget() && event->type() == QEvent::MouseButtonDblClick)
-    return true;
-  return false;
+  QWidget::hideEvent(event);
+  // Hiding the application to the tray must not close its diagnostics panel.
+  if (isHidden())
+    m_toggleAction->setChecked(false);
 }
 
-void LogDock::changeEvent(QEvent *e)
+void LogDock::changeEvent(QEvent *event)
 {
-  QDockWidget::changeEvent(e);
-  if (e->type() != QEvent::LanguageChange)
+  QWidget::changeEvent(event);
+  if (event->type() != QEvent::LanguageChange)
     return;
 
-  setWindowTitle(tr("Log"));
+  m_toggleAction->setText(tr("Log"));
   m_lblTitle->setText(tr("Log"));
-  m_btnFloat->setToolTip(tr("Detach from window"));
   m_btnClose->setToolTip(tr("Close Log"));
-  if (isFloating())
-    m_btnFloat->setToolTip(tr("Attach to window"));
-  else
-    m_btnFloat->setToolTip(tr("Detach from window"));
+  m_btnClose->setAccessibleName(tr("Close Log"));
 }

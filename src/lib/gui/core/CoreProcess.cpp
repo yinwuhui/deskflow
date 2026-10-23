@@ -511,6 +511,7 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
 void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
 {
   QMutexLocker locker(&m_processMutex);
+  m_retryTimer.stop();
 
   const auto currentMode = Settings::value(Settings::Core::ProcessMode).value<ProcessMode>();
   const auto processMode = processModeOption.value_or(currentMode);
@@ -523,7 +524,10 @@ void CoreProcess::stop(std::optional<ProcessMode> processModeOption)
     m_coreIpcClient = nullptr;
   }
 
-  if (m_processState == ProcessState::Starting) {
+  if (m_processState == ProcessState::RetryPending) {
+    // The desktop process has already exited; there is nothing left to terminate.
+    setProcessState(ProcessState::Stopped);
+  } else if (m_processState == ProcessState::Starting) {
     qDebug("core process is starting, cancelling");
     setProcessState(ProcessState::Stopped);
   } else if (m_processState != ProcessState::Stopped) {

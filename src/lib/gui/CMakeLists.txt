@@ -108,6 +108,8 @@ add_library(${target} STATIC
   widgets/ComputerSetupView.cpp
   widgets/ComputerSetupView.h
   widgets/HomeIcons.h
+  widgets/HomeCheckBox.h
+  widgets/HomeComboBox.h
   widgets/BrandIcons.h
   widgets/HomeModeButton.h
   widgets/HomeDeviceList.h

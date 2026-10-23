@@ -10,6 +10,7 @@
 #include "common/NetworkProtocol.h"
 #include "common/Settings.h"
 #include "gui/TlsUtility.h"
+#include "gui/StyleUtils.h"
 #include "gui/core/NetworkMonitor.h"
 #include "gui/dialogs/ActionDialog.h"
 #include "gui/widgets/KeySequenceWidget.h"
@@ -86,6 +87,7 @@ SettingsPage::SettingsPage(ServerConfig &config, QWidget *parent, LoginStartup s
       m_startup(std::move(startup))
 {
   setObjectName("settingsPage");
+  setPalette(lightControlPalette());
   setStyleSheet(QStringLiteral(R"(
     QWidget#settingsPage, QWidget#settingsPage QScrollArea, QWidget#settingsPage QWidget[settingsContent="true"] { background: white; border: none; }
     QWidget#settingsPage QLabel { color: #2b3037; font-size: 14px; background: transparent; }
@@ -110,7 +112,7 @@ SettingsPage::SettingsPage(ServerConfig &config, QWidget *parent, LoginStartup s
     QWidget#settingsPage QListWidget::item:selected { background: #eaf3ff; color: #267ed9; }
     QWidget#settingsPage QWidget#settingsFooter { border-top: 1px solid #e5e8ed; background: white; }
     QWidget#settingsPage QLabel[settingsError="true"] { color: #b45345; }
-  )"));
+  )") + lightScrollBarStyle());
   build();
   load();
   connect(Settings::instance(), &Settings::settingsWritableChanged, this, &SettingsPage::updateState);
@@ -213,7 +215,7 @@ QComboBox *SettingsPage::choice(
     const QList<QPair<QString, QVariant>> &items, bool restart
 )
 {
-  auto control = new QComboBox(this);
+  auto control = lightComboBox(this);
   control->setFixedWidth(158);
   for (const auto &[text, value] : items)
     control->addItem(text, value);
@@ -1115,7 +1117,7 @@ void SettingsPage::editAction(bool existing)
 void SettingsPage::buildDeviceEditor(QVBoxLayout *layout)
 {
   auto g = group(layout);
-  m_devices = new QComboBox(this);
+  m_devices = lightComboBox(this);
   m_devices->setFixedWidth(158);
   m_devices->setObjectName("settingsDeviceSelector");
   row(g, tr("Per-computer input settings"),
@@ -1155,7 +1157,7 @@ void SettingsPage::selectDevice(int index)
       tr("None")
   };
   for (int m = 0; m < 6; ++m) {
-    auto combo = new QComboBox(this);
+    auto combo = lightComboBox(this);
     combo->addItems(modifiers);
     combo->setFixedWidth(130);
     combo->setCurrentIndex(computer.modifier(m));

@@ -5,6 +5,7 @@
  */
 #include "ScreenLayoutPage.h"
 #include "HomeIcons.h"
+#include "gui/StyleUtils.h"
 #include "common/Settings.h"
 #include "gui/validators/ComputerNameValidator.h"
 #include <QButtonGroup>
@@ -209,6 +210,7 @@ ScreenLayoutPage::ScreenLayoutPage(ServerConfig &config, QWidget *parent)
       m_draft(config)
 {
   setObjectName("screenLayoutPage");
+  setPalette(deskflow::gui::lightControlPalette());
   build();
   load();
   connect(Settings::instance(), &Settings::settingsWritableChanged, this, [this] { updateControls(); });
@@ -229,7 +231,7 @@ void ScreenLayoutPage::build()
     QWidget#screenLayoutPage QComboBox::drop-down {border:none;width:22px;}
     QWidget#screenLayoutPage QLabel[error="true"] {color:#b65a47;}
     QWidget#screenLayoutPage QWidget#layoutFooter {background:white;border-top:1px solid #e5eaf0;}
-  )"));
+  )") + deskflow::gui::lightScrollBarStyle());
   auto outer = new QVBoxLayout(this);
   outer->setContentsMargins(29, 12, 29, 22);
   outer->setSpacing(0);
@@ -332,7 +334,7 @@ void ScreenLayoutPage::build()
       m_editor->hide();
     }
   });
-  m_selection = new QComboBox(this);
+  m_selection = deskflow::gui::lightComboBox(this);
   m_selection->setObjectName("layoutComputerSelector");
   m_selection->setAccessibleName(tr("Selected computer"));
   layout->addWidget(m_selection);

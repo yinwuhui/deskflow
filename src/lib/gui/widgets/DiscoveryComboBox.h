@@ -2,6 +2,7 @@
 #pragma once
 #include "DiscoveryListView.h"
 #include "HomeIcons.h"
+#include "gui/StyleUtils.h"
 #ifdef Q_OS_MACOS
 #include "gui/OSXHelpers.h"
 #endif
@@ -61,6 +62,7 @@ public:
     setStyle(popupStyle);
     auto *devices = new DiscoveryListView(this);
     setView(devices);
+    deskflow::gui::setLightComboBoxPalette(this);
     devices->selected = [this](const QModelIndex &index) {
       setCurrentIndex(index.row());
       Q_EMIT activated(index.row());
