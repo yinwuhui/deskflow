@@ -20,6 +20,8 @@ public:
   {
     bool server = false, automatic = true;
     int initialLane = 0;
+    int serverTransports = 3; // bit 0: network, bit 1: Bluetooth
+    bool advertiseBluetooth = false;
     QString host, pem, name, bluetoothAddress, initialPeer;
     quint16 port = 24800, corePort = 0;
     QHostAddress bind = QHostAddress::Any;
@@ -83,7 +85,7 @@ private:
   void requestBluetooth(Peer *p);
   void startBluetooth();
   void listenBluetooth();
-  void findBluetooth(Peer *p);
+  void requestBluetoothTarget(Peer *p);
   void pairBluetooth(Peer *p);
   void dial(Peer *p, int lane);
   void retry(Peer *p, int lane);
@@ -104,8 +106,6 @@ private:
   QByteArray m_instance = QUuid::createUuid().toRfc4122();
   QString m_clientPeer, m_backupPeer, m_btReason;
   QTimer m_networkTimer, m_bootstrapRetry;
-  QBluetoothServiceDiscoveryAgent *m_serviceDiscovery = nullptr;
-  QTimer m_scanDeadline;
   BluetoothDiscovery *m_discovery = nullptr;
   BluetoothPairing *m_pairing = nullptr;
   QString m_pairPeer, m_pairAction;
@@ -113,5 +113,4 @@ private:
   bool m_stopped = false, m_started = false, m_btEnabled = false, m_btRequesting = false;
   bool m_explicitTarget = false, m_suspended = false;
   int m_bootstrapBackoff = 1000;
-  qint64 m_lastScan = 0;
 };

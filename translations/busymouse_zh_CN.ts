@@ -1438,6 +1438,46 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Find nearby computers</source>
         <translation>查找附近的电脑</translation>
     </message>
+    <message>
+        <source>Choose a computer or enter an IP</source>
+        <translation>选择电脑或输入 IP</translation>
+    </message>
+    <message>
+        <source>Enable encryption and certificate verification to share over Bluetooth.</source>
+        <translation>请先在高级设置中启用加密和证书验证，再开启蓝牙共享。</translation>
+    </message>
+    <message>
+        <source>Waiting for connections</source>
+        <translation>等待连接</translation>
+    </message>
+    <message>
+        <source>Not shared</source>
+        <translation>未开启共享</translation>
+    </message>
+    <message>
+        <source>Discoverable</source>
+        <translation>可被发现</translation>
+    </message>
+    <message>
+        <source>Find computers nearby</source>
+        <translation>查找电脑</translation>
+    </message>
+    <message>
+        <source>Looking for computers on the local network. You can also enter an IP.</source>
+        <translation>正在查找局域网电脑，也可以直接输入 IP。</translation>
+    </message>
+    <message>
+        <source>Choose a device marked BMouse · Available</source>
+        <translation>请选择标有“BMouse · 可连接”的设备</translation>
+    </message>
+    <message>
+        <source>Refresh devices</source>
+        <translation>刷新设备</translation>
+    </message>
+    <message>
+        <source>Select the other computer’s Bluetooth device</source>
+        <translation>请选择对应电脑的蓝牙设备</translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>
@@ -3271,6 +3311,70 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
         <translation>
 此电脑的剪贴板最多传输 64 KiB，并保留用户更低的限制。</translation>
     </message>
+    <message>
+        <source>Connection method</source>
+        <translation>连接方式</translation>
+    </message>
+    <message>
+        <source>Connection method help</source>
+        <translation>连接方式说明</translation>
+    </message>
+    <message>
+        <source>Enable both methods to allow automatic recovery over the other transport.</source>
+        <translation>同时开启两种方式，支持断线自动切换。</translation>
+    </message>
+    <message>
+        <source>Backup connection help</source>
+        <translation>备用连接说明</translation>
+    </message>
+    <message>
+        <source>After connecting, automatically prepare the other transport.</source>
+        <translation>连接成功后，自动尝试建立另一种连接方式。</translation>
+    </message>
+    <message>
+        <source>Bluetooth unavailable; check permissions and adapter settings.</source>
+        <translation>蓝牙不可用，请检查权限和蓝牙设置。</translation>
+    </message>
+    <message>
+        <source>LAN</source>
+        <translation>局域网</translation>
+    </message>
+    <message>
+        <source>Nearby Bluetooth devices</source>
+        <translation>附近的蓝牙设备</translation>
+    </message>
+    <message>
+        <source>No nearby devices found. Make the other device discoverable and refresh.</source>
+        <translation>未找到附近设备，请让对方设备处于可被发现状态后刷新。</translation>
+    </message>
+    <message>
+        <source>Found %1 devices · %2 support BMouse</source>
+        <translation>发现 %1 台设备 · %2 台支持 BMouse</translation>
+    </message>
+    <message>
+        <source>Found %1 devices · Checking BMouse services…</source>
+        <translation>发现 %1 台设备 · 正在检测 BMouse 服务…</translation>
+    </message>
+    <message>
+        <source>Finding nearby Bluetooth devices…</source>
+        <translation>正在查找附近蓝牙设备…</translation>
+    </message>
+    <message>
+        <source>Refresh Bluetooth devices</source>
+        <translation>刷新蓝牙设备</translation>
+    </message>
+    <message>
+        <source>Choose a device marked BMouse · Available, or enter its Bluetooth address.</source>
+        <translation>请选择标有“BMouse · 可连接”的设备，或输入其蓝牙地址。</translation>
+    </message>
+    <message>
+        <source>Found %1 devices</source>
+        <translation>发现 %1 台设备</translation>
+    </message>
+    <message>
+        <source>Select the other computer, or enter its Bluetooth address.</source>
+        <translation>请选择对应电脑，或输入它的蓝牙地址。</translation>
+    </message>
 </context>
 <context>
     <name>LocalBluetoothInfo</name>
@@ -3329,6 +3433,53 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
     <message>
         <source>Unavailable</source>
         <translation>不可用</translation>
+    </message>
+</context>
+<context>
+    <name>NearbyBluetoothModel</name>
+    <message>
+        <source>Choose a nearby device</source>
+        <translation>选择附近的设备</translation>
+    </message>
+    <message>
+        <source>Saved Bluetooth computer</source>
+        <translation>已保存的蓝牙电脑</translation>
+    </message>
+    <message>
+        <source>Unnamed device</source>
+        <translation>未命名设备</translation>
+    </message>
+    <message>
+        <source>BMouse · Available</source>
+        <translation>BMouse · 可连接</translation>
+    </message>
+    <message>
+        <source>Checking service…</source>
+        <translation>正在检测服务…</translation>
+    </message>
+    <message>
+        <source>BMouse service not found</source>
+        <translation>未检测到 BMouse 服务</translation>
+    </message>
+    <message>
+        <source>Low energy device · Not supported</source>
+        <translation>低功耗设备 · 暂不支持</translation>
+    </message>
+    <message>
+        <source>Not confirmed</source>
+        <translation>暂未确认</translation>
+    </message>
+    <message>
+        <source>Not seen nearby</source>
+        <translation>未在附近发现</translation>
+    </message>
+    <message>
+        <source>Finding nearby devices…</source>
+        <translation>正在查找附近设备…</translation>
+    </message>
+    <message>
+        <source>This low energy device cannot use the current keyboard and mouse transport.</source>
+        <translation>此设备仅支持低功耗蓝牙，当前无法用于键鼠连接。</translation>
     </message>
 </context>
 </TS>

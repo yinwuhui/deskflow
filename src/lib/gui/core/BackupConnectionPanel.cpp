@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 #include "BackupConnectionPanel.h"
+#include "NearbyBluetoothModel.h"
 #include "common/Settings.h"
+#include "gui/widgets/DiscoveryComboBox.h"
 #include "gui/widgets/HomeIcons.h"
-#include "gui/widgets/HomeToggleSwitch.h"
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDateTime>
+#include <QDebug>
 #include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -18,7 +21,8 @@
 #include <QVBoxLayout>
 #ifdef DESKFLOW_BLUETOOTH
 #include "BluetoothDiscovery.h"
-#include <QBluetoothServiceDiscoveryAgent>
+#include <QBluetoothDeviceDiscoveryAgent>
+#include <QBluetoothDeviceInfo>
 #endif
 using namespace deskflow::gui;
 namespace {
@@ -44,7 +48,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   transportLayout->setContentsMargins(3, 3, 3, 3);
   transportLayout->setSpacing(3);
   auto *group = new QButtonGroup(this);
-  m_network = new QPushButton(tr("Local network"), m_transport);
+  m_network = new QPushButton(tr("LAN"), m_transport);
   m_bluetoothButton = new QPushButton(tr("Bluetooth"), m_transport);
   m_network->setObjectName("btnInitialNetwork");
   m_bluetoothButton->setObjectName("btnInitialBluetooth");
@@ -68,54 +72,123 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   m_bluetoothButton->setEnabled(false);
   m_bluetoothButton->setToolTip(tr("This build does not include Bluetooth support."));
 #endif
-  connect(m_network, &QPushButton::clicked, this, [this] {
+  connect(m_network, &QPushButton::toggled, this, [this](bool checked) {
+    if (!checked)
+      return;
     Settings::setValue(Settings::Connection::InitialTransport, "network");
     Q_EMIT transportChanged();
   });
-  connect(m_bluetoothButton, &QPushButton::clicked, this, [this] {
+  connect(m_bluetoothButton, &QPushButton::toggled, this, [this](bool checked) {
+    if (!checked)
+      return;
     Settings::setValue(Settings::Connection::InitialTransport, "bluetooth");
     Q_EMIT transportChanged();
   });
-  m_bluetooth = new QComboBox(this);
+  auto *devicePicker = new DiscoveryComboBox(this);
+  m_bluetooth = devicePicker;
   m_bluetooth->setObjectName("bluetoothTarget");
   m_bluetooth->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
   m_bluetooth->setFixedHeight(44);
-  m_bluetooth->setAccessibleName(tr("Bluetooth computer"));
-  m_bluetooth->addItem(tr("Choose a nearby computer"), QString());
+  m_bluetooth->setAccessibleName(tr("Nearby Bluetooth devices"));
+  m_bluetooth->setStyleSheet(
+      "QComboBox { background: #ffffff; color: #555e69; border: 1px solid #d9dde3; border-radius: 9px;"
+      " padding: 0 13px; } QComboBox:focus { border-color: #087fff; }"
+      "QComboBox::drop-down { border: none; width: 28px; }"
+      "QComboBox::down-arrow { image: none; }"
+  );
+  m_devicesModel = new NearbyBluetoothModel(this);
   const auto saved = Settings::value(Settings::Connection::BluetoothPeer).toString();
-  if (!saved.isEmpty()) {
-    m_bluetooth->addItem(tr("Saved Bluetooth computer"), saved);
+  m_devicesModel->resetDevices(saved);
+  devicePicker->setModel(m_devicesModel);
+  m_bluetooth->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+  m_bluetooth->setMinimumContentsLength(1);
+  m_bluetooth->setMaxVisibleItems(8);
+  m_bluetooth->view()->setTextElideMode(Qt::ElideRight);
+  if (!saved.isEmpty())
     m_bluetooth->setCurrentIndex(1);
-  }
+  devicePicker->refreshRequested = [this] {
+    if (!m_running && !m_scanRequest && (m_lastScanMs == 0 || m_devicesModel->foundCount() == 0) &&
+        QDateTime::currentMSecsSinceEpoch() - m_lastScanMs > 15000)
+      discover();
+  };
   connect(m_bluetooth, &QComboBox::currentIndexChanged, this, [this] {
     if (!m_updating)
-      Settings::setValue(Settings::Connection::BluetoothPeer, m_bluetooth->currentData());
+      updateBluetoothChoice();
   });
+  m_sharing = new QWidget(this);
+  m_sharing->setObjectName("sharingTransportSelector");
+  auto *sharingLayout = new QHBoxLayout(m_sharing);
+  sharingLayout->setContentsMargins(0, 0, 0, 0);
+  sharingLayout->setSpacing(14);
+  auto *sharingLabel = new QLabel(tr("Connection method"), m_sharing);
+  sharingLabel->setProperty("role", "muted");
+  sharingLayout->addWidget(sharingLabel);
+  m_shareNetwork = new QCheckBox(tr("LAN"), m_sharing);
+  m_shareBluetooth = new QCheckBox(tr("Bluetooth"), m_sharing);
+  m_shareNetwork->setObjectName("checkShareNetwork");
+  m_shareBluetooth->setObjectName("checkShareBluetooth");
+  m_shareNetwork->setStyleSheet("font-size: 12px;");
+  m_shareBluetooth->setStyleSheet("font-size: 12px;");
+  m_shareNetwork->setChecked(Settings::value(Settings::Connection::ShareNetwork).toBool());
+  m_shareBluetooth->setChecked(Settings::value(Settings::Connection::ShareBluetooth).toBool());
+#ifndef DESKFLOW_BLUETOOTH
+  m_shareBluetooth->setChecked(false);
+  Settings::setValue(Settings::Connection::ShareBluetooth, false);
+  m_shareBluetooth->setEnabled(false);
+  m_shareBluetooth->setToolTip(tr("This build does not include Bluetooth support."));
+#endif
+  if (!m_shareNetwork->isChecked() && !m_shareBluetooth->isChecked()) {
+    m_shareNetwork->setChecked(true);
+    Settings::setValue(Settings::Connection::ShareNetwork, true);
+  }
+  sharingLayout->addWidget(m_shareNetwork);
+  sharingLayout->addWidget(m_shareBluetooth);
+  auto *shareInfo = new QPushButton(QStringLiteral("ⓘ"), m_sharing);
+  shareInfo->setAccessibleName(tr("Connection method help"));
+  shareInfo->setToolTip(tr("Enable both methods to allow automatic recovery over the other transport."));
+  shareInfo->setFixedSize(24, 26);
+  shareInfo->setProperty("role", "link");
+  sharingLayout->addWidget(shareInfo);
+  sharingLayout->addStretch();
+  for (auto *check : {m_shareNetwork, m_shareBluetooth})
+    connect(check, &QCheckBox::toggled, this, [this, check] {
+      if (!m_shareNetwork->isChecked() && !m_shareBluetooth->isChecked()) {
+        const QSignalBlocker blocker(check);
+        check->setChecked(true);
+      }
+      Settings::setValue(Settings::Connection::ShareNetwork, m_shareNetwork->isChecked());
+      Settings::setValue(Settings::Connection::ShareBluetooth, m_shareBluetooth->isChecked());
+      Q_EMIT transportChanged();
+    });
   auto *policyRow = new QHBoxLayout;
-  m_automatic = new HomeToggleSwitch(tr("Automatically establish a backup connection"), this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  m_automatic = new QCheckBox(tr("Automatically establish a backup connection"), this);
   m_automatic->setObjectName("checkAutoBackup");
   m_automatic->setChecked(Settings::value(Settings::Connection::AutoBackup).toBool());
+  m_automatic->setStyleSheet("font-size: 12px;");
+  policyRow->setSpacing(4);
   policyRow->addWidget(m_automatic);
+  auto *backupInfo = new QPushButton(QStringLiteral("ⓘ"), this);
+  backupInfo->setAccessibleName(tr("Backup connection help"));
+  backupInfo->setToolTip(tr("After connecting, automatically prepare the other transport."));
+  backupInfo->setFixedSize(24, 26);
+  backupInfo->setProperty("role", "link");
+  policyRow->addWidget(backupInfo);
   policyRow->addStretch();
   layout->addLayout(policyRow);
-  auto *description = plainLabel(
-      tr("After connecting, prepare the other transport automatically and recover if the current connection fails."),
-      this, "lblBackupDescription"
-  );
-  description->setProperty("role", "muted");
-  description->setFixedHeight(30);
-  layout->addWidget(description);
-  auto *statusRow = new QHBoxLayout;
-  m_state = plainLabel({}, this, "lblBackupStatus");
+  setFixedHeight(28);
+  m_statusRow = new QWidget(this);
+  m_statusRow->setObjectName("backupStatusRow");
+  auto *statusRow = new QHBoxLayout(m_statusRow);
+  statusRow->setContentsMargins(0, 0, 0, 0);
+  m_state = plainLabel({}, m_statusRow, "lblBackupStatus");
   m_state->setProperty("role", "muted");
-  m_state->setFixedHeight(38);
   statusRow->addWidget(m_state, 1);
-  m_action = new QPushButton(tr("Connection details"), this);
+  m_action = new QPushButton(tr("Connection details"), m_statusRow);
   m_action->setObjectName("btnBackupDetails");
   m_action->setProperty("role", "link");
   statusRow->addWidget(m_action);
-  layout->addLayout(statusRow);
-  setFixedHeight(108);
+  m_statusRow->hide();
 
   m_details = new QWidget(this);
   m_details->setObjectName("backupConnectionDetails");
@@ -170,7 +243,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   auto *foot = new QVBoxLayout;
   auto *secondaryActions = new QHBoxLayout;
   m_retry = new QPushButton(tr("Retry backup"), m_details);
-  m_scan = new QPushButton(tr("Find Bluetooth computers"), m_details);
+  m_scan = new QPushButton(tr("Refresh Bluetooth devices"), m_details);
   auto *disconnect = new QPushButton(tr("Disconnect selected computer"), m_details);
   m_disconnect = disconnect;
   secondaryActions->addWidget(m_retry);
@@ -215,7 +288,7 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
   connect(m_scan, &QPushButton::clicked, this, &BackupConnectionPanel::discover);
   connect(m_retry, &QPushButton::clicked, this, [this] {
     if (selectedPeer().isEmpty()) {
-      if (bluetoothSelected())
+      if (bluetoothSelected() || Settings::value(Settings::Core::CoreMode) == Settings::CoreMode::Server)
         Q_EMIT command({{"kind", "retryBluetooth"}});
       return;
     }
@@ -232,6 +305,17 @@ BackupConnectionPanel::BackupConnectionPanel(QWidget *parent) : QWidget(parent)
       Q_EMIT command({{"kind", "stopPeer"}, {"peerId", selectedPeer()}});
   });
   showPeer();
+}
+void BackupConnectionPanel::setServerMode(bool server)
+{
+  m_sharing->setVisible(server);
+  m_transport->setVisible(!server);
+  setVisible(!server);
+  if (!m_running && (server || !bluetoothSelected()) && m_scanRequest) {
+    finishDiscovery(m_scanGeneration);
+    m_statusRow->hide();
+    Q_EMIT statusVisibilityChanged(false);
+  }
 }
 QString BackupConnectionPanel::selectedPeer() const
 {
@@ -250,6 +334,12 @@ void BackupConnectionPanel::setRunning(bool running)
   const bool changed = m_running != running;
   m_running = running;
   m_transport->setEnabled(!running);
+  m_sharing->setEnabled(!running);
+#ifndef DESKFLOW_BLUETOOTH
+  m_shareBluetooth->setEnabled(false);
+#endif
+  m_statusRow->setVisible(running);
+  Q_EMIT statusVisibilityChanged(running);
   m_bluetooth->setEnabled(!running);
   m_scan->setEnabled(!running && !m_scanRequest);
   if ((running || changed) && m_scanRequest)
@@ -263,8 +353,10 @@ void BackupConnectionPanel::setRunning(bool running)
     m_updating = false;
     m_details->hide();
     showPeer();
-  } else if (changed)
+  } else if (changed) {
+    showPeer();
     Q_EMIT command({{"kind", "snapshot"}});
+  }
 }
 void BackupConnectionPanel::updateSnapshot(const QJsonObject &snapshot)
 {
@@ -341,6 +433,8 @@ void BackupConnectionPanel::showPeer()
   if (m_automatic->isChecked() && (!Settings::value(Settings::Security::TlsEnabled).toBool() ||
                                    !Settings::value(Settings::Security::CheckPeers).toBool()))
     status = tr("Enable encryption and certificate verification to prepare backup connections.");
+  if (m_peer.isEmpty() && !m_snapshot.value("bluetoothReason").toString().isEmpty())
+    status = tr("Bluetooth unavailable; check permissions and adapter settings.");
   m_state->setText(status);
   m_state->setToolTip(m_peer.value("reason").toString() + " " + m_snapshot.value("bluetoothReason").toString());
   m_detailState->setText(
@@ -351,10 +445,7 @@ void BackupConnectionPanel::showPeer()
   m_action->setText(m_peer.value("actionId").toString().isEmpty() ? tr("Connection details") : tr("Complete setup"));
   m_action->setEnabled(true);
   m_retry->setText(state == "stopped" ? tr("Reconnect") : tr("Retry backup"));
-  m_retry->setEnabled(
-      !m_peer.isEmpty() ||
-      (m_running && bluetoothSelected() && !m_snapshot.value("bluetoothReason").toString().isEmpty())
-  );
+  m_retry->setEnabled(!m_peer.isEmpty() || (m_running && !m_snapshot.value("bluetoothReason").toString().isEmpty()));
   m_protect->setEnabled(!selectedPeer().isEmpty() && selectedPeer() != "bootstrap");
   m_protect->setVisible(backup == "needsSelection");
   m_disconnect->setEnabled(!selectedPeer().isEmpty() && selectedPeer() != "bootstrap");
@@ -411,15 +502,15 @@ void BackupConnectionPanel::performAction()
     m_actionTargets->clear();
     m_actionTargets->addItem(tr("Choose a nearby computer"), QString());
     for (int i = 1; i < m_bluetooth->count(); ++i)
-      m_actionTargets->addItem(m_bluetooth->itemText(i), m_bluetooth->itemData(i));
+      if (!m_devicesModel->connectableAddress(i).isEmpty())
+        m_actionTargets->addItem(m_bluetooth->itemText(i), m_devicesModel->connectableAddress(i));
   }
   m_actionInput->setAccessibleName(action == "pairingPin" ? tr("Pairing PIN") : tr("Bluetooth address"));
   m_actionLabel->setText(
       action == "confirmPairing" ? tr("Confirm the code on both computers: %1").arg(m_peer.value("reason").toString())
       : action == "pairingPin"   ? tr("Enter the pairing PIN")
-      : action == "selectBluetoothDevice"
-          ? tr("Choose the computer with Find Bluetooth computers, or enter its Bluetooth address.")
-          : tr("Continue the Bluetooth setup requested by the connection service.")
+      : action == "selectBluetoothDevice" ? tr("Select the other computer, or enter its Bluetooth address.")
+                                          : tr("Continue the Bluetooth setup requested by the connection service.")
   );
   m_reject->setVisible(action == "confirmPairing");
   m_actionForm->show();
@@ -450,38 +541,82 @@ void BackupConnectionPanel::submitAction(bool accepted)
   m_actionForm->hide();
   Q_EMIT command(request);
 }
+bool BackupConnectionPanel::bluetoothTargetReady() const
+{
+  return !m_devicesModel->connectableAddress(m_bluetooth->currentIndex()).isEmpty();
+}
+void BackupConnectionPanel::updateBluetoothChoice()
+{
+  const auto address = m_devicesModel->connectableAddress(m_bluetooth->currentIndex());
+  if (!m_running)
+    Settings::setValue(Settings::Connection::BluetoothPeer, address);
+  m_bluetooth->setToolTip(m_bluetooth->currentData(Qt::ToolTipRole).toString());
+  Q_EMIT transportChanged();
+}
+void BackupConnectionPanel::applyDiscoveryUpdate(const std::function<void()> &update)
+{
+  const auto identity = m_bluetooth->currentData(NearbyBluetoothModel::Identity).toString();
+  {
+    const QSignalBlocker blocker(m_bluetooth);
+    update();
+    m_devicesModel->sort(0);
+    const int row = m_devicesModel->rowForIdentity(identity);
+    m_bluetooth->setCurrentIndex(row < 0 ? 0 : row);
+  }
+  const auto selectedTarget = m_actionTargets->currentData().toString();
+  m_actionTargets->clear();
+  m_actionTargets->addItem(tr("Choose a nearby computer"), QString());
+  for (int row = 1; row < m_devicesModel->rowCount(); ++row) {
+    const auto address = m_devicesModel->connectableAddress(row);
+    if (!address.isEmpty())
+      m_actionTargets->addItem(m_devicesModel->item(row)->data(NearbyBluetoothModel::Name).toString(), address);
+  }
+  const auto targetIndex = m_actionTargets->findData(selectedTarget);
+  m_actionTargets->setCurrentIndex(targetIndex < 0 ? 0 : targetIndex);
+  updateBluetoothChoice();
+}
 void BackupConnectionPanel::finishDiscovery(quint64 generation, const QString &error)
 {
   if (generation != m_scanGeneration || !m_scanRequest)
     return;
+  qInfo() << "Bluetooth device discovery finished after" << QDateTime::currentMSecsSinceEpoch() - m_lastScanMs
+          << "ms; devices:" << m_devicesModel->foundCount() << "; error:" << error;
   m_scanRequest = false;
 #ifdef DESKFLOW_BLUETOOTH
-  if (m_discovery) {
-    m_discovery->disconnect(this);
-    m_discovery->stop();
-    m_discovery->deleteLater();
-    m_discovery = nullptr;
+  if (m_deviceDiscovery) {
+    m_deviceDiscovery->disconnect(this);
+    m_deviceDiscovery->stop();
+    m_deviceDiscovery->deleteLater();
+    m_deviceDiscovery = nullptr;
   }
 #endif
+  applyDiscoveryUpdate([this] { m_devicesModel->finishScan(); });
   m_scan->setEnabled(!m_running || m_peer.value("action") == "selectBluetoothDevice");
+  m_statusRow->show();
+  Q_EMIT statusVisibilityChanged(true);
   if (!error.isEmpty())
     m_state->setText(error);
+  else if (!m_devicesModel->foundCount())
+    m_state->setText(tr("No nearby devices found. Make the other device discoverable and refresh."));
   else
-    m_state->setText(
-        m_bluetooth->count() > 1 ? tr("Select a Bluetooth computer; its identity is verified when connecting.")
-                                 : tr("No Bluetooth computers found. Start Bluetooth sharing on the other computer.")
-    );
+    m_state->setText(tr("Found %1 devices").arg(m_devicesModel->foundCount()));
 }
+
 void BackupConnectionPanel::discover()
 {
 #ifdef DESKFLOW_BLUETOOTH
-  if (m_scanRequest)
+  if (m_scanRequest || (m_running && m_peer.value("action") != "selectBluetoothDevice"))
     return;
-  // Startup discovery and an action's target selection are explicit user operations.
   const auto generation = ++m_scanGeneration;
   m_scanRequest = true;
+  m_lastScanMs = QDateTime::currentMSecsSinceEpoch();
+  m_actionTargets->clear();
+  m_actionTargets->addItem(tr("Choose a nearby computer"), QString());
   m_scan->setEnabled(false);
-  m_state->setText(tr("Finding Bluetooth computers…"));
+  m_statusRow->show();
+  Q_EMIT statusVisibilityChanged(true);
+  m_state->setText(tr("Finding nearby Bluetooth devices…"));
+  applyDiscoveryUpdate([this] { m_devicesModel->beginScan(); });
   requestBluetoothPermission(this, false, [this, generation](bool granted) {
     if (generation != m_scanGeneration || !m_scanRequest)
       return;
@@ -489,38 +624,50 @@ void BackupConnectionPanel::discover()
       finishDiscovery(generation, tr("Bluetooth permission is required for discovery."));
       return;
     }
-    m_discovery = new QBluetoothServiceDiscoveryAgent(this);
-    m_discovery->setUuidFilter(QBluetoothUuid(QStringLiteral("28d88531-5adc-4852-bf1c-2bc9107c315e")));
+    m_deviceDiscovery = new QBluetoothDeviceDiscoveryAgent(this);
+    // Classic inquiry can run before LE discovery on macOS. Allow both phases
+    // to complete instead of truncating the entire operation after 12 seconds.
+    m_deviceDiscovery->setLowEnergyDiscoveryTimeout(40000);
+    const auto record = [this, generation](const QBluetoothDeviceInfo &device) {
+      if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
+        return;
+      const auto address = device.address().isNull() ? QString() : device.address().toString();
+      const auto identity = address.isEmpty() ? device.deviceUuid().toString() : address;
+      if (address.isEmpty() && device.deviceUuid().isNull())
+        return;
+      const bool classic = device.coreConfigurations() != QBluetoothDeviceInfo::LowEnergyCoreConfiguration;
+      applyDiscoveryUpdate([&] { m_devicesModel->addDevice(identity, address, device.name(), classic); });
+    };
+    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, record);
     connect(
-        m_discovery, &QBluetoothServiceDiscoveryAgent::serviceDiscovered, this,
-        [this, generation](const auto &service) {
-          if (generation != m_scanGeneration || !m_scanRequest)
-            return;
-          const auto address = service.device().address().toString();
-          if (m_bluetooth->findData(address) >= 0)
-            return;
-          auto name = service.device().name();
-          if (name.isEmpty())
-            name = tr("Unnamed computer");
-          m_bluetooth->addItem(name, address);
-          m_bluetooth->setItemData(m_bluetooth->count() - 1, address, Qt::ToolTipRole);
-          if (m_actionTargets->findData(address) < 0)
-            m_actionTargets->addItem(name, address);
-        }
+        m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::deviceUpdated, this,
+        [record](const QBluetoothDeviceInfo &device, QBluetoothDeviceInfo::Fields) { record(device); }
     );
-    connect(m_discovery, &QBluetoothServiceDiscoveryAgent::finished, this, [this, generation] {
+    const auto devicesFinished = [this, generation] {
+      if (generation != m_scanGeneration || !m_scanRequest || !m_deviceDiscovery)
+        return;
+      m_deviceDiscovery->disconnect(this);
+      m_deviceDiscovery->stop();
+      m_deviceDiscovery->deleteLater();
+      m_deviceDiscovery = nullptr;
       finishDiscovery(generation);
-    });
-    connect(m_discovery, &QBluetoothServiceDiscoveryAgent::canceled, this, [this, generation] {
-      finishDiscovery(generation);
-    });
-    connect(m_discovery, &QBluetoothServiceDiscoveryAgent::errorOccurred, this, [this, generation] {
+    };
+    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::finished, this, devicesFinished);
+    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::canceled, this, devicesFinished);
+    connect(m_deviceDiscovery, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this, [this, generation] {
+      qWarning() << "Bluetooth device discovery error:" << m_deviceDiscovery->error()
+                 << m_deviceDiscovery->errorString();
       finishDiscovery(generation, tr("Bluetooth discovery failed. Check system Bluetooth settings."));
     });
-    QTimer::singleShot(20000, this, [this, generation] { finishDiscovery(generation); });
-    m_discovery->start(QBluetoothServiceDiscoveryAgent::FullDiscovery);
+    // Watchdog only: use the platform's finished signal for normal completion.
+    QTimer::singleShot(90000, this, devicesFinished);
+    qInfo() << "Starting Bluetooth device discovery; methods:"
+            << QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods();
+    m_deviceDiscovery->start(QBluetoothDeviceDiscoveryAgent::supportedDiscoveryMethods());
   });
 #else
+  m_statusRow->show();
+  Q_EMIT statusVisibilityChanged(true);
   m_state->setText(tr("This build does not include Bluetooth support."));
 #endif
 }

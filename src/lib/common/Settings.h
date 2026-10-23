@@ -49,6 +49,8 @@ public:
   };
   struct Connection
   {
+    inline static const auto ShareNetwork = QStringLiteral("connection/shareNetwork");
+    inline static const auto ShareBluetooth = QStringLiteral("connection/shareBluetooth");
     inline static const auto AutoBackup = QStringLiteral("connection/autoBackup");
     inline static const auto InitialTransport = QStringLiteral("connection/initialTransport");
     inline static const auto Peers = QStringLiteral("connection/peers");
@@ -290,7 +292,9 @@ private:
   };
 
   inline static const QStringList m_validKeys = {
-      Connection::AutoBackup
+      Connection::ShareNetwork
+    , Connection::ShareBluetooth
+    , Connection::AutoBackup
     , Connection::InitialTransport
     , Connection::Peers
     , Connection::BackupTarget
@@ -398,7 +402,7 @@ private:
 
   // When checking the default values this list contains the ones that default to true.
   inline static const QStringList m_defaultTrueValues = {
-      Connection::AutoBackup,
+      Connection::ShareNetwork, Connection::ShareBluetooth, Connection::AutoBackup,
       Core::UseHooks
     , Gui::CloseToTray
     , Gui::CloseReminder

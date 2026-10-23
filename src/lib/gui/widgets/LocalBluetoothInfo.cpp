@@ -75,9 +75,10 @@ void LocalBluetoothInfo::refresh()
   m_name->setToolTip(name + (m_adapter->address().isNull() ? QString() : "\n" + m_adapter->address().toString()));
   m_name->setAccessibleName(tr("Local Bluetooth: %1").arg(name.isEmpty() ? tr("Name unavailable") : name));
   m_state->setText(
-      !m_adapter->isValid()                                            ? tr("Unavailable")
-      : m_adapter->hostMode() == QBluetoothLocalDevice::HostPoweredOff ? tr("Off")
-                                                                       : tr("On")
+      !m_adapter->isValid() ? tr("Unavailable")
+      : m_adapter->hostMode() == QBluetoothLocalDevice::HostPoweredOff
+          ? tr("Off")
+          : (m_sharingState.isEmpty() ? tr("On") : m_sharingState)
   );
   m_action->setText(tr("Details"));
   m_action->setEnabled(true);

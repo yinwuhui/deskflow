@@ -42,9 +42,11 @@
 #include "widgets/HomeIcons.h"
 #include "widgets/StatusBar.h"
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QCloseEvent>
+#include <QCompleter>
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFocusEvent>
@@ -65,6 +67,7 @@
 #include <QScreen>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStringListModel>
 #include <QStyle>
 #include <QSysInfo>
 #include <QWindow>
@@ -290,7 +293,6 @@ void MainWindow::setupControls()
   }
 
   ui->serverOptions->setVisible(false);
-  ui->clientOptions->setVisible(false);
 
   const auto coreMode = Settings::value(Settings::Core::CoreMode).value<Settings::CoreMode>();
   ui->rbModeClient->setChecked(coreMode == Settings::CoreMode::Client);
@@ -314,7 +316,16 @@ void MainWindow::setupHome()
 {
   auto *backupPanel = new BackupConnectionPanel(ui->homeActionCard);
   m_backupPanel = backupPanel;
-  ui->homeActionLayout->insertWidget(ui->homeActionLayout->indexOf(ui->modeLinks), backupPanel);
+  ui->modeLinksLayout->insertWidget(0, backupPanel);
+  ui->modeLinksLayout->removeItem(ui->modeLinksStretch);
+  ui->modeLinksLayout->insertSpacerItem(ui->modeLinksLayout->indexOf(ui->btnBrowseServers), ui->modeLinksStretch);
+  ui->optionsLayout->insertWidget(0, backupPanel->sharingSelector());
+  ui->optionsLayout->insertWidget(1, backupPanel->transportSelector());
+  ui->homeFooterLayout->insertWidget(0, backupPanel->statusWidget(), 1);
+  connect(backupPanel, &BackupConnectionPanel::statusVisibilityChanged, this, [this](bool visible) {
+    ui->lblHomeStatus->setVisible(!visible);
+  });
+  ui->lblConnectionKind->hide();
   ui->contentLayout->insertWidget(ui->contentLayout->indexOf(ui->homeActionCard) + 1, backupPanel->detailsWidget());
   connect(backupPanel, &BackupConnectionPanel::command, &m_coreProcess, &CoreProcess::transportCommand);
   connect(&m_coreProcess, &CoreProcess::transportSnapshot, backupPanel, &BackupConnectionPanel::updateSnapshot);
@@ -327,18 +338,48 @@ void MainWindow::setupHome()
     ui->rbModeServer->setEnabled(!running);
     ui->rbModeClient->setEnabled(!running);
     ui->lineHostname->setReadOnly(running);
+    ui->btnBrowseServers->setEnabled(!running);
+    if (!running || state == ProcessState::Starting) {
+      if (auto *bluetooth = findChild<LocalBluetoothInfo *>())
+        bluetooth->setSharingState(running && m_coreProcess.mode() == CoreMode::Server ? tr("Starting…") : QString());
+      if (auto *network = findChild<QLabel *>("lblLocalNetworkState"))
+        network->setText(running && m_coreProcess.mode() == CoreMode::Server ? tr("Starting…") : tr("Available"));
+    }
+    if (!running)
+      updateNetworkInfo();
   });
   connect(backupPanel, &BackupConnectionPanel::transportChanged, this, &MainWindow::updateModeControls);
-  auto *actionHeading = new QWidget(ui->homeActionCard);
-  auto *actionHeadingLayout = new QHBoxLayout(actionHeading);
-  actionHeadingLayout->setContentsMargins(0, 0, 0, 0);
-  actionHeadingLayout->setSpacing(8);
-  ui->homeActionLayout->removeWidget(ui->lblShareTitle);
-  actionHeadingLayout->addWidget(ui->lblShareTitle, 1);
-  actionHeadingLayout->addWidget(backupPanel->transportSelector());
-  actionHeading->setFixedHeight(36);
-  ui->homeActionLayout->insertWidget(0, actionHeading);
-  ui->modeFieldsLayout->addWidget(backupPanel->bluetoothSelector());
+  connect(backupPanel, &BackupConnectionPanel::snapshotChanged, this, [this](const QJsonObject &snapshot) {
+    if (m_coreProcess.mode() != CoreMode::Server)
+      return;
+    if (auto *state = findChild<QLabel *>("lblLocalNetworkState"))
+      state->setText(snapshot.value("networkListening").toBool() ? tr("Waiting for connections") : tr("Not shared"));
+    if (auto *bluetooth = findChild<LocalBluetoothInfo *>())
+      bluetooth->setSharingState(
+          snapshot.value("bluetoothListening").toBool()                    ? tr("Discoverable")
+          : !snapshot.value("bluetoothReason").toString().isEmpty()        ? tr("Unavailable")
+          : Settings::value(Settings::Connection::ShareBluetooth).toBool() ? tr("Starting…")
+                                                                           : tr("Not shared")
+      );
+  });
+  while (auto *item = ui->modeFieldsLayout->takeAt(0)) {
+    if (item->widget())
+      item->widget()->hide();
+    delete item;
+  }
+  auto *inputStack = new QStackedWidget(ui->modeFields);
+  inputStack->setObjectName("connectionInputStack");
+  inputStack->setFixedHeight(44);
+  inputStack->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+  inputStack->setStyleSheet("QStackedWidget#connectionInputStack { border: none; background: transparent; }");
+  inputStack->addWidget(ui->clientOptions);
+  inputStack->addWidget(backupPanel->bluetoothSelector());
+  ui->clientOptions->setFixedHeight(44);
+  ui->lineHostname->setFixedHeight(44);
+  ui->lineHostname->setAttribute(Qt::WA_MacShowFocusRect, false);
+  ui->modeFieldsLayout->setSpacing(0);
+  ui->modeFieldsLayout->addWidget(inputStack);
+  ui->modeFields->setFixedHeight(44);
   // Keep the homepage light like the approved prototype, independently of native dialog appearance.
   auto homePalette = ui->topLevelWidget->palette();
   homePalette.setColor(QPalette::Window, QColor("#ffffff"));
@@ -361,8 +402,11 @@ void MainWindow::setupHome()
   ui->localCard->setFixedHeight(112);
   ui->localHeader->setFixedHeight(20);
   ui->widgetModeSelection->setFixedHeight(50);
-  ui->localCardLayout->setStretch(0, 4);
-  ui->localCardLayout->setStretch(2, 6);
+  // Both cards share the same vertical centreline, independent of label length.
+  ui->localCardLayout->setStretch(0, 1);
+  ui->localCardLayout->setStretch(2, 1);
+  ui->modeLayout->setStretch(0, 1);
+  ui->modeLayout->setStretch(1, 1);
   // Keep IP and Bluetooth on two aligned rows inside the original 112px card.
   while (auto *item = ui->addressLayout->takeAt(0)) {
     if (item->widget())
@@ -387,20 +431,53 @@ void MainWindow::setupHome()
   ui->lblIpAddresses->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
   ui->addressLayout->addWidget(ui->addressValueRow);
   ui->addressLayout->addWidget(new LocalBluetoothInfo(ui->addressColumn));
-  ui->optionsLayout->setStretch(0, 1);
+  ui->optionsLayout->setStretch(ui->optionsLayout->indexOf(backupPanel->sharingSelector()), 1);
+  ui->optionsLayout->setStretch(ui->optionsLayout->indexOf(ui->modeFields), 1);
   ui->btnToggleCore->setFixedWidth(124);
-  ui->homeActionCard->setFixedHeight(356);
-  ui->lblShareTitle->setFixedHeight(36);
+  ui->homeActionCard->setFixedHeight(148);
+  // Hidden mode controls must not impose their cached minimum width while switching.
+  ui->homeActionCard->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+  ui->homeActionLayout->setContentsMargins(14, 10, 14, 10);
+  ui->homeActionLayout->setSpacing(6);
+  ui->lblShareHint->hide();
+  ui->m_pLabelServerName->hide();
+  ui->lblActionHint->hide();
+  ui->localCardSpace->changeSize(0, 16, QSizePolicy::Minimum, QSizePolicy::Fixed);
+  ui->widgetModeSelectionSpace->changeSize(0, 10, QSizePolicy::Minimum, QSizePolicy::Fixed);
+  ui->homeFooterLayout->setContentsMargins(0, 10, 0, 0);
+  // Keep the footer at the bottom without adding a second device summary.
+  ui->contentLayout->removeItem(ui->contentStretch);
+  ui->contentLayout->insertSpacerItem(ui->contentLayout->indexOf(ui->homeFooter), ui->contentStretch);
+  ui->lblShareTitle->setFixedHeight(24);
   ui->lblShareHint->setFixedHeight(36);
   ui->m_pLabelServerName->setFixedHeight(18);
   ui->widgetModeOptions->setFixedHeight(44);
-  ui->modeLinks->setFixedHeight(32);
+  ui->modeLinks->setFixedHeight(28);
   ui->lblActionHint->setFixedHeight(18);
   ui->homeActionCard->setStyleSheet(
       QStringLiteral("QWidget#homeActionCard { background: #f7f8fa; border: 1px solid #e6e9ee; border-radius: 10px; }")
   );
   ui->lineShareAddress->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
   ui->lineHostname->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+  ui->lineHostname->setPlaceholderText(tr("Choose a computer or enter an IP"));
+  auto *completion = new QCompleter(new QStringListModel(this), this);
+  completion->setObjectName("homeComputerCompletion");
+  completion->setCaseSensitivity(Qt::CaseInsensitive);
+  completion->setFilterMode(Qt::MatchContains);
+  ui->lineHostname->setCompleter(completion);
+  auto *recentComputers = ui->lineHostname->addAction(homeIcon(HomeIcon::ChevronDown), QLineEdit::TrailingPosition);
+  recentComputers->setText(tr("Recent computers"));
+  connect(recentComputers, &QAction::triggered, this, [this, completion] {
+    if (ui->lineHostname->isReadOnly())
+      return;
+    browseServers();
+  });
+  connect(completion, qOverload<const QString &>(&QCompleter::activated), this, [this] {
+    m_homeDiscoveryRequested = false;
+  });
+  connect(ui->lineHostname, &QLineEdit::textEdited, this, [completion] {
+    completion->setCompletionMode(QCompleter::PopupCompletion);
+  });
   m_copyShareAddress = ui->lineShareAddress->addAction(homeIcon(HomeIcon::Copy), QLineEdit::TrailingPosition);
   m_copyShareAddress->setText(tr("Copy"));
   m_copyShareAddress->setToolTip(tr("Copy"));
@@ -425,16 +502,13 @@ void MainWindow::setupHome()
   ui->lblBrandIcon->setPixmap(brandIcon().pixmap(28, 28));
   ui->modeFieldsLayout->setAlignment(Qt::AlignVCenter);
   ui->optionsLayout->setAlignment(ui->btnToggleCore, Qt::AlignVCenter);
-  ui->btnEmptyAction->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
   ui->permissionLayout->setStretch(0, 1);
   ui->btnPermissionSettings->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
   ui->btnPermissionRecheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-  ui->homeEmptyLayout->setStretch(1, 1);
   ui->computerValueLayout->setStretch(0, 1);
   ui->addressValueLayout->setStretch(ui->addressValueLayout->indexOf(ui->lblIpAddresses), 1);
   ui->btnEditName->setFixedSize(26, 28);
   ui->btnCopyAddress->setFixedSize(42, 26);
-  ui->lblEmptyIcon->setPixmap(homeIcon(HomeIcon::Monitor, QColor("#8b96a5")).pixmap(26, 26));
   ui->lblShareTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   ui->lblShareHint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   ui->btnHome->setIcon(homeIcon(HomeIcon::Monitor, QColor("#087fff")));
@@ -457,8 +531,6 @@ void MainWindow::setupHome()
     homeScrollBar->setEnabled(maximum > minimum);
   });
   homeScrollBar->setEnabled(homeScrollBar->maximum() > homeScrollBar->minimum());
-  ui->btnManageDevices->setIcon(homeIcon(HomeIcon::ChevronRight));
-  ui->btnManageDevices->setLayoutDirection(Qt::RightToLeft);
   for (auto button : {ui->btnHome, ui->btnDevices, ui->btnLayout, ui->btnSettings})
     button->setIconSize(QSize(22, 22));
   for (auto button : {ui->btnHelp, ui->btnLogs, ui->btnMore})
@@ -491,13 +563,6 @@ void MainWindow::setupHome()
   });
   ui->lblHomeStatus->setText(m_statusBar->statusText());
   connect(m_pageStack, &QStackedWidget::currentChanged, this, &MainWindow::updatePageTitle);
-  connect(ui->btnEmptyAction, &QPushButton::clicked, this, [this] {
-    if (m_coreProcess.mode() == CoreMode::Server)
-      showConfigureServer("");
-    else
-      browseServers();
-  });
-
   const auto showHome = [this] {
     m_pageStack->setCurrentWidget(ui->homeScroll);
     ui->btnHome->setChecked(true);
@@ -517,17 +582,6 @@ void MainWindow::setupHome()
   connect(ui->btnLayout, &QPushButton::toggled, this, [this, openLayout](bool checked) {
     if (checked && (!m_layoutPage || m_pageStack->currentWidget() != m_layoutPage))
       openLayout();
-  });
-  connect(ui->btnManageDevices, &QPushButton::clicked, this, &MainWindow::openDevices);
-  connect(ui->deviceList, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
-    if (item->data(HomeDeviceList::Empty).toBool())
-      return;
-    const auto name = item->data(HomeDeviceList::Name).toString();
-    openDevices();
-    const auto endpoint = DeviceListPage::normalizedAddress(name, Settings::value(Settings::Core::Port).toInt());
-    m_devicesPage->selectDevice(
-        m_coreProcess.mode() == CoreMode::Client && !endpoint.isEmpty() ? "server:" + endpoint : "computer:" + name
-    );
   });
   connect(ui->btnSettings, &QPushButton::toggled, this, [this](bool checked) {
     if (checked && (!m_settingsPage || m_pageStack->currentWidget() != m_settingsPage))
@@ -572,59 +626,26 @@ void MainWindow::setupHome()
 
 void MainWindow::updateHomeDevices()
 {
-  ui->deviceList->clear();
-  QStringList names;
-  const bool server = m_coreProcess.mode() == CoreMode::Server;
-  if (server) {
-    if (!m_serverConfig.useExternalConfig()) {
-      for (const auto &computer : std::as_const(m_serverConfig).computers()) {
-        if (!computer.isNull() && computer.name() != Settings::value(Settings::Core::ComputerName).toString())
-          names.append(computer.name());
+  if (auto *completion = findChild<QCompleter *>("homeComputerCompletion")) {
+    QStringList addresses = Settings::value(Settings::Gui::RecentServers).toStringList();
+    const auto known = Settings::value(Settings::Gui::KnownServers).toMap();
+    addresses.append(known.keys());
+    if (m_mdnsBrowser) {
+      const auto ownAddresses = NetworkMonitor::validAddresses();
+      for (const auto &server : m_mdnsBrowser->servers()) {
+        if (server.ipAddress.isEmpty() || server.port < 1 || server.port > 65535 ||
+            ownAddresses.contains(server.ipAddress))
+          continue;
+        const auto endpoint =
+            DeviceListPage::normalizedAddress(QStringLiteral("%1:%2").arg(server.ipAddress).arg(server.port));
+        if (!endpoint.isEmpty())
+          addresses.append(endpoint);
       }
     }
-    names.append(m_connectedClients);
-  } else if (m_coreProcess.mode() == CoreMode::Client) {
-    names = ui->lineHostname->text().split(',', Qt::SkipEmptyParts);
-    for (auto &name : names)
-      name = name.trimmed();
+    addresses.removeDuplicates();
+    addresses.removeAll(QString());
+    qobject_cast<QStringListModel *>(completion->model())->setStringList(addresses);
   }
-  names.removeAll(QString());
-  auto recent = Settings::value(Settings::Gui::RecentComputers).toStringList();
-  recent.append(names);
-  names = recent;
-  names.removeDuplicates();
-  ui->lblDevicesHeading->setText(
-      Settings::value(Settings::Gui::RecentComputers).toStringList().isEmpty() ? tr("Your computers")
-                                                                               : tr("Recent computers")
-  );
-  for (const auto &name : names.mid(0, 4)) {
-    const bool connected =
-        m_coreProcess.isStarted() &&
-        (server ? m_connectedClients.contains(name)
-                : (names.size() == 1 && m_coreProcess.connectionState() == ConnectionState::Connected));
-    auto item = new QListWidgetItem(
-        QStringLiteral("%1    ·    %2").arg(name, connected ? tr("Connected") : tr("Not connected")), ui->deviceList
-    );
-    item->setToolTip(name);
-    item->setData(HomeDeviceList::Name, name);
-    item->setData(HomeDeviceList::Detail, server ? tr("Configured computer") : tr("Keyboard and mouse source"));
-    item->setData(HomeDeviceList::Connected, connected);
-  }
-  ui->homeEmptyState->setVisible(names.isEmpty());
-  ui->deviceList->setVisible(!names.isEmpty());
-  ui->lblEmptyTitle->setText(server ? tr("No computers added yet") : tr("No computers connected yet"));
-  ui->lblEmptyHint->setText(
-      server ? tr("Add a computer and choose its position beside this one.")
-             : tr("Find a computer on the same network to get started.")
-  );
-  ui->btnEmptyAction->setText(server ? tr("Add computer") : tr("Find computers"));
-  ui->deviceList->refreshCards();
-  ui->lblDeviceHint->setText(
-      m_serverConfig.useExternalConfig() && server
-          ? tr("An external configuration file is in use. Its devices appear here when connected.")
-          : tr("Only an established connection confirms that a computer is connected.")
-  );
-  ui->lblDeviceHint->setVisible(server && m_serverConfig.useExternalConfig());
   updateDevicesPage();
 }
 
@@ -636,7 +657,14 @@ void MainWindow::ensureDeviceDiscovery()
   }
   if (!m_mdnsBrowser) {
     m_mdnsBrowser = new deskflow::mdns::MdnsBrowser(this);
-    connect(m_mdnsBrowser, &deskflow::mdns::MdnsBrowser::serversChanged, this, &MainWindow::updateDevicesPage);
+    connect(m_mdnsBrowser, &deskflow::mdns::MdnsBrowser::serversChanged, this, [this] {
+      updateHomeDevices();
+      if (m_homeDiscoveryRequested && ui->lineHostname->hasFocus() && m_pageStack->currentWidget() == ui->homeScroll) {
+        auto *completion = ui->lineHostname->completer();
+        if (completion->model()->rowCount())
+          completion->complete();
+      }
+    });
     connect(m_mdnsBrowser, &QThread::finished, this, [this] {
       if (m_devicesPage)
         m_devicesPage->setDiscoveryAvailable(false);
@@ -1121,6 +1149,12 @@ void MainWindow::coreProcessError(CoreProcess::Error error)
 void MainWindow::startCore()
 {
   // The child process reads these values from disk, including a just-selected transport.
+  if (m_coreProcess.mode() == CoreMode::Server && Settings::value(Settings::Connection::ShareBluetooth).toBool() &&
+      (!Settings::value(Settings::Security::TlsEnabled).toBool() ||
+       !Settings::value(Settings::Security::CheckPeers).toBool())) {
+    m_statusBar->showMessage(tr("Enable encryption and certificate verification to share over Bluetooth."));
+    return;
+  }
   Settings::save(false);
   // An explicit new connection may ask again after a rejected trust prompt.
   // Background retries retain prompt suppression within CoreProcess.
@@ -1276,26 +1310,26 @@ void MainWindow::updateModeControls()
   const bool isClient = mode == Settings::CoreMode::Client;
   const bool bluetooth = m_backupPanel && m_backupPanel->bluetoothSelected();
 
-  ui->serverOptions->setVisible(isServer && !bluetooth);
-  ui->clientOptions->setVisible(isClient && !bluetooth);
-  if (m_backupPanel)
-    m_backupPanel->bluetoothSelector()->setVisible(bluetooth);
-  ui->m_pLabelServerName->setVisible(true);
-  ui->m_pLabelServerName->setText(
-      bluetooth  ? tr("Bluetooth computer")
-      : isServer ? tr("Local network address")
-                 : tr("Computer providing the keyboard and mouse")
-  );
+  ui->lineHostname->setPlaceholderText(tr("Choose a computer or enter an IP"));
+  ui->serverOptions->hide();
+  auto *inputStack = findChild<QStackedWidget *>("connectionInputStack");
+  inputStack->setCurrentIndex(bluetooth ? 1 : 0);
+  inputStack->currentWidget()->show();
+  ui->modeFields->setVisible(isClient);
+  if (m_backupPanel) {
+    m_backupPanel->setServerMode(isServer);
+  }
+  ui->m_pLabelServerName->hide();
   ui->lblShareTitle->setText(
       isServer ? tr("Share this computer’s keyboard and mouse") : tr("Use another computer’s input")
   );
   ui->lblNoMode->setVisible(!isServer && !isClient);
   ui->btnConfigureServer->setVisible(isServer);
-  ui->btnConfigureServer->setText(tr("Arrange computers and screen edges") + QStringLiteral("    ›"));
+  ui->btnConfigureServer->setText(tr("Screen layout") + QStringLiteral("    ›"));
   ui->btnSaveServerConfig->hide();
   ui->btnConfigureClient->hide();
-  ui->btnBrowseServers->setVisible(isClient || bluetooth);
-  ui->btnBrowseServers->setText(bluetooth ? tr("Find nearby computers") : tr("Find computers"));
+  ui->btnBrowseServers->setVisible(isClient);
+  ui->btnBrowseServers->setText(bluetooth ? tr("Refresh devices") : tr("Find computers nearby"));
   ui->lblShareHint->setText(
       bluetooth  ? tr("Choose a nearby BMouse computer. Its identity is verified when connecting.")
       : isServer ? tr("Use this computer’s keyboard and mouse to control your other computers across screen edges.")
@@ -2057,9 +2091,11 @@ void MainWindow::toggleCanRunCore(bool enableButtons)
   m_actionStopCore->setEnabled(canStop);
   ui->lblActionHint->setText(!permission && !canStop ? tr("Authorize keyboard and mouse control first") : QString());
   ui->btnToggleCore->setToolTip(
-      !permission && !canStop      ? tr("Authorize keyboard and mouse control first")
-      : !enableButtons && !canStop ? tr("Enter the other computer’s address to connect")
-                                   : QString()
+      !permission && !canStop ? tr("Authorize keyboard and mouse control first")
+      : !enableButtons && !canStop
+          ? (m_backupPanel && m_backupPanel->bluetoothSelected() ? tr("Select the other computer’s Bluetooth device")
+                                                                 : tr("Enter the other computer’s address to connect"))
+          : QString()
   );
 }
 
@@ -2077,10 +2113,23 @@ void MainWindow::remoteHostChanged(const QString &newRemoteHost)
 
 void MainWindow::browseServers()
 {
-  if (m_backupPanel && m_backupPanel->bluetoothSelected())
+  if (m_coreProcess.processState() != ProcessState::Stopped)
+    return;
+  if (m_backupPanel && m_backupPanel->bluetoothSelected()) {
     m_backupPanel->discover();
+    return;
+  }
+  ensureDeviceDiscovery();
+  updateHomeDevices();
+  m_homeDiscoveryRequested = true;
+  ui->lineHostname->setFocus();
+  auto *completion = ui->lineHostname->completer();
+  completion->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
+  completion->setCompletionPrefix({});
+  if (completion->model()->rowCount())
+    completion->complete();
   else
-    openDevices();
+    m_statusBar->showMessage(tr("Looking for computers on the local network. You can also enter an IP."));
 }
 
 void MainWindow::updateIpLabel(const QStringList &addresses)
@@ -2100,7 +2149,8 @@ void MainWindow::updateIpLabel(const QStringList &addresses)
   ui->localCard->setToolTip(!available ? ui->lblAddressHint->text() : QString());
   ui->localCard->setFixedHeight(112);
   ui->btnCopyAddress->setEnabled(!m_currentIpAddress.isEmpty());
-  if (auto *state = findChild<QLabel *>("lblLocalNetworkState"))
+  if (auto *state = findChild<QLabel *>("lblLocalNetworkState");
+      state && (m_coreProcess.processState() == ProcessState::Stopped || m_coreProcess.mode() != CoreMode::Server))
     state->setText(available ? tr("Available") : tr("Unavailable"));
   ui->lineShareAddress->setText(ui->lblIpAddresses->text());
   m_copyShareAddress->setEnabled(ui->btnCopyAddress->isEnabled());
@@ -2151,6 +2201,6 @@ bool MainWindow::canRunCore() const
   const bool isServer = mode == Settings::CoreMode::Server;
   const bool isClient = mode == Settings::CoreMode::Client;
   if (isClient && Settings::value(Settings::Connection::InitialTransport) == "bluetooth")
-    return !Settings::value(Settings::Connection::BluetoothPeer).toString().isEmpty();
+    return m_backupPanel && m_backupPanel->bluetoothTargetReady();
   return ((isServer || isClient) && (isClient && !ui->lineHostname->text().isEmpty()) || isServer);
 }

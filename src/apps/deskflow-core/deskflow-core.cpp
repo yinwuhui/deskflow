@@ -178,7 +178,13 @@ int main(int argc, char **argv)
   bool automatic = parser.autoFailover() || Settings::value(Settings::Connection::AutoBackup).toBool();
   const bool authenticated = Settings::value(Settings::Security::TlsEnabled).toBool() &&
                              Settings::value(Settings::Security::CheckPeers).toBool();
-  if ((parser.autoFailover() || parser.bluetoothRequested()) && !authenticated) {
+  const bool sharingBluetooth =
+#ifdef DESKFLOW_BLUETOOTH
+      parser.serverMode() && Settings::value(Settings::Connection::ShareBluetooth).toBool();
+#else
+      false;
+#endif
+  if ((parser.autoFailover() || parser.bluetoothRequested() || sharingBluetooth) && !authenticated) {
     LOG_CRIT("Bluetooth transport requires TLS and peer fingerprint verification");
     return s_exitConfig;
   }
@@ -217,9 +223,17 @@ int main(int argc, char **argv)
     ConnectionManager::Options options;
     options.server = parser.serverMode();
     options.automatic = automatic;
+    if (options.server) {
+      options.serverTransports = (Settings::value(Settings::Connection::ShareNetwork).toBool() ? 1 : 0) |
+                                 (Settings::value(Settings::Connection::ShareBluetooth).toBool() ? 2 : 0);
+      options.advertiseBluetooth = options.serverTransports & 2;
+      options.automatic = options.serverTransports == 3;
+    }
     options.host = Settings::value(Settings::Client::RemoteHost).toString().trimmed();
     options.initialLane =
         parser.bluetoothRequested() || Settings::value(Settings::Connection::InitialTransport) == "bluetooth" ? 1 : 0;
+    if (options.server)
+      options.initialLane = options.serverTransports & 1 ? 0 : 1;
     options.bluetoothAddress = parser.bluetoothRequested()
                                    ? parser.bluetoothPeer()
                                    : Settings::value(Settings::Connection::BluetoothPeer).toString();

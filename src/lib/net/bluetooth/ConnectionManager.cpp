@@ -25,11 +25,6 @@ ConnectionManager::ConnectionManager(Options options, QObject *parent)
 {
   m_explicitTarget = !m_backupPeer.isEmpty();
   m_bootstrapRetry.setSingleShot(true);
-  m_scanDeadline.setSingleShot(true);
-  connect(&m_scanDeadline, &QTimer::timeout, this, [this] {
-    if (m_serviceDiscovery)
-      m_serviceDiscovery->stop();
-  });
   connect(&m_bootstrapRetry, &QTimer::timeout, this, [this] {
     if (m_stopped || !m_clientPeer.isEmpty() || (m_peers.contains({}) && m_peers.value({})->stopped))
       return;
@@ -112,7 +107,11 @@ void ConnectionManager::start()
   }
   m_started = true;
   if (m_options.server) {
-    if (!m_server.listen(m_options.bind, m_options.port)) {
+    if (m_options.serverTransports == 0) {
+      Q_EMIT fatalError("Select at least one sharing transport");
+      return;
+    }
+    if ((m_options.serverTransports & 1) && !m_server.listen(m_options.bind, m_options.port)) {
       Q_EMIT fatalError(m_server.errorString());
       return;
     }
@@ -129,8 +128,8 @@ void ConnectionManager::start()
         adopt(m_server.nextPendingConnection(), 0);
     });
     Q_EMIT started(m_options.corePort);
-    // Explicit Bluetooth first-entry prepares its listener. Network entry requests permission only after trust.
-    if (m_options.initialLane == 1)
+    // Explicit sharing selection prepares the advertised listener only after Start sharing.
+    if (m_options.initialLane == 1 || m_options.advertiseBluetooth)
       requestBluetooth(nullptr);
   } else {
     if (!m_local.listen(QHostAddress::LocalHost, 0)) {
@@ -161,12 +160,13 @@ void ConnectionManager::start()
 }
 bool ConnectionManager::effective(const Peer *p) const
 {
-  return p->requested && p->remoteAllows && !p->stopped && (!m_options.server || m_backupPeer == p->id);
+  return p->requested && p->remoteAllows && !p->stopped &&
+         (!m_options.server || (m_options.serverTransports == 3 && m_backupPeer == p->id));
 }
 QJsonObject ConnectionManager::localOffer(Peer *p) const
 {
   QJsonArray endpoints;
-  if (m_options.server) {
+  if (m_options.server && m_server.isListening()) {
     for (const auto &iface : QNetworkInterface::allInterfaces()) {
       if (!(iface.flags() & QNetworkInterface::IsUp) || iface.flags() & QNetworkInterface::IsLoopBack)
         continue;
@@ -205,7 +205,7 @@ QJsonObject ConnectionManager::localOffer(Peer *p) const
       {"instance", QString::fromLatin1(m_instance.toHex())},
       {"name", m_options.name},
       {"server", m_options.server},
-      {"automatic", p->requested && selected},
+      {"automatic", p->requested && selected && (!m_options.server || m_options.serverTransports == 3)},
       {"selected", selected},
       {"network", endpoints},
       {"revision", double(m_revision)},
@@ -323,7 +323,8 @@ void ConnectionManager::control(Peer *p, int lane, const QByteArray &payload)
 }
 void ConnectionManager::adopt(QIODevice *wire, int lane, const QString &expected)
 {
-  if (m_stopped || m_suspended || m_wires.size() >= 16) {
+  if (m_stopped || m_suspended || m_wires.size() >= 16 ||
+      (m_options.server && !(m_options.serverTransports & (1 << lane)))) {
     interruptWire(wire);
     wire->deleteLater();
     return;
@@ -549,7 +550,7 @@ void ConnectionManager::prepare(Peer *p)
   if (m_options.server)
     return;
   if (backup == 1 && QBluetoothAddress(p->bt).isNull()) {
-    findBluetooth(p);
+    requestBluetoothTarget(p);
     return;
   }
   if (backup == 1 && m_adapter &&
@@ -566,7 +567,7 @@ void ConnectionManager::prepare(Peer *p)
 }
 void ConnectionManager::requestBluetooth(Peer *p)
 {
-  if (m_stopped || m_btRequesting || m_btEnabled)
+  if (m_stopped || m_btRequesting || m_btEnabled || (m_options.server && !(m_options.serverTransports & 2)))
     return;
   // Only an explicit first Bluetooth connection or an authenticated peer can request this permission.
   if (!m_btReason.isEmpty()) {
@@ -685,55 +686,20 @@ void ConnectionManager::listenBluetooth()
   if (!m_service.isRegistered())
     m_btReason = "bluetoothListenerUnavailable";
 }
-void ConnectionManager::findBluetooth(Peer *p)
+void ConnectionManager::requestBluetoothTarget(Peer *p)
 {
-  if (m_serviceDiscovery || QDateTime::currentSecsSinceEpoch() - m_lastScan < 60)
+  if (m_stopped || p->stopped || p->suppressed || !effective(p))
     return;
-  m_lastScan = QDateTime::currentSecsSinceEpoch();
-  p->reason = "discoveringBluetooth";
-  m_serviceDiscovery = new QBluetoothServiceDiscoveryAgent(this);
-  auto *agent = m_serviceDiscovery;
-  agent->setUuidFilter(ManagedService);
-  const auto instance = p->remoteSession;
-  auto addresses = std::make_shared<QSet<QString>>();
-  connect(
-      agent, &QBluetoothServiceDiscoveryAgent::serviceDiscovered, this,
-      [this, p, instance, addresses](const auto &service) {
-        if (p->stopped || p->suppressed || !effective(p) || p->remoteSession != instance ||
-            service.serviceName() != "BMouse:" + instance)
-          return;
-        const auto address = service.device().address();
-        if (!address.isNull())
-          addresses->insert(address.toString());
-      }
-  );
-  const auto finished = [this, agent, p, instance, addresses] {
-    if (m_serviceDiscovery != agent)
-      return;
-    m_scanDeadline.stop();
-    agent->disconnect(this);
-    agent->deleteLater();
-    m_serviceDiscovery = nullptr;
-    if (!m_stopped && !p->stopped && !p->suppressed && effective(p) && p->remoteSession == instance) {
-      if (addresses->size() == 1) {
-        p->bt = *addresses->begin();
-        p->reason.clear();
-        prepare(p);
-      } else if (p->bt.isEmpty()) {
-        p->reason = addresses->isEmpty() ? "bluetoothTargetUnknown" : "ambiguousBluetoothTarget";
-        p->action = "selectBluetoothDevice";
-        p->actionId = operationId();
-      }
-    }
-    publish();
-  };
-  connect(agent, &QBluetoothServiceDiscoveryAgent::finished, this, finished);
-  connect(agent, &QBluetoothServiceDiscoveryAgent::canceled, this, finished);
-  connect(agent, &QBluetoothServiceDiscoveryAgent::errorOccurred, this, finished);
-  m_scanDeadline.start(20000);
-  agent->start(QBluetoothServiceDiscoveryAgent::FullDiscovery);
+  // Authenticated capability exchange normally supplies the peer's address.
+  // If it does not, ask the user instead of querying every nearby device's services.
+  p->reason = "bluetoothTargetUnknown";
+  if (p->action != "selectBluetoothDevice") {
+    p->action = "selectBluetoothDevice";
+    p->actionId = operationId();
+  }
   publish();
 }
+
 void ConnectionManager::pairBluetooth(Peer *p)
 {
   if (m_pairing || m_stopped || p->stopped || (!p->id.isEmpty() && !effective(p)))
@@ -833,6 +799,8 @@ QJsonObject ConnectionManager::snapshot() const
       {"revision", double(m_revision)},
       {"peers", peers},
       {"bluetoothReason", m_btReason},
+      {"networkListening", m_options.server && m_server.isListening()},
+      {"bluetoothListening", m_options.server && m_service.isRegistered() && m_btReason.isEmpty()},
       {"backupPeer", m_backupPeer},
       {"capabilities", QJsonObject{
                            {"protocol", 2},
@@ -884,9 +852,6 @@ void ConnectionManager::closePeer(Peer *p)
   if (m_discovery) {
     m_discovery->stop();
   }
-  if (m_serviceDiscovery) {
-    m_serviceDiscovery->stop();
-  }
 }
 void ConnectionManager::stop()
 {
@@ -936,7 +901,7 @@ void ConnectionManager::command(const QJsonObject &request)
     return;
   }
   if (requestedKind == "retryBluetooth") {
-    if (m_options.initialLane != 1) {
+    if (m_options.initialLane != 1 && !(m_options.server && (m_options.serverTransports & 2))) {
       error = "actionUnavailable";
       return;
     }
@@ -1112,8 +1077,6 @@ void ConnectionManager::command(const QJsonObject &request)
           wire->deleteLater();
         }
       }
-      if (m_serviceDiscovery)
-        m_serviceDiscovery->stop();
     } else if (p->action == "pairBluetooth") {
       pairBluetooth(p);
     } else if (p->action == "confirmPairing" && m_pairing && m_pairPeer == id) {
@@ -1164,9 +1127,6 @@ void ConnectionManager::suspend(bool sleeping)
   if (sleeping) {
     m_networkTimer.stop();
     m_bootstrapRetry.stop();
-    m_scanDeadline.stop();
-    if (m_serviceDiscovery)
-      m_serviceDiscovery->stop();
     if (m_pairing) {
       m_pairing->cancel();
       m_pairing->deleteLater();

@@ -193,6 +193,7 @@ private:
   bool m_secureSocket = false;
   QStringList m_connectedClients;
   bool m_homeReady = false;
+  bool m_homeDiscoveryRequested = false;
   SettingsPage *m_settingsPage = nullptr;
   ScreenLayoutPage *m_layoutPage = nullptr;
   DeviceListPage *m_devicesPage = nullptr;

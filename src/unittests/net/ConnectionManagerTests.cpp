@@ -342,6 +342,58 @@ private Q_SLOTS:
     manager.command({{"kind", "retryBluetooth"}});
     QCOMPARE(requests, 2);
   }
+  void sharingTransportSelectionControlsActualListeners_data()
+  {
+    QTest::addColumn<int>("mask");
+    QTest::newRow("network-only") << 1;
+    QTest::newRow("bluetooth-only") << 2;
+    QTest::newRow("both") << 3;
+  }
+  void sharingTransportSelectionControlsActualListeners()
+  {
+    QFETCH(int, mask);
+    QTcpServer reservation;
+    QVERIFY(reservation.listen(QHostAddress::LocalHost, 0));
+    const auto port = reservation.serverPort();
+    reservation.close();
+    ConnectionManager::Options options;
+    options.server = true;
+    options.pem = bob;
+    options.port = port;
+    options.serverTransports = mask;
+    options.advertiseBluetooth = mask & 2;
+    options.trusted = [](const QByteArray &) { return true; };
+    int permissionRequests = 0;
+    options.bluetoothPermission = [&](QObject *, bool, std::function<void(bool)> done) {
+      ++permissionRequests;
+      done(false);
+    };
+    ConnectionManager manager(options);
+    QSignalSpy errors(&manager, &ConnectionManager::fatalError);
+    manager.start();
+    QCOMPARE(errors.count(), 0);
+    QCOMPARE(manager.snapshot().value("networkListening").toBool(), bool(mask & 1));
+    QCOMPARE(permissionRequests, mask & 2 ? 1 : 0);
+    QVERIFY(!manager.snapshot().value("bluetoothListening").toBool());
+    if (!(mask & 1)) {
+      QTcpServer probe;
+      QVERIFY(probe.listen(QHostAddress::Any, port));
+    }
+    if (!(mask & 2)) {
+      manager.command({{"kind", "retryBluetooth"}});
+      QCOMPARE(permissionRequests, 0);
+      QTcpServer wire;
+      QVERIFY(wire.listen(QHostAddress::LocalHost, 0));
+      QTcpSocket outgoing;
+      outgoing.connectToHost(QHostAddress::LocalHost, wire.serverPort());
+      QTRY_VERIFY(wire.hasPendingConnections());
+      auto incoming = wire.nextPendingConnection();
+      manager.acceptTransport(incoming, 1);
+      QTRY_COMPARE(outgoing.state(), QAbstractSocket::UnconnectedState);
+      QVERIFY(manager.snapshot().value("peers").toArray().isEmpty());
+    }
+  }
+
   void peerClipboardLimitsAreIsolated()
   {
     PeerPolicy::setLimit("a", 64);

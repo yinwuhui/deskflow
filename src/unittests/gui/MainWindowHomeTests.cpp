@@ -6,12 +6,14 @@
 
 #include "gui/MainWindow.h"
 #include "gui/core/BackupConnectionPanel.h"
+#include "gui/core/NearbyBluetoothModel.h"
+#include "gui/widgets/DiscoveryComboBox.h"
 #include "gui/widgets/LogDock.h"
 
-#include "gui/widgets/HomeDeviceList.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCompleter>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -25,8 +27,10 @@
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTranslator>
+#include <QVBoxLayout>
 #include <QtTest>
 
 static bool inputControlAllowed()
@@ -66,6 +70,162 @@ class MainWindowHomeTests : public QObject
   }
 
 private Q_SLOTS:
+  void bluetoothPopupAcceptsLiveDiscoveryResults()
+  {
+    NearbyBluetoothModel devices;
+    DiscoveryComboBox picker;
+    picker.setModel(&devices);
+    picker.resize(360, 44);
+    picker.show();
+    picker.showPopup();
+    QCoreApplication::processEvents();
+    auto *motion = picker.findChild<QParallelAnimationGroup *>("bluetoothPopupAnimation");
+    QVERIFY(motion);
+    if (motion->state() == QAbstractAnimation::Running)
+      motion->setCurrentTime(motion->duration());
+    const auto initialHeight = picker.view()->height();
+    devices.addDevice("a", "AA:00:00:00:00:01", "Computer", true);
+    devices.addDevice("b", "AA:00:00:00:00:02", "Phone", true);
+    devices.addDevice("c", "AA:00:00:00:00:03", "Headphones", true);
+    devices.sort(0);
+    QCoreApplication::processEvents();
+    QVERIFY(picker.view()->isVisible());
+    QVERIFY(picker.view()->height() > initialHeight);
+    QCOMPARE(picker.view()->model()->rowCount(), 4);
+    auto *accessible = QAccessible::queryAccessibleInterface(picker.view());
+    QVERIFY(accessible && !accessible->tableInterface());
+    auto *rowButton = qobject_cast<QPushButton *>(picker.view()->indexWidget(devices.index(1, 0)));
+    QVERIFY(rowButton);
+    auto *rowAccessible = QAccessible::queryAccessibleInterface(rowButton);
+    QVERIFY(rowAccessible && rowAccessible->actionInterface());
+    QCOMPARE(rowButton->accessibleName(), devices.index(1, 0).data().toString());
+    rowButton->click();
+    QCOMPARE(picker.currentIndex(), 1);
+    QTRY_VERIFY(!picker.view()->isVisible());
+    picker.hidePopup();
+  }
+
+  void localInformationAndModeSwitchShareCentreline()
+  {
+    MainWindow window;
+    window.show();
+    for (const auto size : {QSize(740, 600), QSize(886, 600), QSize(1060, 790)}) {
+      window.resize(size);
+      QCoreApplication::processEvents();
+      auto *divider = window.findChild<QWidget *>("cardDivider");
+      auto *left = window.findChild<QRadioButton *>("rbModeServer");
+      auto *right = window.findChild<QRadioButton *>("rbModeClient");
+      const auto divideX = divider->mapTo(&window, divider->rect().center()).x();
+      const auto leftEnd = left->mapTo(&window, QPoint(left->width(), 0)).x();
+      const auto rightStart = right->mapTo(&window, QPoint()).x();
+      QVERIFY2(qAbs(divideX - (leftEnd + rightStart) / 2) <= 2, "Top divider must align with mode split");
+      QVERIFY(qAbs(left->width() - right->width()) <= 1);
+    }
+  }
+
+  void bluetoothListIncludesDevicesWithoutBMouseAndDeduplicates()
+  {
+    NearbyBluetoothModel devices;
+    devices.beginScan();
+    devices.addDevice("aa", "AA:00:00:00:00:01", "Work computer", true);
+    devices.addDevice("bb", "AA:00:00:00:00:02", "Headphones", true);
+    devices.addDevice("ble-uuid", {}, "Low energy sensor", false);
+    devices.addDevice("bb", "AA:00:00:00:00:02", "Renamed headphones", true);
+    QCOMPARE(devices.rowCount(), 4);
+    QCOMPARE(devices.foundCount(), 3);
+    devices.finishScan();
+    devices.sort(0);
+    QCOMPARE(devices.connectableAddress(devices.rowForIdentity("aa")), QString("AA:00:00:00:00:01"));
+    QCOMPARE(devices.connectableAddress(devices.rowForIdentity("bb")), QString("AA:00:00:00:00:02"));
+    QVERIFY(devices.connectableAddress(devices.rowForIdentity("ble-uuid")).isEmpty());
+    QVERIFY(devices.item(devices.rowForIdentity("bb"))->text().contains("Renamed headphones"));
+    QCOMPARE(devices.foundCount(), 3);
+    QCOMPARE(devices.item(devices.rowForIdentity("aa"))->text(), QString("Work computer"));
+  }
+  void bluetoothRescanInvalidatesStaleAddressesWithoutCheckingServices()
+  {
+    NearbyBluetoothModel devices;
+    devices.resetDevices("AA:00:00:00:00:01");
+    QVERIFY(devices.connectableAddress(1).isEmpty());
+    devices.beginScan();
+    devices.addDevice("aa", "AA:00:00:00:00:02", "BMouse in the name is not proof", true);
+    QCOMPARE(devices.connectableAddress(devices.rowForIdentity("aa")), QString("AA:00:00:00:00:02"));
+    devices.finishScan();
+    QCOMPARE(devices.rowCount(), 2); // Old saved device was not found in this scan.
+    QVERIFY(!devices.connectableAddress(1).isEmpty());
+    devices.beginScan();
+    QVERIFY(devices.connectableAddress(1).isEmpty());
+  }
+  void choosingBluetoothDevicesOnlyChangesTheTarget()
+  {
+    MainWindow window;
+    window.show();
+    window.findChild<QRadioButton *>("rbModeClient")->click();
+    window.findChild<QPushButton *>("btnInitialBluetooth")->click();
+    auto panel = window.findChild<BackupConnectionPanel *>();
+    auto picker = window.findChild<QComboBox *>("bluetoothTarget");
+    auto devices = static_cast<NearbyBluetoothModel *>(picker->model());
+    devices->addDevice("aa", "AA:00:00:00:00:01", "Computer", true);
+    QSignalSpy commands(panel, &BackupConnectionPanel::command);
+    picker->setCurrentIndex(devices->rowForIdentity("aa"));
+    QVERIFY(panel->bluetoothTargetReady());
+    QCOMPARE(Settings::value(Settings::Connection::BluetoothPeer).toString(), QString("AA:00:00:00:00:01"));
+    devices->addDevice("bb", "AA:00:00:00:00:02", "Headphones", true);
+    picker->setCurrentIndex(devices->rowForIdentity("bb"));
+    QCOMPARE(Settings::value(Settings::Connection::BluetoothPeer).toString(), QString("AA:00:00:00:00:02"));
+    QVERIFY(panel->bluetoothTargetReady());
+    QCOMPARE(commands.count(), 0); // Listing and selection must not start any connection or pairing.
+    devices->addDevice("ble", {}, "Low energy device", false);
+    picker->setCurrentIndex(devices->rowForIdentity("ble"));
+    QVERIFY(!panel->bluetoothTargetReady());
+    QVERIFY(Settings::value(Settings::Connection::BluetoothPeer).toString().isEmpty());
+    QVERIFY(!window.findChild<QPushButton *>("btnToggleCore")->isEnabled());
+  }
+  void transportInputsHaveIdenticalVisibleBounds_data()
+  {
+    QTest::addColumn<QSize>("size");
+    QTest::newRow("minimum") << QSize(740, 600);
+    QTest::newRow("laptop") << QSize(886, 600);
+    QTest::newRow("desktop") << QSize(1060, 790);
+  }
+  void transportInputsHaveIdenticalVisibleBounds()
+  {
+    QFETCH(QSize, size);
+    MainWindow window;
+    window.resize(size);
+    window.show();
+    window.findChild<QRadioButton *>("rbModeClient")->click();
+    auto transition = window.findChild<QPropertyAnimation *>("homeActionTransition");
+    if (transition->state() == QAbstractAnimation::Running)
+      transition->setCurrentTime(transition->duration());
+    QCoreApplication::processEvents();
+    auto input = window.findChild<QLineEdit *>("lineHostname");
+    const QRect anchor(input->mapTo(&window, QPoint()), input->size());
+    for (int repeat = 0; repeat < 4; ++repeat) {
+      for (auto name : {"btnInitialBluetooth", "btnInitialNetwork"}) {
+        auto *transport = window.findChild<QPushButton *>(name);
+        if (repeat % 2)
+          transport->setChecked(true); // Native accessibility actions change the checked state.
+        else
+          transport->click();
+        QCoreApplication::processEvents();
+        QWidget *field = QString(name) == "btnInitialBluetooth"
+                             ? static_cast<QWidget *>(window.findChild<QComboBox *>("bluetoothTarget"))
+                             : input;
+        QCOMPARE(QRect(field->mapTo(&window, QPoint()), field->size()), anchor);
+        QCOMPARE(field->height(), 44);
+        auto image = window.grab().toImage();
+        auto fieldImage = field->grab().toImage();
+        const auto point = QPoint(field->width() / 2, field->height() - 1);
+        const auto mapped = field->mapTo(&window, point);
+        const auto dpr = image.devicePixelRatio();
+        const auto actual = image.pixelColor(qRound(mapped.x() * dpr), qRound(mapped.y() * dpr));
+        const auto expected = fieldImage.pixelColor(qRound(point.x() * dpr), qRound(point.y() * dpr));
+        QCOMPARE(actual, expected); // Bottom border must be visible in its parent, not clipped.
+      }
+    }
+  }
+
   void backupSwitchUpdatesOnlyTheSelectedPeer()
   {
     Settings::setValue(Settings::Security::TlsEnabled, true);
@@ -227,7 +387,7 @@ private Q_SLOTS:
     auto selector = window.findChild<QWidget *>("widgetModeSelection");
     auto action = window.findChild<QPushButton *>("btnToggleCore");
     auto card = window.findChild<QWidget *>("homeActionCard");
-    auto devicesHeader = window.findChild<QWidget *>("devicesHeader");
+    auto footer = window.findChild<QWidget *>("homeFooter");
     auto server = window.findChild<QRadioButton *>("rbModeServer");
     auto client = window.findChild<QRadioButton *>("rbModeClient");
     client->click();
@@ -237,16 +397,28 @@ private Q_SLOTS:
     const auto selectorRect = selector->geometry();
     const QRect actionRect(action->mapTo(scroll->widget(), QPoint()), action->size());
     const auto cardRect = card->geometry();
-    const auto devicesRect = devicesHeader->geometry();
+    const auto footerRect = footer->geometry();
     for (int i = 0; i < 12; ++i) {
       (i % 2 ? client : server)->click();
       QCoreApplication::processEvents();
       QCOMPARE(scroll->viewport()->width(), viewportWidth);
+      if (local->geometry() != localRect)
+        for (auto *child : window.findChildren<QWidget *>())
+          if (child->isVisible() && child->minimumSizeHint().width() > 350)
+            qInfo() << "CHANGED" << child->objectName() << child->minimumSizeHint() << child->minimumSize()
+                    << child->size();
+      if (local->geometry() != localRect) {
+        auto layout = window.findChild<QVBoxLayout *>("contentLayout");
+        for (int item = 0; item < layout->count(); ++item)
+          qInfo() << "ITEM"
+                  << (layout->itemAt(item)->widget() ? layout->itemAt(item)->widget()->objectName() : "spacer")
+                  << layout->itemAt(item)->minimumSize() << layout->itemAt(item)->sizeHint();
+      }
       QCOMPARE(local->geometry(), localRect);
       QCOMPARE(selector->geometry(), selectorRect);
       QCOMPARE(QRect(action->mapTo(scroll->widget(), QPoint()), action->size()), actionRect);
       QCOMPARE(card->geometry(), cardRect);
-      QCOMPARE(devicesHeader->geometry(), devicesRect);
+      QCOMPARE(footer->geometry(), footerRect);
     }
   }
 
@@ -326,34 +498,31 @@ private Q_SLOTS:
     }
   }
 
-  void homeCardsRetainAccessibleActionsAcrossModeChanges()
+  void sharingTransportsAreIndependentOfReceiverPolicy()
   {
-    Settings::setValue(Settings::Gui::RecentComputers, QStringList{"mode-test-peer"});
     MainWindow window;
     window.show();
-    QCoreApplication::processEvents();
-    auto list = window.findChild<QListWidget *>("deviceList");
-    auto accessible = QAccessible::queryAccessibleInterface(list);
-    QVERIFY(accessible);
-    QCOMPARE(accessible->role(), QAccessible::List);
-    QVERIFY(!accessible->tableInterface());
-    for (int i = 0; i < 20; ++i) {
-      window.findChild<QRadioButton *>(i % 2 ? "rbModeServer" : "rbModeClient")->click();
-      QCoreApplication::processEvents();
-      QCOMPARE(accessible, QAccessible::queryAccessibleInterface(list));
-      QVERIFY(list->count() >= 1);
-      auto card = qobject_cast<QPushButton *>(list->itemWidget(list->item(0)));
-      QVERIFY(card);
-      QCOMPARE(card->geometry(), list->visualItemRect(list->item(0)));
-      auto cardAccessible = QAccessible::queryAccessibleInterface(card);
-      QVERIFY(cardAccessible && cardAccessible->actionInterface());
-      QCOMPARE(card->accessibleName(), list->item(0)->text());
-    }
-    auto card = qobject_cast<QPushButton *>(list->itemWidget(list->item(0)));
-    QSignalSpy clicks(list, &QListWidget::itemClicked);
-    card->click();
-    QCOMPARE(clicks.count(), 1);
-    QVERIFY(window.findChild<QPushButton *>("btnDevices")->isChecked());
+    auto network = window.findChild<QCheckBox *>("checkShareNetwork");
+    auto bluetooth = window.findChild<QCheckBox *>("checkShareBluetooth");
+    QVERIFY(network->isChecked() && bluetooth->isChecked());
+    network->click();
+    QVERIFY(!Settings::value(Settings::Connection::ShareNetwork).toBool());
+    QVERIFY(Settings::value(Settings::Connection::ShareBluetooth).toBool());
+    bluetooth->click();
+    QVERIFY(bluetooth->isChecked()); // At least one transport must remain selected.
+    QVERIFY(Settings::value(Settings::Connection::AutoBackup).toBool());
+    window.findChild<QRadioButton *>("rbModeClient")->click();
+    QVERIFY(window.findChild<QWidget *>("sharingTransportSelector")->isHidden());
+    QVERIFY(window.findChild<QWidget *>("initialTransportSelector")->isVisible());
+    auto automatic = window.findChild<QCheckBox *>("checkAutoBackup");
+    QVERIFY(automatic->isVisible());
+    automatic->click();
+    QVERIFY(!Settings::value(Settings::Connection::AutoBackup).toBool());
+    QVERIFY(Settings::value(Settings::Connection::ShareBluetooth).toBool());
+    window.findChild<QRadioButton *>("rbModeServer")->click();
+    QVERIFY(window.findChild<QWidget *>("sharingTransportSelector")->isVisible());
+    QVERIFY(!automatic->isVisible());
+    QVERIFY(!network->isChecked() && bluetooth->isChecked());
   }
 
   void constructingAWindowDoesNotOwnTheProductionInstanceEndpoint()
@@ -369,6 +538,8 @@ private Q_SLOTS:
     Settings::setValue(Settings::Connection::InitialTransport, "network");
     Settings::setValue(Settings::Connection::BluetoothPeer, "");
     Settings::setValue(Settings::Connection::AutoBackup, true);
+    Settings::setValue(Settings::Connection::ShareNetwork, true);
+    Settings::setValue(Settings::Connection::ShareBluetooth, true);
     Settings::setValue(Settings::Gui::AutoStartCore, false);
     Settings::setValue(Settings::Gui::LogExpanded, false);
     Settings::setValue(Settings::Gui::WindowGeometry, QRect(0, 0, 971, 197));
@@ -391,7 +562,7 @@ private Q_SLOTS:
     auto host = window.findChild<QLineEdit *>("lineHostname");
     QVERIFY(server && client && action && host);
     QCOMPARE(action->isEnabled(), inputControlAllowed());
-    QVERIFY(!window.findChild<QWidget *>("serverOptions")->isHidden());
+    QVERIFY(!window.findChild<QWidget *>("sharingTransportSelector")->isHidden());
     client->click();
     QCOMPARE(window.coreMode(), Settings::CoreMode::Client);
     QVERIFY(window.findChild<QWidget *>("serverOptions")->isHidden());
@@ -400,10 +571,6 @@ private Q_SLOTS:
     host->setText("192.0.2.42");
     QCOMPARE(action->isEnabled(), inputControlAllowed());
     QCOMPARE(Settings::value(Settings::Client::RemoteHost).toString(), QString("192.0.2.42"));
-    auto devices = window.findChild<QListWidget *>("deviceList");
-    QCOMPARE(devices->count(), 1);
-    QVERIFY(devices->item(0)->text().contains("192.0.2.42"));
-    QVERIFY(devices->item(0)->text().contains("Not connected"));
     host->clear();
     QVERIFY(!action->isEnabled());
     server->click();
@@ -476,20 +643,23 @@ private Q_SLOTS:
 #endif
   }
 
-  void configuredDevicesAreNotReportedAsConnected()
+  void recentServersAreAvailableWithoutADeviceSection()
   {
+    Settings::setValue(Settings::Gui::KnownServers, QVariantMap{{"192.0.2.42", "Work computer"}});
+    Settings::setValue(Settings::Gui::RecentServers, QStringList{"192.0.2.43"});
     MainWindow window;
-    window.serverConfig().addClient("home-test-peer");
-    Settings::instance()->serverSettingsChanged();
-    auto devices = window.findChild<QListWidget *>("deviceList");
-    bool found = false;
-    for (int i = 0; i < devices->count(); ++i) {
-      if (devices->item(i)->text().contains("home-test-peer")) {
-        found = true;
-        QVERIFY(devices->item(i)->text().contains("Not connected"));
-      }
-    }
-    QVERIFY(found);
+    window.show();
+    window.findChild<QRadioButton *>("rbModeClient")->click();
+    auto host = window.findChild<QLineEdit *>("lineHostname");
+    auto completion = host->completer();
+    QVERIFY(completion);
+    auto addresses = qobject_cast<QStringListModel *>(completion->model())->stringList();
+    QVERIFY(addresses.contains("192.0.2.42"));
+    QVERIFY(addresses.contains("192.0.2.43"));
+    QVERIFY(!window.findChild<QWidget *>("deviceList"));
+    QVERIFY(!window.findChild<QWidget *>("homeEmptyState"));
+    window.findChild<QPushButton *>("btnDevices")->click();
+    QVERIFY(window.findChild<QPushButton *>("btnDevices")->isChecked());
   }
 
   void retranslationPreservesIdentityAndIcons()
@@ -530,23 +700,30 @@ private Q_SLOTS:
     QVERIFY(window.findChild<QLineEdit *>("lineHostname")->width() >= 120);
   }
 
-  void devicesUseTwoCardsAtPrototypeWidth()
+  void normalHomepageFitsOneScreen_data()
   {
-    Settings::setValue(Settings::Gui::RecentComputers, QStringList{"desktop-peer", "laptop-peer"});
+    QTest::addColumn<QSize>("size");
+    QTest::newRow("minimum") << QSize(740, 600);
+    QTest::newRow("laptop") << QSize(886, 600);
+    QTest::newRow("desktop") << QSize(1060, 790);
+  }
+  void normalHomepageFitsOneScreen()
+  {
+    QFETCH(QSize, size);
     MainWindow window;
-    window.resize(747, 840);
+    window.resize(size);
     window.show();
-    QCoreApplication::processEvents();
-    auto list = window.findChild<QListWidget *>("deviceList");
-    QVERIFY(list->count() >= 2);
-    const auto first = list->visualItemRect(list->item(0));
-    const auto second = list->visualItemRect(list->item(1));
-    QCOMPARE(first.top(), second.top());
-    QVERIFY(second.left() >= first.right());
-    QVERIFY(second.right() <= list->viewport()->rect().right());
-    QVERIFY(first.height() >= 70);
-    QVERIFY(list->item(0)->data(HomeDeviceList::Name).isValid());
-    QVERIFY(!list->item(0)->data(HomeDeviceList::Connected).toBool());
+    auto scroll = window.findChild<QScrollArea *>("homeScroll");
+    for (auto role : {"rbModeServer", "rbModeClient"}) {
+      window.findChild<QRadioButton *>(role)->click();
+      window.findChild<QWidget *>("permissionBanner")->hide();
+      QCoreApplication::processEvents();
+      QCOMPARE(scroll->verticalScrollBar()->maximum(), 0);
+      auto footer = window.findChild<QWidget *>("homeFooter");
+      QVERIFY(scroll->viewport()->rect().contains(QRect(footer->mapTo(scroll->viewport(), QPoint()), footer->size())));
+      QVERIFY(window.findChild<QLabel *>("lblShareHint")->isHidden());
+      QVERIFY(window.findChild<QLabel *>("lblActionHint")->isHidden());
+    }
   }
 
   void primaryActionFitsFirstScreenWithLongIdentity_data()
@@ -587,12 +764,6 @@ private Q_SLOTS:
       }
     }
     QCOMPARE(window.findChild<QLabel *>("lblBrand")->text(), QString("BMouse"));
-    auto empty = window.findChild<QWidget *>("homeEmptyState");
-    QVERIFY(empty->isVisible());
-    QCOMPARE(empty->width(), localCard->width());
-    auto emptyAction = window.findChild<QPushButton *>("btnEmptyAction");
-    emptyAction->click();
-    QVERIFY(window.findChild<QPushButton *>("btnDevices")->isChecked());
   }
 
   void renderEvidence()
@@ -619,15 +790,13 @@ private Q_SLOTS:
       window.findChild<QPushButton *>("btnToggleCore")->setEnabled(true);
       QCoreApplication::processEvents();
       QVERIFY(window.grab().save(output + "/home-sharing.png"));
-      window.resize(747, 840);
+      window.resize(747, 600);
       QCoreApplication::processEvents();
       window.findChild<QWidget *>("permissionBanner")->hide();
       window.findChild<QPushButton *>("btnToggleCore")->setEnabled(true);
-      auto cards = window.findChild<QListWidget *>("deviceList");
-      QCOMPARE(cards->count(), 2);
-      QVERIFY(cards->visualItemRect(cards->item(1)).right() <= cards->viewport()->rect().right());
       QCoreApplication::processEvents();
       QVERIFY(window.grab().save(output + "/home-prototype-width.png"));
+      window.resize(1060, 650);
       window.findChild<QRadioButton *>("rbModeClient")->click();
       window.findChild<QLineEdit *>("lineHostname")->setText("192.0.2.42");
       QCoreApplication::processEvents();
@@ -643,6 +812,24 @@ private Q_SLOTS:
       if (crossfade->state() == QAbstractAnimation::Running)
         crossfade->setCurrentTime(crossfade->duration());
       QVERIFY(window.grab().save(output + "/home-receiving.png"));
+      window.findChild<QPushButton *>("btnInitialBluetooth")->click();
+      QCoreApplication::processEvents();
+      QVERIFY(window.grab().save(output + "/home-receiving-bluetooth.png"));
+      auto *picker = static_cast<DiscoveryComboBox *>(window.findChild<QComboBox *>("bluetoothTarget"));
+      picker->refreshRequested = {}; // Visual fixture must not scan or request OS permissions.
+      auto *devices = static_cast<NearbyBluetoothModel *>(picker->model());
+      devices->addDevice("work", "AA:00:00:00:00:01", QString::fromUtf8("工作电脑"), true);
+      devices->addDevice("mac", "AA:00:00:00:00:02", "MacBook Pro", true);
+      devices->addDevice("speaker", "AA:00:00:00:00:03", QString::fromUtf8("蓝牙音箱"), true);
+      picker->setCurrentIndex(devices->rowForIdentity("mac"));
+      picker->showPopup();
+      QCoreApplication::processEvents();
+      auto *popupMotion = picker->findChild<QParallelAnimationGroup *>("bluetoothPopupAnimation");
+      popupMotion->setCurrentTime(popupMotion->duration());
+      QVERIFY(picker->view()->window()->grab().save(output + "/bluetooth-popup.png"));
+      picker->hidePopup();
+      popupMotion->setCurrentTime(popupMotion->duration());
+      window.findChild<QPushButton *>("btnInitialNetwork")->click();
       window.resize(820, 600);
       QCoreApplication::processEvents();
       window.findChild<QWidget *>("permissionBanner")->hide();

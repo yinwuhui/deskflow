@@ -30,6 +30,7 @@ enum class HomeIcon
   Search,
   Pointer,
   ChevronRight,
+  ChevronDown,
   Menu,
   MonitorUp,
   MonitorDown,
@@ -80,6 +81,10 @@ inline QIcon homeIcon(HomeIcon icon, const QColor &color = QColor("#77818e"))
       break;
     case HomeIcon::Pointer:
       p.drawPolygon(QPolygonF{QPointF(4, 3), QPointF(21, 10), QPointF(13, 13), QPointF(10, 21)});
+      break;
+    case HomeIcon::ChevronDown:
+      line(5, 9, 12, 16);
+      line(12, 16, 19, 9);
       break;
     case HomeIcon::ChevronRight:
       line(9, 5, 16, 12);

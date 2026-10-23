@@ -222,6 +222,8 @@ void ServerApp::startMdnsPublisher()
 {
   if (m_mdnsPublisher)
     return;
+  if (localTransportPort() && !Settings::value(Settings::Connection::ShareNetwork).toBool())
+    return;
   const auto port = localTransportPort() ? Settings::value(Settings::Core::Port).toInt()
                                          : static_cast<int>(m_config->getDeskflowAddress().getPort());
   const QString name = QString::fromStdString(m_name);
