@@ -513,6 +513,14 @@ QString Settings::settingsPath()
 
 QString Settings::tlsDir()
 {
+#ifdef Q_OS_WIN
+  if (!isPortableMode() && value(Core::ProcessMode).value<ProcessMode>() == ProcessMode::Desktop) {
+    auto directory = QFileInfo(settingsFile()).absolutePath();
+    if (QDir(directory) == QDir(SystemDir))
+      directory = UserDir;
+    return QDir(directory).filePath("tls");
+  }
+#endif
   return QStringLiteral("%1/tls").arg(instance()->settingsPath());
 }
 

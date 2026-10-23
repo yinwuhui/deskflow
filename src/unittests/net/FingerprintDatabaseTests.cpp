@@ -9,6 +9,7 @@
 
 #include "net/Fingerprint.h"
 #include "net/FingerprintDatabase.h"
+#include <QTemporaryDir>
 
 void FingerprintDatabaseTests::readFile()
 {
@@ -49,6 +50,14 @@ void FingerprintDatabaseTests::writeFile()
   QCOMPARE(stream.readAll(), R"(v2:sha1:abcdef0001020304050607080910111213141516
 v2:sha1:0001020304050607080910111213141516abcdef
 )");
+
+  QTemporaryDir profile;
+  QVERIFY(profile.isValid());
+  const auto path = profile.filePath("tls/trusted-clients");
+  QVERIFY(db.write(path));
+  FingerprintDatabase restored;
+  restored.read(path);
+  QCOMPARE(restored.fingerprints(), db.fingerprints());
 }
 
 void FingerprintDatabaseTests::clear()

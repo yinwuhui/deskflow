@@ -10,6 +10,29 @@
 #include <memory>
 #include <openssl/pem.h>
 
+class SynchronousWriteDevice : public QIODevice
+{
+public:
+  SynchronousWriteDevice() { open(QIODevice::ReadWrite); }
+  bool writing = false, reentered = false;
+  QByteArray output;
+  bool isSequential() const override { return true; }
+protected:
+  qint64 readData(char *, qint64) override { return 0; }
+  qint64 writeData(const char *data, qint64 size) override
+  {
+    if (writing) {
+      reentered = true;
+      return -1;
+    }
+    writing = true;
+    output.append(data, size);
+    Q_EMIT bytesWritten(size);
+    writing = false;
+    return size;
+  }
+};
+
 class FailoverTests : public QObject
 {
   Q_OBJECT
@@ -111,6 +134,19 @@ private Q_SLOTS:
     client = std::make_unique<FailoverSession>(false);
     server = std::make_unique<FailoverSession>(true);
     server->setCorePort(coreServer.serverPort());
+  }
+  void synchronousWriteNotificationDoesNotReenterTlsDrain()
+  {
+    auto *wire = new SynchronousWriteDevice;
+    TlsChannel channel(wire, false, alice, bobPin, this);
+    QSignalSpy disconnected(&channel, &TlsChannel::disconnected);
+    channel.start();
+    QVERIFY(!wire->output.isEmpty());
+    const auto hello = wire->output;
+    QCoreApplication::processEvents();
+    QVERIFY(!wire->reentered);
+    QCOMPARE(wire->output, hello);
+    QCOMPARE(disconnected.count(), 0);
   }
   void cleanup()
   {

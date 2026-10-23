@@ -52,8 +52,11 @@ void SettingsTests::serverConfigurationPaths()
   Settings::setValue(Settings::Core::ProcessMode, Settings::ProcessMode::Desktop);
 #ifdef Q_OS_WIN
   QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), QFileInfo(Settings::settingsFile()).absolutePath());
+  QCOMPARE(Settings::tlsDir(), QDir(QFileInfo(Settings::settingsFile()).absolutePath()).filePath("tls"));
+  QCOMPARE(QFileInfo(Settings::tlsTrustedClientsDb()).absolutePath(), Settings::tlsDir());
   Settings::setValue(Settings::Core::ProcessMode, Settings::ProcessMode::Service);
   QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), Settings::SystemDir);
+  QCOMPARE(Settings::tlsDir(), QDir(Settings::SystemDir).filePath("tls"));
 #else
   QCOMPARE(QFileInfo(Settings::serverConfigFile()).absolutePath(), Settings::settingsPath());
 #endif

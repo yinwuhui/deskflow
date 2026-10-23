@@ -33,11 +33,17 @@ TlsChannel::TlsChannel(QIODevice *wire, bool server, const QString &pem, const Q
   m_deadline.setInterval(8000);
   connect(&m_deadline, &QTimer::timeout, this, [this] { abort("TLS handshake timeout"); });
   connect(wire, &QIODevice::readyRead, this, &TlsChannel::drive);
-  connect(wire, &QIODevice::bytesWritten, this, [this] {
-    drain();
-    if (encrypted())
-      Q_EMIT bytesWritten(0);
-  });
+  // RFCOMM backends may emit bytesWritten inside write(). Defer draining until
+  // the current write has removed its accepted bytes from m_cipher.
+  connect(
+      wire, &QIODevice::bytesWritten, this,
+      [this] {
+        drain();
+        if (encrypted())
+          Q_EMIT bytesWritten(0);
+      },
+      Qt::QueuedConnection
+  );
   if (auto *tcp = qobject_cast<QTcpSocket *>(wire)) {
     tcp->setReadBufferSize(Limit);
     tcp->setSocketOption(QAbstractSocket::LowDelayOption, 1);
