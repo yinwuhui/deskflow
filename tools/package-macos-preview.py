@@ -19,9 +19,13 @@ def main():
     parser.add_argument("--build-dir", required=True, type=Path)
     parser.add_argument("--qt-bin", required=True, type=Path)
     parser.add_argument("--identity", required=True, help="Apple Development signing identity or SHA-1")
+    parser.add_argument("--qt-bluetooth-library", type=Path,
+                        help="Use a rebuilt, ABI-compatible QtBluetooth library after macdeployqt")
     parser.add_argument("--cmake", default="cmake")
     parser.add_argument("--output-dir", type=Path, default=root / "dist/home-refined")
     args = parser.parse_args()
+    if args.qt_bluetooth_library and not args.qt_bluetooth_library.is_file():
+        parser.error("--qt-bluetooth-library must name an existing rebuilt library.")
     if args.identity.strip() == "-":
         parser.error("A certificate is required; ad-hoc signing breaks permission continuity.")
 
@@ -53,6 +57,12 @@ def main():
         # Deployment rewrites Mach-O load paths; certificate signing must be the final step.
         run(args.qt_bin / "macdeployqt", app,
             "-executable=" + str(app / "Contents/MacOS/busymouse-core"), "-always-overwrite", "-no-strip")
+        # macdeployqt copies the SDK library, so apply an explicit runtime fix afterwards.
+        if args.qt_bluetooth_library:
+            bluetooth = app / "Contents/Frameworks/QtBluetooth.framework/Versions/A/QtBluetooth"
+            if not bluetooth.is_file():
+                raise RuntimeError("The preview does not contain the QtBluetooth framework.")
+            shutil.copy2(args.qt_bluetooth_library, bluetooth)
         # All dependencies are bundled and signed together; no development-only entitlements are needed.
         run("/usr/bin/codesign", "--force", "--deep", "--options", "runtime", "--timestamp=none",
             "--sign", args.identity, app)

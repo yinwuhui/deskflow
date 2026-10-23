@@ -1,0 +1,16 @@
+--- a/src/bluetooth/darwin/btrfcommchannel.mm
++++ b/src/bluetooth/darwin/btrfcommchannel.mm
+@@ -142,10 +142,11 @@
+ {
+     Q_UNUSED(rfcommChannel);
+ 
+-    Q_ASSERT_X(channelOpenTimer.get(), Q_FUNC_INFO, "invalid timer (null)");
+     Q_ASSERT_X(delegate, Q_FUNC_INFO, "invalid delegate (null)");
+ 
+-    channelOpenTimer->stop();
++    // Timer can be null for an incoming server channel.
++    if (channelOpenTimer)
++        channelOpenTimer->stop();
+     if (error != kIOReturnSuccess) {
+         delegate->setChannelError(error);
+         delegate->channelClosed();
