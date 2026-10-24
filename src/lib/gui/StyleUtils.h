@@ -122,12 +122,14 @@ inline QString iconMode()
 
 inline void updateIconTheme()
 {
-  // Sets the fallback icon path and fallback theme
-  const auto themeName = QStringLiteral("%1-%2").arg(kAppId, iconMode());
-  if (QIcon::themeName().isEmpty() || QIcon::themeName().startsWith(kAppId))
-    QIcon::setThemeName(themeName);
-  else
-    QIcon::setFallbackThemeName(themeName);
+  // Keep menu and dialog icons consistent with the custom pages, including on
+  // desktops with a different system icon theme or a renamed application id.
+  const auto themeName = QStringLiteral("deskflow-%1").arg(iconMode());
+  auto searchPaths = QIcon::themeSearchPaths();
+  searchPaths.removeAll(QStringLiteral(":/icons"));
+  searchPaths.prepend(QStringLiteral(":/icons"));
+  QIcon::setThemeSearchPaths(searchPaths);
+  QIcon::setThemeName(themeName);
   QIcon::setFallbackSearchPaths({QStringLiteral(":/icons/%1").arg(themeName)});
 }
 } // namespace deskflow::gui

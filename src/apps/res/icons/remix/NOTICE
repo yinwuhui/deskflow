@@ -1,0 +1,12 @@
+Remix Icon
+https://remixicon.com/
+https://github.com/Remix-Design/RemixIcon
+
+Remix Icon by Remix Design, licensed under Apache License 2.0.
+The bundled iconfont downloads were compared against Remix Icon 4.5.0.
+Individual download IDs and source information are in manifest.json.
+
+Modifications for this application:
+- Normalized SVG color attributes to currentColor and removed web display styles.
+- Rendered PNG variants for the application's light and dark icon themes.
+- Added a diagonal slash to bluetooth-line to create bluetooth-disabled-line.

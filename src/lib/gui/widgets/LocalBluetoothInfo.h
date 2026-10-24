@@ -13,6 +13,11 @@ class LocalBluetoothInfo : public QWidget
 public:
   explicit LocalBluetoothInfo(QWidget *parent = nullptr);
   void refresh();
+  void setConnected(bool connected)
+  {
+    m_connected = connected;
+    refresh();
+  }
   void setSharingState(const QString &state)
   {
     m_sharingState = state;
@@ -22,9 +27,11 @@ public:
 private:
   void requestAccess();
   HomeIdentityLabel *m_name;
+  QLabel *m_icon;
   QLabel *m_state;
   QPushButton *m_action;
   QBluetoothLocalDevice *m_adapter = nullptr;
   QString m_sharingState;
   bool m_requesting = false;
+  bool m_connected = false;
 };

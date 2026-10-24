@@ -818,6 +818,45 @@ private Q_SLOTS:
     }
   }
 
+  void navigationIconsFollowSelection()
+  {
+    MainWindow window;
+    window.show();
+    QCoreApplication::processEvents();
+    const auto names = {"btnHome", "btnDevices", "btnLayout", "btnSettings"};
+    const auto output = qEnvironmentVariable("DESKFLOW_NAV_EVIDENCE");
+    for (const auto selectedName : {"btnDevices", "btnLayout", "btnSettings", "btnHome"}) {
+      auto *selected = window.findChild<QPushButton *>(selectedName);
+      QVERIFY(selected);
+      selected->click();
+      QCoreApplication::processEvents();
+      for (const auto name : names) {
+        auto *button = window.findChild<QPushButton *>(name);
+        QCOMPARE(button->isChecked(), button == selected);
+        const auto off = button->icon().pixmap(22, 22, QIcon::Normal, QIcon::Off).toImage();
+        const auto on = button->icon().pixmap(22, 22, QIcon::Normal, QIcon::On).toImage();
+        QVERIFY(!off.isNull());
+        QVERIFY(!on.isNull());
+        QVERIFY(on != off);
+        int offAlpha = 0, onAlpha = 0;
+        for (int y = 0; y < on.height(); ++y) {
+          for (int x = 0; x < on.width(); ++x) {
+            offAlpha += off.pixelColor(x, y).alpha();
+            onAlpha += on.pixelColor(x, y).alpha();
+          }
+        }
+        QVERIFY2(onAlpha > offAlpha, name); // Selected icon changes shape, not just color.
+      }
+      if (!output.isEmpty())
+        QVERIFY(window.grab().save(output + "/" + selectedName + ".png"));
+    }
+    // Navigation through code must display the same selected variant as a click.
+    auto *devices = window.findChild<QPushButton *>("btnDevices");
+    devices->setChecked(true);
+    QVERIFY(devices->isChecked());
+    QVERIFY(!window.findChild<QPushButton *>("btnHome")->isChecked());
+  }
+
   void windowControlsFollowPlatformAndMinimize()
   {
     MainWindow window;

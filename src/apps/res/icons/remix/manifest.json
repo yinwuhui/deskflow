@@ -1,0 +1,413 @@
+{
+  "family": "Remix Icon line",
+  "reference_version": "4.5.0",
+  "license": "Apache-2.0",
+  "retrieved": "2026-10-24",
+  "primary_iconfont_collection": "https://www.iconfont.cn/collections/detail?cid=50344",
+  "files": [
+    {
+      "file": "svg/add-line.svg",
+      "iconfont_id": 39249744,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=add-line",
+      "official_name": "add-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/arrow-down-circle-line.svg",
+      "iconfont_id": 42191205,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-down-circle-line",
+      "official_name": "arrow-down-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/arrow-down-line.svg",
+      "iconfont_id": 42191204,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-down-line",
+      "official_name": "arrow-down-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/arrow-down-s-line.svg",
+      "iconfont_id": 42191207,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-down-s-line",
+      "official_name": "arrow-down-s-line",
+      "alpha_difference_vs_remix_4_5_0": 2e-06
+    },
+    {
+      "file": "svg/arrow-left-line.svg",
+      "iconfont_id": 42191222,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-left-line",
+      "official_name": "arrow-left-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/arrow-right-s-line.svg",
+      "iconfont_id": 42191240,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-right-s-line",
+      "official_name": "arrow-right-s-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000101
+    },
+    {
+      "file": "svg/arrow-up-circle-line.svg",
+      "iconfont_id": 42191251,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-up-circle-line",
+      "official_name": "arrow-up-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/arrow-up-line.svg",
+      "iconfont_id": 42191259,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=arrow-up-line",
+      "official_name": "arrow-up-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/bluetooth-connect-line.svg",
+      "iconfont_id": 42197932,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=bluetooth-connect-line",
+      "official_name": "bluetooth-connect-line",
+      "alpha_difference_vs_remix_4_5_0": 8.3e-05
+    },
+    {
+      "file": "svg/bluetooth-line.svg",
+      "iconfont_id": 42197942,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=bluetooth-line",
+      "official_name": "bluetooth-line",
+      "alpha_difference_vs_remix_4_5_0": 4.8e-05
+    },
+    {
+      "file": "svg/check-line.svg",
+      "iconfont_id": 15592486,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=check-line",
+      "official_name": "check-line",
+      "alpha_difference_vs_remix_4_5_0": 5e-06
+    },
+    {
+      "file": "svg/checkbox-blank-circle-line.svg",
+      "iconfont_id": 20693688,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=checkbox-blank-circle-line",
+      "official_name": "checkbox-blank-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/checkbox-circle-line.svg",
+      "iconfont_id": 48132669,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=checkbox-circle-line",
+      "official_name": "checkbox-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 1.1e-05
+    },
+    {
+      "file": "svg/close-line.svg",
+      "iconfont_id": 39249776,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=close-line",
+      "official_name": "close-line",
+      "alpha_difference_vs_remix_4_5_0": 5.2e-05
+    },
+    {
+      "file": "svg/computer-line.svg",
+      "iconfont_id": 42197940,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=computer-line",
+      "official_name": "computer-line",
+      "alpha_difference_vs_remix_4_5_0": 1.3e-05
+    },
+    {
+      "file": "svg/cursor-line.svg",
+      "iconfont_id": 42197639,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=cursor-line",
+      "official_name": "cursor-line",
+      "alpha_difference_vs_remix_4_5_0": 6.6e-05
+    },
+    {
+      "file": "svg/delete-bin-line.svg",
+      "iconfont_id": 34234453,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=delete-bin-line",
+      "official_name": "delete-bin-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/device-line.svg",
+      "iconfont_id": 42197950,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=device-line",
+      "official_name": "device-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/download-line.svg",
+      "iconfont_id": 39249806,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=download-line",
+      "official_name": "download-line",
+      "alpha_difference_vs_remix_4_5_0": 3e-06
+    },
+    {
+      "file": "svg/edit-line.svg",
+      "iconfont_id": 42194554,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=edit-line",
+      "official_name": "edit-line",
+      "alpha_difference_vs_remix_4_5_0": 9e-06
+    },
+    {
+      "file": "svg/equalizer-line.svg",
+      "iconfont_id": 41324134,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=equalizer-line",
+      "official_name": "equalizer-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/error-warning-line.svg",
+      "iconfont_id": 33929845,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=error-warning-line",
+      "official_name": "error-warning-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/file-copy-line.svg",
+      "iconfont_id": 42198847,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=file-copy-line",
+      "official_name": "file-copy-line",
+      "alpha_difference_vs_remix_4_5_0": 9e-06
+    },
+    {
+      "file": "svg/file-list-line.svg",
+      "iconfont_id": 42198877,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=file-list-line",
+      "official_name": "file-list-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/fingerprint-line.svg",
+      "iconfont_id": 42197956,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=fingerprint-line",
+      "official_name": "fingerprint-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000279
+    },
+    {
+      "file": "svg/folder-open-line.svg",
+      "iconfont_id": 42198973,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=folder-open-line",
+      "official_name": "folder-open-line",
+      "alpha_difference_vs_remix_4_5_0": 9e-06
+    },
+    {
+      "file": "svg/home-line.svg",
+      "iconfont_id": 42192451,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=home-line",
+      "official_name": "home-line",
+      "alpha_difference_vs_remix_4_5_0": 3.5e-05
+    },
+    {
+      "file": "svg/information-line.svg",
+      "iconfont_id": 38627525,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=information-line",
+      "official_name": "information-line",
+      "alpha_difference_vs_remix_4_5_0": 3.3e-05
+    },
+    {
+      "file": "svg/keyboard-line.svg",
+      "iconfont_id": 42197982,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=keyboard-line",
+      "official_name": "keyboard-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/layout-grid-line.svg",
+      "iconfont_id": 42194595,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=layout-grid-line",
+      "official_name": "layout-grid-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/layout-left-line.svg",
+      "iconfont_id": 42194590,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=layout-left-line",
+      "official_name": "layout-left-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/link-unlink.svg",
+      "iconfont_id": 40320517,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=link-unlink",
+      "official_name": "link-unlink",
+      "alpha_difference_vs_remix_4_5_0": 8e-06
+    },
+    {
+      "file": "svg/links-line.svg",
+      "iconfont_id": 48667328,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=links-line",
+      "official_name": "links-line",
+      "alpha_difference_vs_remix_4_5_0": 1.7e-05
+    },
+    {
+      "file": "svg/loader-4-line.svg",
+      "iconfont_id": 40000331,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=loader-4-line",
+      "official_name": "loader-4-line",
+      "alpha_difference_vs_remix_4_5_0": 7e-06
+    },
+    {
+      "file": "svg/lock-line.svg",
+      "iconfont_id": 10933074,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=lock-line",
+      "official_name": "lock-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/lock-unlock-line.svg",
+      "iconfont_id": 40000239,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=lock-unlock-line",
+      "official_name": "lock-unlock-line",
+      "alpha_difference_vs_remix_4_5_0": 6e-06
+    },
+    {
+      "file": "svg/logout-box-r-line.svg",
+      "iconfont_id": 39249882,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=logout-box-r-line",
+      "official_name": "logout-box-r-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/menu-line.svg",
+      "iconfont_id": 22641665,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=menu-line",
+      "official_name": "menu-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/picture-in-picture-exit-line.svg",
+      "iconfont_id": 17511470,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=picture-in-picture-exit-line",
+      "official_name": "picture-in-picture-exit-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/picture-in-picture-line.svg",
+      "iconfont_id": 29524570,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=picture-in-picture-line",
+      "official_name": "picture-in-picture-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/play-circle-line.svg",
+      "iconfont_id": 35469897,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=play-circle-line",
+      "official_name": "play-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 1.5e-05
+    },
+    {
+      "file": "svg/question-line.svg",
+      "iconfont_id": 31732946,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=question-line",
+      "official_name": "question-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000123
+    },
+    {
+      "file": "svg/refresh-line.svg",
+      "iconfont_id": 22641687,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=refresh-line",
+      "official_name": "refresh-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000313
+    },
+    {
+      "file": "svg/save-line.svg",
+      "iconfont_id": 42198037,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=save-line",
+      "official_name": "save-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/search-line.svg",
+      "iconfont_id": 39249944,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=search-line",
+      "official_name": "search-line",
+      "alpha_difference_vs_remix_4_5_0": 4.6e-05
+    },
+    {
+      "file": "svg/settings-3-line.svg",
+      "iconfont_id": 40000222,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=settings-3-line",
+      "official_name": "settings-3-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000136
+    },
+    {
+      "file": "svg/shield-check-line.svg",
+      "iconfont_id": 40000289,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=shield-check-line",
+      "official_name": "shield-check-line",
+      "alpha_difference_vs_remix_4_5_0": 6e-06
+    },
+    {
+      "file": "svg/shield-keyhole-line.svg",
+      "iconfont_id": 40000266,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=shield-keyhole-line",
+      "official_name": "shield-keyhole-line",
+      "alpha_difference_vs_remix_4_5_0": 8e-05
+    },
+    {
+      "file": "svg/shield-line.svg",
+      "iconfont_id": 29525073,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=shield-line",
+      "official_name": "shield-line",
+      "alpha_difference_vs_remix_4_5_0": 1.3e-05
+    },
+    {
+      "file": "svg/stop-circle-line.svg",
+      "iconfont_id": 45612409,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=stop-circle-line",
+      "official_name": "stop-circle-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/subtract-line.svg",
+      "iconfont_id": 39250005,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=subtract-line",
+      "official_name": "subtract-line",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/wifi-line.svg",
+      "iconfont_id": 42198080,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=wifi-line",
+      "official_name": "wifi-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000129
+    },
+    {
+      "file": "svg/wifi-off-line.svg",
+      "iconfont_id": 42198081,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=wifi-off-line",
+      "official_name": "wifi-off-line",
+      "alpha_difference_vs_remix_4_5_0": 0.000119
+    },
+    {
+      "file": "svg/bluetooth-disabled-line.svg",
+      "derived_from": "svg/bluetooth-line.svg",
+      "modification": "Added diagonal slash; this is a local derivative, not an original iconfont download."
+    },
+    {
+      "file": "svg/computer-fill.svg",
+      "iconfont_id": 42197943,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=computer-fill",
+      "official_name": "computer-fill",
+      "alpha_difference_vs_remix_4_5_0": 1.3e-05
+    },
+    {
+      "file": "svg/layout-left-fill.svg",
+      "iconfont_id": 42194587,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=layout-left-fill",
+      "official_name": "layout-left-fill",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/layout-grid-fill.svg",
+      "iconfont_id": 42194600,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=layout-grid-fill",
+      "official_name": "layout-grid-fill",
+      "alpha_difference_vs_remix_4_5_0": 0
+    },
+    {
+      "file": "svg/settings-3-fill.svg",
+      "iconfont_id": 44148055,
+      "iconfont_url": "https://www.iconfont.cn/search/index?searchType=icon&q=settings-3-fill",
+      "official_name": "settings-3-fill",
+      "alpha_difference_vs_remix_4_5_0": 7.7e-05
+    }
+  ]
+}

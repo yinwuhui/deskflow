@@ -5,6 +5,15 @@ add_subdirectory(config)
 add_subdirectory(core)
 
 create_test(
+  NAME IconTests
+  DEPENDS gui
+  SOURCE IconTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
+)
+set_tests_properties(IconTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+target_sources(IconTests PRIVATE ../../apps/res/deskflow.qrc)
+
+create_test(
   NAME DeviceListPageTests
   DEPENDS gui
   SOURCE DeviceListPageTests.cpp

@@ -51,6 +51,7 @@
 #include <QFileDialog>
 #include <QFocusEvent>
 #include <QGraphicsOpacityEffect>
+#include <QJsonArray>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
@@ -344,8 +345,10 @@ void MainWindow::setupHome()
     ui->lineHostname->setReadOnly(running);
     ui->btnBrowseServers->setEnabled(!running);
     if (!running || state == ProcessState::Starting) {
-      if (auto *bluetooth = findChild<LocalBluetoothInfo *>())
+      if (auto *bluetooth = findChild<LocalBluetoothInfo *>()) {
+        bluetooth->setConnected(false);
         bluetooth->setSharingState(running && m_coreProcess.mode() == CoreMode::Server ? tr("Starting…") : QString());
+      }
       if (auto *network = findChild<QLabel *>("lblLocalNetworkState"))
         network->setText(running && m_coreProcess.mode() == CoreMode::Server ? tr("Starting…") : tr("Available"));
     }
@@ -354,6 +357,17 @@ void MainWindow::setupHome()
   });
   connect(backupPanel, &BackupConnectionPanel::transportChanged, this, &MainWindow::updateModeControls);
   connect(backupPanel, &BackupConnectionPanel::snapshotChanged, this, [this](const QJsonObject &snapshot) {
+    bool bluetoothConnected = false;
+    for (const auto &peer : snapshot.value("peers").toArray()) {
+      for (const auto &channel : peer.toObject().value("channels").toArray()) {
+        const auto lane = channel.toObject();
+        const auto state = lane.value("state").toString();
+        if (lane.value("type") == "bluetooth" && (state == "active" || state == "ready"))
+          bluetoothConnected = true;
+      }
+    }
+    if (auto *bluetooth = findChild<LocalBluetoothInfo *>())
+      bluetooth->setConnected(bluetoothConnected);
     if (m_coreProcess.mode() != CoreMode::Server)
       return;
     if (auto *state = findChild<QLabel *>("lblLocalNetworkState"))
@@ -510,10 +524,10 @@ void MainWindow::setupHome()
   ui->btnCopyAddress->setFixedSize(42, 26);
   ui->lblShareTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   ui->lblShareHint->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-  ui->btnHome->setIcon(homeIcon(HomeIcon::Monitor, QColor("#087fff")));
-  ui->btnDevices->setIcon(homeIcon(HomeIcon::Panel));
-  ui->btnLayout->setIcon(homeIcon(HomeIcon::Layout));
-  ui->btnSettings->setIcon(homeIcon(HomeIcon::Settings));
+  ui->btnHome->setIcon(homeNavigationIcon(HomeIcon::Monitor, HomeIcon::MonitorSelected));
+  ui->btnDevices->setIcon(homeNavigationIcon(HomeIcon::Panel, HomeIcon::PanelSelected));
+  ui->btnLayout->setIcon(homeNavigationIcon(HomeIcon::Layout, HomeIcon::LayoutSelected));
+  ui->btnSettings->setIcon(homeNavigationIcon(HomeIcon::Settings, HomeIcon::SettingsSelected));
   ui->btnCopyAddress->setIcon(homeIcon(HomeIcon::Copy, QColor("#267ed9")));
   ui->btnEditName->setIcon(homeIcon(HomeIcon::Edit, QColor("#267ed9")));
   ui->btnHelp->setIcon(homeIcon(HomeIcon::Help));

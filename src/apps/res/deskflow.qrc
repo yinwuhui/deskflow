@@ -10,170 +10,388 @@
         <file>brand/deskflow-1024.png</file>
         <file>brand/deskflow-symbolic-dark.png</file>
         <file>brand/deskflow-symbolic-light.png</file>
-        <file>icons/deskflow-dark/actions/16/configure.svg</file>
-        <file>icons/deskflow-dark/actions/16/edit-copy.svg</file>
-        <file>icons/deskflow-dark/actions/16/document-edit.svg</file>
-        <file>icons/deskflow-dark/actions/16/document-open.svg</file>
-        <file>icons/deskflow-dark/actions/16/document-save-as.svg</file>
-        <file>icons/deskflow-dark/actions/16/go-down.svg</file>
-        <file>icons/deskflow-dark/actions/16/go-up.svg</file>
-        <file>icons/deskflow-dark/actions/16/help-about.svg</file>
-        <file>icons/deskflow-dark/actions/16/network-connect.svg</file>
-        <file>icons/deskflow-dark/actions/16/network-disconnect.svg</file>
-        <file>icons/deskflow-dark/actions/16/process-stop.svg</file>
-        <file>icons/deskflow-dark/actions/16/system-run.svg</file>
-        <file>icons/deskflow-dark/actions/16/system-search.svg</file>
-        <file>icons/deskflow-dark/actions/16/view-close.svg</file>
-        <file>icons/deskflow-dark/actions/16/view-refresh.svg</file>
-        <file>icons/deskflow-dark/actions/16/window-minimize-pip.svg</file>
-        <file>icons/deskflow-dark/actions/16/window-restore-pip.svg</file>
-        <file>icons/deskflow-dark/actions/22/configure.svg</file>
-        <file>icons/deskflow-dark/actions/22/edit-copy.svg</file>
-        <file>icons/deskflow-dark/actions/22/document-edit.svg</file>
-        <file>icons/deskflow-dark/actions/22/document-open.svg</file>
-        <file>icons/deskflow-dark/actions/22/document-save-as.svg</file>
-        <file>icons/deskflow-dark/actions/22/fingerprint.svg</file>
-        <file>icons/deskflow-dark/actions/22/go-down.svg</file>
-        <file>icons/deskflow-dark/actions/22/go-up.svg</file>
-        <file>icons/deskflow-dark/actions/22/help-about.svg</file>
-        <file>icons/deskflow-dark/actions/22/network-connect.svg</file>
-        <file>icons/deskflow-dark/actions/22/network-disconnect.svg</file>
-        <file>icons/deskflow-dark/actions/22/process-stop.svg</file>
-        <file>icons/deskflow-dark/actions/22/question.svg</file>
-        <file>icons/deskflow-dark/actions/22/system-run.svg</file>
-        <file>icons/deskflow-dark/actions/22/system-search.svg</file>
-        <file>icons/deskflow-dark/actions/22/view-close.svg</file>
-        <file>icons/deskflow-dark/actions/22/view-refresh.svg</file>
-        <file>icons/deskflow-dark/actions/22/window-minimize-pip.svg</file>
-        <file>icons/deskflow-dark/actions/22/window-restore-pip.svg</file>
-        <file>icons/deskflow-dark/actions/24/configure.svg</file>
-        <file>icons/deskflow-dark/actions/24/edit-copy.svg</file>
-        <file>icons/deskflow-dark/actions/24/document-edit.svg</file>
-        <file>icons/deskflow-dark/actions/24/document-open.svg</file>
-        <file>icons/deskflow-dark/actions/24/document-save-as.svg</file>
-        <file>icons/deskflow-dark/actions/24/go-down.svg</file>
-        <file>icons/deskflow-dark/actions/24/go-up.svg</file>
-        <file>icons/deskflow-dark/actions/24/edit-clear-all.svg</file>
-        <file>icons/deskflow-dark/actions/24/fingerprint.svg</file>
-        <file>icons/deskflow-dark/actions/24/help-about.svg</file>
-        <file>icons/deskflow-dark/actions/24/network-connect.svg</file>
-        <file>icons/deskflow-dark/actions/24/network-disconnect.svg</file>
-        <file>icons/deskflow-dark/actions/24/process-stop.svg</file>
-        <file>icons/deskflow-dark/actions/24/question.svg</file>
-        <file>icons/deskflow-dark/actions/24/system-run.svg</file>
-        <file>icons/deskflow-dark/actions/24/system-search.svg</file>
-        <file>icons/deskflow-dark/actions/24/view-close.svg</file>
-        <file>icons/deskflow-dark/actions/24/view-refresh.svg</file>
-        <file>icons/deskflow-dark/actions/24/window-minimize-pip.svg</file>
-        <file>icons/deskflow-dark/actions/24/window-restore-pip.svg</file>
-        <file>icons/deskflow-dark/actions/32/configure.svg</file>
-        <file>icons/deskflow-dark/actions/32/application-exit.svg</file>
-        <file>icons/deskflow-dark/actions/32/dialog-cancel.svg</file>
-        <file>icons/deskflow-dark/actions/32/dialog-ok.svg</file>
-        <file>icons/deskflow-dark/actions/32/dialog-ok-apply.svg</file>
-        <file>icons/deskflow-dark/actions/32/document-open.svg</file>
-        <file>icons/deskflow-dark/actions/32/document-save-as.svg</file>
-        <file>icons/deskflow-dark/actions/32/go-down.svg</file>
-        <file>icons/deskflow-dark/actions/32/go-up.svg</file>
-        <file>icons/deskflow-dark/actions/32/help-about.svg</file>
-        <file>icons/deskflow-dark/actions/32/view-refresh.svg</file>
-        <file>icons/deskflow-dark/actions/32/system-search.svg</file>
         <file>icons/deskflow-dark/apps/64/org.busymouse.busymouse.svg</file>
         <file>icons/deskflow-dark/apps/64/org.busymouse.busymouse-symbolic.svg</file>
-        <file>icons/deskflow-dark/devices/64/video-display.svg</file>
-        <file>icons/deskflow-dark/places/64/user-trash.svg</file>
-        <file>icons/deskflow-dark/status/32/software-updates-release.svg</file>
-        <file>icons/deskflow-dark/status/64/dialog-error.svg</file>
-        <file>icons/deskflow-dark/status/64/dialog-information.svg</file>
-        <file>icons/deskflow-dark/status/64/dialog-positive.svg</file>
-        <file>icons/deskflow-dark/status/64/dialog-question.svg</file>
-        <file>icons/deskflow-dark/status/64/dialog-warning.svg</file>
-        <file>icons/deskflow-dark/status/64/security-high.svg</file>
-        <file>icons/deskflow-dark/status/64/security-low.svg</file>
-        <file>icons/deskflow-dark/status/64/security-medium.svg</file>
-        <file>icons/deskflow-dark/index.theme</file>
-        <file>icons/deskflow-light/actions/16/configure.svg</file>
-        <file>icons/deskflow-light/actions/16/edit-clear-all.svg</file>
-        <file>icons/deskflow-light/actions/16/edit-copy.svg</file>
-        <file>icons/deskflow-light/actions/16/document-edit.svg</file>
-        <file>icons/deskflow-light/actions/16/document-open.svg</file>
-        <file>icons/deskflow-light/actions/16/document-save-as.svg</file>
-        <file>icons/deskflow-light/actions/16/go-down.svg</file>
-        <file>icons/deskflow-light/actions/16/go-up.svg</file>
-        <file>icons/deskflow-light/actions/16/help-about.svg</file>
-        <file>icons/deskflow-light/actions/16/network-connect.svg</file>
-        <file>icons/deskflow-light/actions/16/network-disconnect.svg</file>
-        <file>icons/deskflow-light/actions/16/process-stop.svg</file>
-        <file>icons/deskflow-light/actions/16/system-run.svg</file>
-        <file>icons/deskflow-light/actions/16/system-search.svg</file>
-        <file>icons/deskflow-light/actions/16/view-close.svg</file>
-        <file>icons/deskflow-light/actions/16/view-refresh.svg</file>
-        <file>icons/deskflow-light/actions/16/window-minimize-pip.svg</file>
-        <file>icons/deskflow-light/actions/16/window-restore-pip.svg</file>
-        <file>icons/deskflow-light/actions/22/configure.svg</file>
-        <file>icons/deskflow-light/actions/22/edit-clear-all.svg</file>
-        <file>icons/deskflow-light/actions/22/edit-copy.svg</file>
-        <file>icons/deskflow-light/actions/22/document-edit.svg</file>
-        <file>icons/deskflow-light/actions/22/document-open.svg</file>
-        <file>icons/deskflow-light/actions/22/document-save-as.svg</file>
-        <file>icons/deskflow-light/actions/22/fingerprint.svg</file>
-        <file>icons/deskflow-light/actions/22/go-down.svg</file>
-        <file>icons/deskflow-light/actions/22/go-up.svg</file>
-        <file>icons/deskflow-light/actions/22/network-connect.svg</file>
-        <file>icons/deskflow-light/actions/22/network-disconnect.svg</file>
-        <file>icons/deskflow-light/actions/22/help-about.svg</file>
-        <file>icons/deskflow-light/actions/22/process-stop.svg</file>
-        <file>icons/deskflow-light/actions/22/question.svg</file>
-        <file>icons/deskflow-light/actions/22/system-run.svg</file>
-        <file>icons/deskflow-light/actions/22/system-search.svg</file>
-        <file>icons/deskflow-light/actions/22/view-close.svg</file>
-        <file>icons/deskflow-light/actions/22/view-refresh.svg</file>
-        <file>icons/deskflow-light/actions/22/window-minimize-pip.svg</file>
-        <file>icons/deskflow-light/actions/22/window-restore-pip.svg</file>
-        <file>icons/deskflow-light/actions/24/configure.svg</file>
-        <file>icons/deskflow-light/actions/24/edit-clear-all.svg</file>
-        <file>icons/deskflow-light/actions/24/edit-copy.svg</file>
-        <file>icons/deskflow-light/actions/24/fingerprint.svg</file>
-        <file>icons/deskflow-light/actions/24/document-edit.svg</file>
-        <file>icons/deskflow-light/actions/24/document-open.svg</file>
-        <file>icons/deskflow-light/actions/24/document-save-as.svg</file>
-        <file>icons/deskflow-light/actions/24/go-down.svg</file>
-        <file>icons/deskflow-light/actions/24/go-up.svg</file>
-        <file>icons/deskflow-light/actions/24/help-about.svg</file>
-        <file>icons/deskflow-light/actions/24/network-connect.svg</file>
-        <file>icons/deskflow-light/actions/24/network-disconnect.svg</file>
-        <file>icons/deskflow-light/actions/24/process-stop.svg</file>
-        <file>icons/deskflow-light/actions/24/question.svg</file>
-        <file>icons/deskflow-light/actions/24/system-run.svg</file>
-        <file>icons/deskflow-light/actions/24/system-search.svg</file>
-        <file>icons/deskflow-light/actions/24/view-close.svg</file>
-        <file>icons/deskflow-light/actions/24/view-refresh.svg</file>
-        <file>icons/deskflow-light/actions/24/window-minimize-pip.svg</file>
-        <file>icons/deskflow-light/actions/24/window-restore-pip.svg</file>
-        <file>icons/deskflow-light/actions/32/configure.svg</file>
-        <file>icons/deskflow-light/actions/32/application-exit.svg</file>
-        <file>icons/deskflow-light/actions/32/dialog-cancel.svg</file>
-        <file>icons/deskflow-light/actions/32/dialog-ok.svg</file>
-        <file>icons/deskflow-light/actions/32/dialog-ok-apply.svg</file>
-        <file>icons/deskflow-light/actions/32/document-open.svg</file>
-        <file>icons/deskflow-light/actions/32/document-save-as.svg</file>
-        <file>icons/deskflow-light/actions/32/go-down.svg</file>
-        <file>icons/deskflow-light/actions/32/go-up.svg</file>
-        <file>icons/deskflow-light/actions/32/help-about.svg</file>
-        <file>icons/deskflow-light/actions/32/view-refresh.svg</file>
-        <file>icons/deskflow-light/actions/32/system-search.svg</file>
         <file>icons/deskflow-light/apps/64/org.busymouse.busymouse.svg</file>
         <file>icons/deskflow-light/apps/64/org.busymouse.busymouse-symbolic.svg</file>
-        <file>icons/deskflow-light/devices/64/video-display.svg</file>
-        <file>icons/deskflow-light/status/32/software-updates-release.svg</file>
-        <file>icons/deskflow-light/status/64/dialog-error.svg</file>
-        <file>icons/deskflow-light/status/64/dialog-information.svg</file>
-        <file>icons/deskflow-light/status/64/dialog-positive.svg</file>
-        <file>icons/deskflow-light/status/64/dialog-question.svg</file>
-        <file>icons/deskflow-light/status/64/dialog-warning.svg</file>
-        <file>icons/deskflow-light/status/64/security-high.svg</file>
-        <file>icons/deskflow-light/status/64/security-low.svg</file>
-        <file>icons/deskflow-light/status/64/security-medium.svg</file>
-        <file>icons/deskflow-light/index.theme</file>
+        <file alias="icons/deskflow-light/actions/32/configure.png">icons/remix/light/32/settings-3-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/document-edit.png">icons/remix/light/32/edit-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/document-open.png">icons/remix/light/32/folder-open-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/document-save-as.png">icons/remix/light/32/save-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/edit-clear-all.png">icons/remix/light/32/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/edit-copy.png">icons/remix/light/32/file-copy-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/list-add.png">icons/remix/light/32/add-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/list-remove.png">icons/remix/light/32/subtract-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/go-up.png">icons/remix/light/32/arrow-up-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/go-down.png">icons/remix/light/32/arrow-down-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/go-previous.png">icons/remix/light/32/arrow-left-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/go-home.png">icons/remix/light/32/home-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/help-about.png">icons/remix/light/32/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/question.png">icons/remix/light/32/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/system-run.png">icons/remix/light/32/play-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/process-stop.png">icons/remix/light/32/stop-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/system-search.png">icons/remix/light/32/search-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/network-connect.png">icons/remix/light/32/links-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/network-disconnect.png">icons/remix/light/32/link-unlink.png</file>
+        <file alias="icons/deskflow-light/actions/32/view-close.png">icons/remix/light/32/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/window-close.png">icons/remix/light/32/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/view-refresh.png">icons/remix/light/32/refresh-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/window-minimize-pip.png">icons/remix/light/32/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/window-restore-pip.png">icons/remix/light/32/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/application-exit.png">icons/remix/light/32/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-cancel.png">icons/remix/light/32/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-ok.png">icons/remix/light/32/check-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-ok-apply.png">icons/remix/light/32/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/fingerprint.png">icons/remix/light/32/fingerprint-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/video-display.png">icons/remix/light/32/computer-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/user-trash.png">icons/remix/light/32/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/software-updates-release.png">icons/remix/light/32/download-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-error.png">icons/remix/light/32/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-warning.png">icons/remix/light/32/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-information.png">icons/remix/light/32/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-positive.png">icons/remix/light/32/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/dialog-question.png">icons/remix/light/32/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/security-high.png">icons/remix/light/32/shield-check-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/security-medium.png">icons/remix/light/32/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/security-low.png">icons/remix/light/32/shield-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/configure.png">icons/remix/light/64/settings-3-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/document-edit.png">icons/remix/light/64/edit-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/document-open.png">icons/remix/light/64/folder-open-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/document-save-as.png">icons/remix/light/64/save-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/edit-clear-all.png">icons/remix/light/64/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/edit-copy.png">icons/remix/light/64/file-copy-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/list-add.png">icons/remix/light/64/add-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/list-remove.png">icons/remix/light/64/subtract-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/go-up.png">icons/remix/light/64/arrow-up-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/go-down.png">icons/remix/light/64/arrow-down-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/go-previous.png">icons/remix/light/64/arrow-left-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/go-home.png">icons/remix/light/64/home-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/help-about.png">icons/remix/light/64/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/question.png">icons/remix/light/64/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/system-run.png">icons/remix/light/64/play-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/process-stop.png">icons/remix/light/64/stop-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/system-search.png">icons/remix/light/64/search-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/network-connect.png">icons/remix/light/64/links-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/network-disconnect.png">icons/remix/light/64/link-unlink.png</file>
+        <file alias="icons/deskflow-light/actions/64/view-close.png">icons/remix/light/64/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/window-close.png">icons/remix/light/64/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/view-refresh.png">icons/remix/light/64/refresh-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/window-minimize-pip.png">icons/remix/light/64/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/window-restore-pip.png">icons/remix/light/64/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/application-exit.png">icons/remix/light/64/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-cancel.png">icons/remix/light/64/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-ok.png">icons/remix/light/64/check-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-ok-apply.png">icons/remix/light/64/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/fingerprint.png">icons/remix/light/64/fingerprint-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/video-display.png">icons/remix/light/64/computer-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/user-trash.png">icons/remix/light/64/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/software-updates-release.png">icons/remix/light/64/download-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-error.png">icons/remix/light/64/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-warning.png">icons/remix/light/64/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-information.png">icons/remix/light/64/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-positive.png">icons/remix/light/64/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/dialog-question.png">icons/remix/light/64/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/security-high.png">icons/remix/light/64/shield-check-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/security-medium.png">icons/remix/light/64/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/security-low.png">icons/remix/light/64/shield-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/configure.png">icons/remix/light/128/settings-3-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/document-edit.png">icons/remix/light/128/edit-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/document-open.png">icons/remix/light/128/folder-open-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/document-save-as.png">icons/remix/light/128/save-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/edit-clear-all.png">icons/remix/light/128/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/edit-copy.png">icons/remix/light/128/file-copy-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/list-add.png">icons/remix/light/128/add-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/list-remove.png">icons/remix/light/128/subtract-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/go-up.png">icons/remix/light/128/arrow-up-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/go-down.png">icons/remix/light/128/arrow-down-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/go-previous.png">icons/remix/light/128/arrow-left-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/go-home.png">icons/remix/light/128/home-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/help-about.png">icons/remix/light/128/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/question.png">icons/remix/light/128/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/system-run.png">icons/remix/light/128/play-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/process-stop.png">icons/remix/light/128/stop-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/system-search.png">icons/remix/light/128/search-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/network-connect.png">icons/remix/light/128/links-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/network-disconnect.png">icons/remix/light/128/link-unlink.png</file>
+        <file alias="icons/deskflow-light/actions/128/view-close.png">icons/remix/light/128/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/window-close.png">icons/remix/light/128/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/view-refresh.png">icons/remix/light/128/refresh-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/window-minimize-pip.png">icons/remix/light/128/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/window-restore-pip.png">icons/remix/light/128/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/application-exit.png">icons/remix/light/128/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-cancel.png">icons/remix/light/128/close-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-ok.png">icons/remix/light/128/check-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-ok-apply.png">icons/remix/light/128/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/fingerprint.png">icons/remix/light/128/fingerprint-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/video-display.png">icons/remix/light/128/computer-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/user-trash.png">icons/remix/light/128/delete-bin-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/software-updates-release.png">icons/remix/light/128/download-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-error.png">icons/remix/light/128/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-warning.png">icons/remix/light/128/error-warning-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-information.png">icons/remix/light/128/information-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-positive.png">icons/remix/light/128/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/dialog-question.png">icons/remix/light/128/question-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/security-high.png">icons/remix/light/128/shield-check-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/security-medium.png">icons/remix/light/128/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/security-low.png">icons/remix/light/128/shield-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/bluetooth.png">icons/remix/light/32/bluetooth-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/bluetooth.png">icons/remix/light/64/bluetooth-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/bluetooth.png">icons/remix/light/128/bluetooth-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/bluetooth-connect.png">icons/remix/light/32/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/bluetooth-connect.png">icons/remix/light/64/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/bluetooth-connect.png">icons/remix/light/128/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-light/actions/32/bluetooth-disabled.png">icons/remix/light/32/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-light/actions/64/bluetooth-disabled.png">icons/remix/light/64/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-light/actions/128/bluetooth-disabled.png">icons/remix/light/128/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-light/index.theme">icons/remix/light/index.theme</file>
+        <file alias="icons/deskflow-dark/actions/32/configure.png">icons/remix/dark/32/settings-3-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/document-edit.png">icons/remix/dark/32/edit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/document-open.png">icons/remix/dark/32/folder-open-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/document-save-as.png">icons/remix/dark/32/save-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/edit-clear-all.png">icons/remix/dark/32/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/edit-copy.png">icons/remix/dark/32/file-copy-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/list-add.png">icons/remix/dark/32/add-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/list-remove.png">icons/remix/dark/32/subtract-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/go-up.png">icons/remix/dark/32/arrow-up-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/go-down.png">icons/remix/dark/32/arrow-down-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/go-previous.png">icons/remix/dark/32/arrow-left-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/go-home.png">icons/remix/dark/32/home-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/help-about.png">icons/remix/dark/32/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/question.png">icons/remix/dark/32/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/system-run.png">icons/remix/dark/32/play-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/process-stop.png">icons/remix/dark/32/stop-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/system-search.png">icons/remix/dark/32/search-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/network-connect.png">icons/remix/dark/32/links-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/network-disconnect.png">icons/remix/dark/32/link-unlink.png</file>
+        <file alias="icons/deskflow-dark/actions/32/view-close.png">icons/remix/dark/32/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/window-close.png">icons/remix/dark/32/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/view-refresh.png">icons/remix/dark/32/refresh-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/window-minimize-pip.png">icons/remix/dark/32/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/window-restore-pip.png">icons/remix/dark/32/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/application-exit.png">icons/remix/dark/32/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-cancel.png">icons/remix/dark/32/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-ok.png">icons/remix/dark/32/check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-ok-apply.png">icons/remix/dark/32/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/fingerprint.png">icons/remix/dark/32/fingerprint-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/video-display.png">icons/remix/dark/32/computer-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/user-trash.png">icons/remix/dark/32/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/software-updates-release.png">icons/remix/dark/32/download-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-error.png">icons/remix/dark/32/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-warning.png">icons/remix/dark/32/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-information.png">icons/remix/dark/32/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-positive.png">icons/remix/dark/32/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/dialog-question.png">icons/remix/dark/32/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/security-high.png">icons/remix/dark/32/shield-check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/security-medium.png">icons/remix/dark/32/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/security-low.png">icons/remix/dark/32/shield-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/configure.png">icons/remix/dark/64/settings-3-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/document-edit.png">icons/remix/dark/64/edit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/document-open.png">icons/remix/dark/64/folder-open-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/document-save-as.png">icons/remix/dark/64/save-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/edit-clear-all.png">icons/remix/dark/64/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/edit-copy.png">icons/remix/dark/64/file-copy-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/list-add.png">icons/remix/dark/64/add-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/list-remove.png">icons/remix/dark/64/subtract-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/go-up.png">icons/remix/dark/64/arrow-up-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/go-down.png">icons/remix/dark/64/arrow-down-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/go-previous.png">icons/remix/dark/64/arrow-left-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/go-home.png">icons/remix/dark/64/home-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/help-about.png">icons/remix/dark/64/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/question.png">icons/remix/dark/64/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/system-run.png">icons/remix/dark/64/play-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/process-stop.png">icons/remix/dark/64/stop-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/system-search.png">icons/remix/dark/64/search-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/network-connect.png">icons/remix/dark/64/links-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/network-disconnect.png">icons/remix/dark/64/link-unlink.png</file>
+        <file alias="icons/deskflow-dark/actions/64/view-close.png">icons/remix/dark/64/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/window-close.png">icons/remix/dark/64/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/view-refresh.png">icons/remix/dark/64/refresh-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/window-minimize-pip.png">icons/remix/dark/64/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/window-restore-pip.png">icons/remix/dark/64/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/application-exit.png">icons/remix/dark/64/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-cancel.png">icons/remix/dark/64/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-ok.png">icons/remix/dark/64/check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-ok-apply.png">icons/remix/dark/64/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/fingerprint.png">icons/remix/dark/64/fingerprint-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/video-display.png">icons/remix/dark/64/computer-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/user-trash.png">icons/remix/dark/64/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/software-updates-release.png">icons/remix/dark/64/download-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-error.png">icons/remix/dark/64/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-warning.png">icons/remix/dark/64/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-information.png">icons/remix/dark/64/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-positive.png">icons/remix/dark/64/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/dialog-question.png">icons/remix/dark/64/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/security-high.png">icons/remix/dark/64/shield-check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/security-medium.png">icons/remix/dark/64/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/security-low.png">icons/remix/dark/64/shield-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/configure.png">icons/remix/dark/128/settings-3-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/document-edit.png">icons/remix/dark/128/edit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/document-open.png">icons/remix/dark/128/folder-open-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/document-save-as.png">icons/remix/dark/128/save-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/edit-clear-all.png">icons/remix/dark/128/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/edit-copy.png">icons/remix/dark/128/file-copy-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/list-add.png">icons/remix/dark/128/add-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/list-remove.png">icons/remix/dark/128/subtract-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/go-up.png">icons/remix/dark/128/arrow-up-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/go-down.png">icons/remix/dark/128/arrow-down-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/go-previous.png">icons/remix/dark/128/arrow-left-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/go-home.png">icons/remix/dark/128/home-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/help-about.png">icons/remix/dark/128/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/question.png">icons/remix/dark/128/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/system-run.png">icons/remix/dark/128/play-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/process-stop.png">icons/remix/dark/128/stop-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/system-search.png">icons/remix/dark/128/search-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/network-connect.png">icons/remix/dark/128/links-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/network-disconnect.png">icons/remix/dark/128/link-unlink.png</file>
+        <file alias="icons/deskflow-dark/actions/128/view-close.png">icons/remix/dark/128/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/window-close.png">icons/remix/dark/128/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/view-refresh.png">icons/remix/dark/128/refresh-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/window-minimize-pip.png">icons/remix/dark/128/picture-in-picture-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/window-restore-pip.png">icons/remix/dark/128/picture-in-picture-exit-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/application-exit.png">icons/remix/dark/128/logout-box-r-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-cancel.png">icons/remix/dark/128/close-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-ok.png">icons/remix/dark/128/check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-ok-apply.png">icons/remix/dark/128/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/fingerprint.png">icons/remix/dark/128/fingerprint-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/video-display.png">icons/remix/dark/128/computer-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/user-trash.png">icons/remix/dark/128/delete-bin-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/software-updates-release.png">icons/remix/dark/128/download-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-error.png">icons/remix/dark/128/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-warning.png">icons/remix/dark/128/error-warning-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-information.png">icons/remix/dark/128/information-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-positive.png">icons/remix/dark/128/checkbox-circle-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/dialog-question.png">icons/remix/dark/128/question-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/security-high.png">icons/remix/dark/128/shield-check-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/security-medium.png">icons/remix/dark/128/shield-keyhole-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/security-low.png">icons/remix/dark/128/shield-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/bluetooth.png">icons/remix/dark/32/bluetooth-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/bluetooth.png">icons/remix/dark/64/bluetooth-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/bluetooth.png">icons/remix/dark/128/bluetooth-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/bluetooth-connect.png">icons/remix/dark/32/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/bluetooth-connect.png">icons/remix/dark/64/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/bluetooth-connect.png">icons/remix/dark/128/bluetooth-connect-line.png</file>
+        <file alias="icons/deskflow-dark/actions/32/bluetooth-disabled.png">icons/remix/dark/32/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-dark/actions/64/bluetooth-disabled.png">icons/remix/dark/64/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-dark/actions/128/bluetooth-disabled.png">icons/remix/dark/128/bluetooth-disabled-line.png</file>
+        <file alias="icons/deskflow-dark/index.theme">icons/remix/dark/index.theme</file>
+        <file>icons/remix/svg/add-line.svg</file>
+        <file>icons/remix/svg/arrow-down-circle-line.svg</file>
+        <file>icons/remix/svg/arrow-down-line.svg</file>
+        <file>icons/remix/svg/arrow-down-s-line.svg</file>
+        <file>icons/remix/svg/arrow-left-line.svg</file>
+        <file>icons/remix/svg/arrow-right-s-line.svg</file>
+        <file>icons/remix/svg/arrow-up-circle-line.svg</file>
+        <file>icons/remix/svg/arrow-up-line.svg</file>
+        <file>icons/remix/svg/bluetooth-connect-line.svg</file>
+        <file>icons/remix/svg/bluetooth-disabled-line.svg</file>
+        <file>icons/remix/svg/bluetooth-line.svg</file>
+        <file>icons/remix/svg/check-line.svg</file>
+        <file>icons/remix/svg/checkbox-blank-circle-line.svg</file>
+        <file>icons/remix/svg/checkbox-circle-line.svg</file>
+        <file>icons/remix/svg/close-line.svg</file>
+        <file>icons/remix/svg/computer-line.svg</file>
+        <file>icons/remix/svg/cursor-line.svg</file>
+        <file>icons/remix/svg/delete-bin-line.svg</file>
+        <file>icons/remix/svg/device-line.svg</file>
+        <file>icons/remix/svg/download-line.svg</file>
+        <file>icons/remix/svg/edit-line.svg</file>
+        <file>icons/remix/svg/equalizer-line.svg</file>
+        <file>icons/remix/svg/error-warning-line.svg</file>
+        <file>icons/remix/svg/file-copy-line.svg</file>
+        <file>icons/remix/svg/file-list-line.svg</file>
+        <file>icons/remix/svg/fingerprint-line.svg</file>
+        <file>icons/remix/svg/folder-open-line.svg</file>
+        <file>icons/remix/svg/home-line.svg</file>
+        <file>icons/remix/svg/information-line.svg</file>
+        <file>icons/remix/svg/keyboard-line.svg</file>
+        <file>icons/remix/svg/layout-grid-line.svg</file>
+        <file>icons/remix/svg/layout-left-line.svg</file>
+        <file>icons/remix/svg/link-unlink.svg</file>
+        <file>icons/remix/svg/links-line.svg</file>
+        <file>icons/remix/svg/loader-4-line.svg</file>
+        <file>icons/remix/svg/lock-line.svg</file>
+        <file>icons/remix/svg/lock-unlock-line.svg</file>
+        <file>icons/remix/svg/logout-box-r-line.svg</file>
+        <file>icons/remix/svg/menu-line.svg</file>
+        <file>icons/remix/svg/picture-in-picture-exit-line.svg</file>
+        <file>icons/remix/svg/picture-in-picture-line.svg</file>
+        <file>icons/remix/svg/play-circle-line.svg</file>
+        <file>icons/remix/svg/question-line.svg</file>
+        <file>icons/remix/svg/refresh-line.svg</file>
+        <file>icons/remix/svg/save-line.svg</file>
+        <file>icons/remix/svg/search-line.svg</file>
+        <file>icons/remix/svg/settings-3-line.svg</file>
+        <file>icons/remix/svg/shield-check-line.svg</file>
+        <file>icons/remix/svg/shield-keyhole-line.svg</file>
+        <file>icons/remix/svg/shield-line.svg</file>
+        <file>icons/remix/svg/stop-circle-line.svg</file>
+        <file>icons/remix/svg/subtract-line.svg</file>
+        <file>icons/remix/svg/wifi-line.svg</file>
+        <file>icons/remix/svg/wifi-off-line.svg</file>
+        <file alias="icons/remix/masks/add-line.png">icons/remix/light/128/add-line.png</file>
+        <file alias="icons/remix/masks/arrow-down-circle-line.png">icons/remix/light/128/arrow-down-circle-line.png</file>
+        <file alias="icons/remix/masks/arrow-down-line.png">icons/remix/light/128/arrow-down-line.png</file>
+        <file alias="icons/remix/masks/arrow-down-s-line.png">icons/remix/light/128/arrow-down-s-line.png</file>
+        <file alias="icons/remix/masks/arrow-left-line.png">icons/remix/light/128/arrow-left-line.png</file>
+        <file alias="icons/remix/masks/arrow-right-s-line.png">icons/remix/light/128/arrow-right-s-line.png</file>
+        <file alias="icons/remix/masks/arrow-up-circle-line.png">icons/remix/light/128/arrow-up-circle-line.png</file>
+        <file alias="icons/remix/masks/arrow-up-line.png">icons/remix/light/128/arrow-up-line.png</file>
+        <file alias="icons/remix/masks/bluetooth-connect-line.png">icons/remix/light/128/bluetooth-connect-line.png</file>
+        <file alias="icons/remix/masks/bluetooth-disabled-line.png">icons/remix/light/128/bluetooth-disabled-line.png</file>
+        <file alias="icons/remix/masks/bluetooth-line.png">icons/remix/light/128/bluetooth-line.png</file>
+        <file alias="icons/remix/masks/check-line.png">icons/remix/light/128/check-line.png</file>
+        <file alias="icons/remix/masks/checkbox-blank-circle-line.png">icons/remix/light/128/checkbox-blank-circle-line.png</file>
+        <file alias="icons/remix/masks/checkbox-circle-line.png">icons/remix/light/128/checkbox-circle-line.png</file>
+        <file alias="icons/remix/masks/close-line.png">icons/remix/light/128/close-line.png</file>
+        <file alias="icons/remix/masks/computer-line.png">icons/remix/light/128/computer-line.png</file>
+        <file alias="icons/remix/masks/cursor-line.png">icons/remix/light/128/cursor-line.png</file>
+        <file alias="icons/remix/masks/delete-bin-line.png">icons/remix/light/128/delete-bin-line.png</file>
+        <file alias="icons/remix/masks/device-line.png">icons/remix/light/128/device-line.png</file>
+        <file alias="icons/remix/masks/download-line.png">icons/remix/light/128/download-line.png</file>
+        <file alias="icons/remix/masks/edit-line.png">icons/remix/light/128/edit-line.png</file>
+        <file alias="icons/remix/masks/equalizer-line.png">icons/remix/light/128/equalizer-line.png</file>
+        <file alias="icons/remix/masks/error-warning-line.png">icons/remix/light/128/error-warning-line.png</file>
+        <file alias="icons/remix/masks/file-copy-line.png">icons/remix/light/128/file-copy-line.png</file>
+        <file alias="icons/remix/masks/file-list-line.png">icons/remix/light/128/file-list-line.png</file>
+        <file alias="icons/remix/masks/fingerprint-line.png">icons/remix/light/128/fingerprint-line.png</file>
+        <file alias="icons/remix/masks/folder-open-line.png">icons/remix/light/128/folder-open-line.png</file>
+        <file alias="icons/remix/masks/home-line.png">icons/remix/light/128/home-line.png</file>
+        <file alias="icons/remix/masks/information-line.png">icons/remix/light/128/information-line.png</file>
+        <file alias="icons/remix/masks/keyboard-line.png">icons/remix/light/128/keyboard-line.png</file>
+        <file alias="icons/remix/masks/layout-grid-line.png">icons/remix/light/128/layout-grid-line.png</file>
+        <file alias="icons/remix/masks/layout-left-line.png">icons/remix/light/128/layout-left-line.png</file>
+        <file alias="icons/remix/masks/link-unlink.png">icons/remix/light/128/link-unlink.png</file>
+        <file alias="icons/remix/masks/links-line.png">icons/remix/light/128/links-line.png</file>
+        <file alias="icons/remix/masks/loader-4-line.png">icons/remix/light/128/loader-4-line.png</file>
+        <file alias="icons/remix/masks/lock-line.png">icons/remix/light/128/lock-line.png</file>
+        <file alias="icons/remix/masks/lock-unlock-line.png">icons/remix/light/128/lock-unlock-line.png</file>
+        <file alias="icons/remix/masks/logout-box-r-line.png">icons/remix/light/128/logout-box-r-line.png</file>
+        <file alias="icons/remix/masks/menu-line.png">icons/remix/light/128/menu-line.png</file>
+        <file alias="icons/remix/masks/picture-in-picture-exit-line.png">icons/remix/light/128/picture-in-picture-exit-line.png</file>
+        <file alias="icons/remix/masks/picture-in-picture-line.png">icons/remix/light/128/picture-in-picture-line.png</file>
+        <file alias="icons/remix/masks/play-circle-line.png">icons/remix/light/128/play-circle-line.png</file>
+        <file alias="icons/remix/masks/question-line.png">icons/remix/light/128/question-line.png</file>
+        <file alias="icons/remix/masks/refresh-line.png">icons/remix/light/128/refresh-line.png</file>
+        <file alias="icons/remix/masks/save-line.png">icons/remix/light/128/save-line.png</file>
+        <file alias="icons/remix/masks/search-line.png">icons/remix/light/128/search-line.png</file>
+        <file alias="icons/remix/masks/settings-3-line.png">icons/remix/light/128/settings-3-line.png</file>
+        <file alias="icons/remix/masks/shield-check-line.png">icons/remix/light/128/shield-check-line.png</file>
+        <file alias="icons/remix/masks/shield-keyhole-line.png">icons/remix/light/128/shield-keyhole-line.png</file>
+        <file alias="icons/remix/masks/shield-line.png">icons/remix/light/128/shield-line.png</file>
+        <file alias="icons/remix/masks/stop-circle-line.png">icons/remix/light/128/stop-circle-line.png</file>
+        <file alias="icons/remix/masks/subtract-line.png">icons/remix/light/128/subtract-line.png</file>
+        <file alias="icons/remix/masks/wifi-line.png">icons/remix/light/128/wifi-line.png</file>
+        <file alias="icons/remix/masks/wifi-off-line.png">icons/remix/light/128/wifi-off-line.png</file>
+        <file>icons/remix/LICENSE</file>
+        <file>icons/remix/NOTICE</file>
+        <file>icons/remix/manifest.json</file>
+        <file>icons/remix/svg/computer-fill.svg</file>
+        <file alias="icons/remix/masks/computer-fill.png">icons/remix/light/128/computer-fill.png</file>
+        <file>icons/remix/svg/layout-left-fill.svg</file>
+        <file alias="icons/remix/masks/layout-left-fill.png">icons/remix/light/128/layout-left-fill.png</file>
+        <file>icons/remix/svg/layout-grid-fill.svg</file>
+        <file alias="icons/remix/masks/layout-grid-fill.png">icons/remix/light/128/layout-grid-fill.png</file>
+        <file>icons/remix/svg/settings-3-fill.svg</file>
+        <file alias="icons/remix/masks/settings-3-fill.png">icons/remix/light/128/settings-3-fill.png</file>
     </qresource>
 </RCC>

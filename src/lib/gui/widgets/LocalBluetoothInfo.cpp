@@ -23,9 +23,9 @@ LocalBluetoothInfo::LocalBluetoothInfo(QWidget *parent) : QWidget(parent)
   auto *row = new QHBoxLayout(this);
   row->setContentsMargins(0, 0, 0, 0);
   row->setSpacing(6);
-  auto *icon = new QLabel(this);
-  icon->setPixmap(homeIcon(HomeIcon::Bluetooth, QColor("#087fff")).pixmap(16, 16));
-  icon->setFixedSize(18, 20);
+  m_icon = new QLabel(this);
+  m_icon->setObjectName("localBluetoothIcon");
+  m_icon->setFixedSize(18, 20);
   m_name = new HomeIdentityLabel(this);
   m_name->setObjectName("lblLocalBluetoothName");
   m_name->setTextFormat(Qt::PlainText);
@@ -39,7 +39,7 @@ LocalBluetoothInfo::LocalBluetoothInfo(QWidget *parent) : QWidget(parent)
   m_action->setProperty("role", "link");
   m_action->setFixedSize(42, 26);
   m_action->setStyleSheet("padding: 0; font-size: 12px;");
-  row->addWidget(icon);
+  row->addWidget(m_icon);
   row->addWidget(m_name, 1);
   row->addWidget(m_state);
   row->addWidget(m_action);
@@ -52,6 +52,7 @@ LocalBluetoothInfo::LocalBluetoothInfo(QWidget *parent) : QWidget(parent)
 }
 void LocalBluetoothInfo::refresh()
 {
+  m_icon->setPixmap(homeIcon(HomeIcon::Bluetooth, QColor("#77818e")).pixmap(16, 16));
 #ifdef DESKFLOW_BLUETOOTH
   const auto permission = qApp->checkPermission(QBluetoothPermission());
   if (permission != Qt::PermissionStatus::Granted) {
@@ -74,6 +75,14 @@ void LocalBluetoothInfo::refresh()
   m_name->setIdentity(name.isEmpty() ? tr("Local Bluetooth") : name);
   m_name->setToolTip(name + (m_adapter->address().isNull() ? QString() : "\n" + m_adapter->address().toString()));
   m_name->setAccessibleName(tr("Local Bluetooth: %1").arg(name.isEmpty() ? tr("Name unavailable") : name));
+  const bool powered = m_adapter->isValid() && m_adapter->hostMode() != QBluetoothLocalDevice::HostPoweredOff;
+  m_icon->setPixmap(homeIcon(
+                        !m_adapter->isValid() ? HomeIcon::Bluetooth
+                        : !powered            ? HomeIcon::BluetoothDisabled
+                                              : (m_connected ? HomeIcon::BluetoothConnected : HomeIcon::Bluetooth),
+                        QColor(powered ? "#087fff" : "#77818e")
+  )
+                        .pixmap(16, 16));
   m_state->setText(
       !m_adapter->isValid() ? tr("Unavailable")
       : m_adapter->hostMode() == QBluetoothLocalDevice::HostPoweredOff

@@ -267,6 +267,18 @@ install(
   RENAME LICENSE_EXCEPTION
 )
 
+install(
+  FILES ${PROJECT_SOURCE_DIR}/src/apps/res/icons/remix/LICENSE
+  DESTINATION ${CMAKE_INSTALL_LICENSE_DIR}
+  RENAME REMIXICON_LICENSE
+)
+
+install(
+  FILES ${PROJECT_SOURCE_DIR}/src/apps/res/icons/remix/NOTICE
+  DESTINATION ${CMAKE_INSTALL_LICENSE_DIR}
+  RENAME REMIXICON_NOTICE
+)
+
 if(BUILD_INSTALLER)
     add_subdirectory(deploy)
 endif()

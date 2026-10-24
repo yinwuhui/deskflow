@@ -1,0 +1,99 @@
+{
+  "HomeIcon": {
+    "Monitor": "computer-line",
+    "Devices": "device-line",
+    "Layout": "layout-grid-line",
+    "Settings": "settings-3-line",
+    "Keyboard": "keyboard-line",
+    "Copy": "file-copy-line",
+    "Edit": "edit-line",
+    "Help": "question-line",
+    "Logs": "file-list-line",
+    "Shield": "shield-check-line",
+    "Refresh": "refresh-line",
+    "Play": "play-circle-line",
+    "Stop": "stop-circle-line",
+    "Search": "search-line",
+    "Pointer": "cursor-line",
+    "ChevronRight": "arrow-right-s-line",
+    "ChevronDown": "arrow-down-s-line",
+    "Menu": "menu-line",
+    "MonitorUp": "arrow-up-circle-line",
+    "MonitorDown": "arrow-down-circle-line",
+    "Panel": "layout-left-line",
+    "Adjust": "equalizer-line",
+    "Wifi": "wifi-line",
+    "Bluetooth": "bluetooth-line",
+    "Minimize": "subtract-line",
+    "Close": "close-line",
+    "BluetoothConnected": "bluetooth-connect-line",
+    "BluetoothDisabled": "bluetooth-disabled-line"
+  },
+  "theme_icons": {
+    "configure": "settings-3-line",
+    "document-edit": "edit-line",
+    "document-open": "folder-open-line",
+    "document-save-as": "save-line",
+    "edit-clear-all": "delete-bin-line",
+    "edit-copy": "file-copy-line",
+    "list-add": "add-line",
+    "list-remove": "subtract-line",
+    "go-up": "arrow-up-line",
+    "go-down": "arrow-down-line",
+    "go-previous": "arrow-left-line",
+    "go-home": "home-line",
+    "help-about": "information-line",
+    "question": "question-line",
+    "system-run": "play-circle-line",
+    "process-stop": "stop-circle-line",
+    "system-search": "search-line",
+    "network-connect": "links-line",
+    "network-disconnect": "link-unlink",
+    "view-close": "close-line",
+    "window-close": "close-line",
+    "view-refresh": "refresh-line",
+    "window-minimize-pip": "picture-in-picture-line",
+    "window-restore-pip": "picture-in-picture-exit-line",
+    "application-exit": "logout-box-r-line",
+    "dialog-cancel": "close-line",
+    "dialog-ok": "check-line",
+    "dialog-ok-apply": "checkbox-circle-line",
+    "fingerprint": "fingerprint-line",
+    "video-display": "computer-line",
+    "user-trash": "delete-bin-line",
+    "software-updates-release": "download-line",
+    "dialog-error": "error-warning-line",
+    "dialog-warning": "error-warning-line",
+    "dialog-information": "information-line",
+    "dialog-positive": "checkbox-circle-line",
+    "dialog-question": "question-line",
+    "security-high": "shield-check-line",
+    "security-medium": "shield-keyhole-line",
+    "security-low": "shield-line"
+  },
+  "bluetooth_states": {
+    "connected": "bluetooth-connect-line",
+    "disconnected": "bluetooth-line",
+    "disabled": "bluetooth-disabled-line",
+    "connecting_indicator": "loader-4-line"
+  },
+  "brand": "Keep existing branding assets; not replaced by generic pictograms.",
+  "navigation_states": {
+    "btnHome": {
+      "off": "computer-line",
+      "on": "computer-fill"
+    },
+    "btnDevices": {
+      "off": "layout-left-line",
+      "on": "layout-left-fill"
+    },
+    "btnLayout": {
+      "off": "layout-grid-line",
+      "on": "layout-grid-fill"
+    },
+    "btnSettings": {
+      "off": "settings-3-line",
+      "on": "settings-3-fill"
+    }
+  }
+}

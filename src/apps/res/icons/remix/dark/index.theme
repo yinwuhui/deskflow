@@ -1,0 +1,26 @@
+[Icon Theme]
+Name=Deskflow Remix dark
+Comment=Remix Icon line (Apache-2.0)
+Directories=actions/32,actions/64,actions/128,apps/64
+
+[actions/32]
+Size=32
+Type=Fixed
+Context=Actions
+
+[actions/64]
+Size=64
+Type=Fixed
+Context=Actions
+
+[actions/128]
+Size=128
+Type=Fixed
+Context=Actions
+
+[apps/64]
+Size=64
+Type=Scalable
+MinSize=22
+MaxSize=256
+Context=Applications
