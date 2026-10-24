@@ -177,6 +177,12 @@ elseif(UNIX)
   endif()
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND LIBEI_FOUND)
+  list(APPEND PLATFORM_SOURCES UinputDevice.cpp UinputDevice.h)
+  add_executable(busymouse-uinput-helper UinputHelper.cpp)
+  install(TARGETS busymouse-uinput-helper RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+endif()
+
 # wayland.h is included to check for wayland support
 add_library(platform STATIC ${PLATFORM_SOURCES})
 
@@ -211,4 +217,10 @@ if(UNIX)
         ${LIBXKBCOMMON_LINK_LIBRARIES}
         ${LIBEI_LINK_LIBRARIES} ${LIBPORTAL_LINK_LIBRARIES})
   endif()
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND LIBEI_FOUND)
+  add_dependencies(platform busymouse-uinput-helper)
+  target_compile_definitions(platform PRIVATE
+    BMOUSE_UINPUT_HELPER_PATH="${CMAKE_INSTALL_FULL_LIBEXECDIR}/busymouse-uinput-helper")
 endif()

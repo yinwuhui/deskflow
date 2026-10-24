@@ -20,6 +20,9 @@
 #include "platform/EiKeyState.h"
 #include "platform/PortalInputCapture.h"
 #include "platform/PortalRemoteDesktop.h"
+#ifdef __linux__
+#include "platform/UinputDevice.h"
+#endif
 
 #include <algorithm>
 #include <bit>
@@ -47,6 +50,12 @@ EiComputer::EiComputer(bool isPrimary, IEventQueue *events, bool usePortal)
       m_h{1},
       m_isOnComputer{isPrimary}
 {
+#ifdef __linux__
+  if (!isPrimary && Settings::value(Settings::Client::LinuxUinput).toBool()) {
+    m_uinput = std::make_unique<UinputDevice>();
+    LOG_INFO("using uinput keyboard and mouse; input remains available while locked");
+  }
+#endif
   initEi();
   m_keyState = new EiKeyState(this, events);
   // install event handlers
@@ -315,9 +324,6 @@ void EiComputer::fakeMouseButton(ButtonID button, bool press)
 {
   uint32_t code;
 
-  if (!m_eiPointer)
-    return;
-
   switch (button) {
   case kButtonLeft:
     code = 0x110; // BTN_LEFT
@@ -333,6 +339,14 @@ void EiComputer::fakeMouseButton(ButtonID button, bool press)
     break;
   }
 
+#ifdef __linux__
+  if (m_uinput) {
+    m_uinput->button(code, press);
+    return;
+  }
+#endif
+  if (!m_eiPointer)
+    return;
   ensureEmulating();
   ei_device_button_button(m_eiPointer, code, press);
   ei_device_frame(m_eiPointer, ei_now(m_ei));
@@ -347,6 +361,14 @@ void EiComputer::fakeMouseMove(int32_t x, int32_t y)
     return;
   }
 
+#ifdef __linux__
+  if (m_uinput) {
+    m_uinput->absolute(x, y, m_x, m_y, m_w, m_h);
+    m_cursorX = x;
+    m_cursorY = y;
+    return;
+  }
+#endif
   if (!m_eiAbs)
     return;
 
@@ -357,6 +379,12 @@ void EiComputer::fakeMouseMove(int32_t x, int32_t y)
 
 void EiComputer::fakeMouseRelativeMove(int32_t dx, int32_t dy) const
 {
+#ifdef __linux__
+  if (m_uinput) {
+    m_uinput->relative(dx, dy);
+    return;
+  }
+#endif
   if (!m_eiPointer)
     return;
 
@@ -367,6 +395,14 @@ void EiComputer::fakeMouseRelativeMove(int32_t dx, int32_t dy) const
 
 void EiComputer::fakeMouseWheel(ScrollDelta delta) const
 {
+#ifdef __linux__
+  if (m_uinput) {
+    delta = applyScrollModifier(delta);
+    // Protocol horizontal scrolling is positive to the left; evdev is positive to the right.
+    m_uinput->wheel(-delta.x, delta.y);
+    return;
+  }
+#endif
   if (!m_eiPointer)
     return;
 
@@ -381,6 +417,13 @@ void EiComputer::fakeMouseWheel(ScrollDelta delta) const
 
 void EiComputer::fakeKey(uint32_t keycode, bool isDown) const
 {
+#ifdef __linux__
+  if (m_uinput) {
+    m_keyState->updateXkbState(keycode + 8, isDown);
+    m_uinput->key(keycode, isDown);
+    return;
+  }
+#endif
   if (!m_eiKeyboard)
     return;
 
@@ -389,6 +432,15 @@ void EiComputer::fakeKey(uint32_t keycode, bool isDown) const
   ensureEmulating();
   ei_device_keyboard_key(m_eiKeyboard, keycode, isDown);
   ei_device_frame(m_eiKeyboard, ei_now(m_ei));
+}
+
+bool EiComputer::usesUinput() const
+{
+#ifdef __linux__
+  return m_uinput != nullptr;
+#else
+  return false;
+#endif
 }
 
 void EiComputer::enable()
@@ -400,6 +452,10 @@ void EiComputer::enable()
 void EiComputer::disable()
 {
   m_activated = false;
+#ifdef __linux__
+  if (m_uinput)
+    m_uinput->releaseAll();
+#endif
 }
 
 void EiComputer::cancelIdleEmulationTimer() const
@@ -413,6 +469,10 @@ void EiComputer::cancelIdleEmulationTimer() const
 
 void EiComputer::ensureEmulating() const
 {
+#ifdef __linux__
+  if (m_uinput)
+    return;
+#endif
   if (m_isPrimary || !m_isOnComputer)
     return;
 
@@ -452,6 +512,12 @@ void EiComputer::stopEmulating() const
 void EiComputer::enter()
 {
   m_isOnComputer = true;
+#ifdef __linux__
+  if (m_uinput) {
+    fakeMouseMove(m_cursorX, m_cursorY);
+    return;
+  }
+#endif
   if (!m_isPrimary && m_eiAbs) {
     // Emulation is started lazily by ensureEmulating() on the first injected
     // input and released again after a short idle, so this computer can DPMS-sleep
@@ -472,6 +538,10 @@ bool EiComputer::canLeave()
 
 void EiComputer::leave()
 {
+#ifdef __linux__
+  if (m_uinput)
+    m_uinput->releaseAll();
+#endif
   if (!m_isPrimary) {
     stopEmulating();
   }

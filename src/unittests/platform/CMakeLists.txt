@@ -25,6 +25,15 @@ elseif(APPLE)
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
   )
 elseif(UNIX)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND LIBEI_FOUND)
+    create_test(
+      NAME UinputDeviceTests
+      DEPENDS platform
+      LIBS base arch
+      SOURCE UinputDeviceTests.cpp
+      WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/platform"
+    )
+  endif()
   if(LIBEI_FOUND)
     create_test(
       NAME EiKeyStateTests

@@ -92,6 +92,11 @@ void PortalRemoteDesktop::handleSessionStarted(GObject *object, GAsyncResult *re
   g_autoptr(GError) error = nullptr;
   auto session = XDP_SESSION(object);
   if (!xdp_session_start_finish(session, res, &error)) {
+    if (m_computer->usesUinput()) {
+      LOG_WARN("portal unavailable; uinput remains active, restart receiving to restore clipboard: %s", error->message);
+      g_main_loop_quit(m_glibMainLoop);
+      return;
+    }
     LOG_ERR("failed to start portal remote desktop session, quitting: %s", error->message);
     g_main_loop_quit(m_glibMainLoop);
     m_events->addEvent(Event(EventTypes::Quit));
@@ -141,7 +146,10 @@ void PortalRemoteDesktop::handleSessionStarted(GObject *object, GAsyncResult *re
   fd = xdp_session_connect_to_eis(session, &error);
   if (fd < 0) {
     g_main_loop_quit(m_glibMainLoop);
-    m_events->addEvent(Event(EventTypes::Quit));
+    if (m_computer->usesUinput())
+      LOG_WARN("EIS unavailable; continuing with uinput and the last known screen layout");
+    else
+      m_events->addEvent(Event(EventTypes::Quit));
     return;
   }
 
@@ -158,6 +166,11 @@ void PortalRemoteDesktop::handleInitSession(GObject *object, GAsyncResult *res)
   auto session = xdp_portal_create_remote_desktop_session_finish(XDP_PORTAL(object), res, &error);
   if (!session) {
     LOG_ERR("failed to initialize remote desktop session: %s", error->message);
+    if (m_computer->usesUinput()) {
+      LOG_WARN("continuing with uinput; restart receiving to restore portal features");
+      g_main_loop_quit(m_glibMainLoop);
+      return;
+    }
     // This was the first attempt to connect to the RD portal - quit if that
     // fails.
     if (m_sessionIteration == 0) {

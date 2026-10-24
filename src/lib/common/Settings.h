@@ -41,6 +41,7 @@ public:
     inline static const auto InvertXScroll = QStringLiteral("client/invertXScroll");
     inline static const auto YScrollScale = QStringLiteral("client/yScrollScale");
     inline static const auto XScrollScale = QStringLiteral("client/xScrollScale");
+    inline static const auto LinuxUinput = QStringLiteral("client/linuxUinput");
     inline static const auto LanguageSync = QStringLiteral("client/languageSync");
     inline static const auto RemoteHost = QStringLiteral("client/remoteHost");
     inline static const auto AutoConnect = QStringLiteral("client/autoConnect");
@@ -304,6 +305,7 @@ private:
     , Client::DynamicConnectionRetry
     , Client::InvertYScroll
     , Client::InvertXScroll
+    , Client::LinuxUinput
     , Client::LanguageSync
     , Client::RemoteHost
     , Client::AutoConnect
@@ -386,6 +388,7 @@ private:
     , Client::DynamicConnectionRetry
     , Client::InvertYScroll
     , Client::InvertXScroll
+    , Client::LinuxUinput
     , Client::LanguageSync
     , Client::XdpClipboardRetried
     , Log::ToFile

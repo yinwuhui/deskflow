@@ -18,6 +18,7 @@
 #include <climits>
 #include <libei.h>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -31,6 +32,9 @@ class EventQueueTimer;
 namespace deskflow {
 
 class EiKeyState;
+#ifdef __linux__
+class UinputDevice;
+#endif
 class PortalRemoteDesktop;
 class PortalInputCapture;
 class PortalGlobalShortcuts;
@@ -69,6 +73,7 @@ public:
   void fakeMouseRelativeMove(std::int32_t dx, std::int32_t dy) const override;
   void fakeMouseWheel(ScrollDelta delta) const override;
   void fakeKey(std::uint32_t keycode, bool isDown) const;
+  bool usesUinput() const;
 
   // IPlatformComputer overrides
   void enable() override;
@@ -147,6 +152,9 @@ private:
 
   // keyboard stuff
   EiKeyState *m_keyState = nullptr;
+#ifdef __linux__
+  std::unique_ptr<UinputDevice> m_uinput;
+#endif
 
   KeyID m_lastPressed = kKeyNone;
 

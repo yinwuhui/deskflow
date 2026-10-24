@@ -2971,6 +2971,14 @@ Enabling this setting will disable the server config GUI.</source>
         <source>Automatic update checks are unavailable in this build.</source>
         <translation>此版本暂不支持自动检查更新。</translation>
     </message>
+    <message>
+        <source>Allow input on the lock screen</source>
+        <translation>允许锁屏时接收键鼠输入</translation>
+    </message>
+    <message>
+        <source>Use virtual keyboard and mouse devices on Wayland. Requires administrator authorization at startup. Restart receiving while unlocked after changing this setting.</source>
+        <translation>在 Wayland 下使用虚拟键盘和鼠标设备。启动时需要管理员授权。更改后，请在桌面未锁屏时重新启动接收端。</translation>
+    </message>
 </context>
 <context>
     <name>StatusBar</name>

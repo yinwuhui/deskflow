@@ -9,6 +9,7 @@
 #include "common/LogLevel.h"
 #include "common/NetworkProtocol.h"
 #include "common/Settings.h"
+#include "common/PlatformInfo.h"
 #include "gui/TlsUtility.h"
 #include "gui/StyleUtils.h"
 #include "gui/core/NetworkMonitor.h"
@@ -420,6 +421,15 @@ void SettingsPage::build()
       receiveLayout, Settings::Client::LanguageSync, tr("Use the sharing computer's keyboard language"),
       tr("Applies when this computer receives input from another computer.")
   );
+#ifdef Q_OS_LINUX
+  if (deskflow::platform::isWayland()) {
+    toggle(
+        receiveLayout, Settings::Client::LinuxUinput, tr("Allow input on the lock screen"),
+        tr("Use virtual keyboard and mouse devices on Wayland. Requires administrator authorization at startup. "
+           "Restart receiving while unlocked after changing this setting.")
+    );
+  }
+#endif
   toggle(receiveLayout, Settings::Client::InvertXScroll, tr("Invert horizontal scrolling"), {});
   number(receiveLayout, Settings::Client::XScrollScale, tr("Horizontal scroll scale"), {}, 0, 10, tr(" ×"), true);
   toggle(receiveLayout, Settings::Client::InvertYScroll, tr("Invert vertical scrolling"), {});
