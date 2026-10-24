@@ -313,7 +313,8 @@ private Q_SLOTS:
       QCoreApplication::processEvents();
       auto save = page->findChild<QPushButton *>("saveSettings");
       QVERIFY(page->rect().contains(save->mapTo(page, save->rect().bottomRight())));
-      QCOMPARE(window.size(), size);
+      QCOMPARE(window.size(), window.minimumSize());
+      QCOMPARE(window.minimumSize(), window.maximumSize());
     }
     page->discard();
   }

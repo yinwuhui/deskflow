@@ -217,7 +217,8 @@ private Q_SLOTS:
     for (const auto size : {QSize(1060, 820), QSize(747, 840), QSize(740, 600)}) {
       window.resize(size);
       QCoreApplication::processEvents();
-      QCOMPARE(window.size(), size);
+      QCOMPARE(window.size(), window.minimumSize());
+      QCOMPARE(window.minimumSize(), window.maximumSize());
       auto save = page->findChild<QPushButton *>("saveLayout");
       QVERIFY(page->rect().contains(save->mapTo(page, save->rect().bottomRight())));
     }

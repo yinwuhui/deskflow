@@ -144,6 +144,7 @@ private:
   void restoreWindow();
   void setupControls();
   void setupHome();
+  void setupWindowChrome();
   void openDevices();
   void updateDevicesPage();
   void ensureDeviceDiscovery();

@@ -22,6 +22,12 @@ create_test(
 set_tests_properties(MainWindowHomeTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 target_sources(MainWindowHomeTests PRIVATE ../../apps/res/deskflow.qrc)
 
+foreach(scale IN ITEMS 1 1.25 1.5 2)
+  add_test(NAME FixedWindowScale${scale} COMMAND MainWindowHomeTests fixedWindowRejectsResizeAndMaximize)
+  set_tests_properties(FixedWindowScale${scale} PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_SCALE_FACTOR=${scale}")
+endforeach()
+
 create_test(
   NAME SettingsPageTests
   DEPENDS gui

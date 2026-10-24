@@ -37,7 +37,9 @@ enum class HomeIcon
   Panel,
   Adjust,
   Wifi,
-  Bluetooth
+  Bluetooth,
+  Minimize,
+  Close
 };
 
 // Small outline icons rendered by Qt itself, including on installations without the SVG image plugin.
@@ -55,6 +57,13 @@ inline QIcon homeIcon(HomeIcon icon, const QColor &color = QColor("#77818e"))
     p.setBrush(Qt::NoBrush);
     const auto line = [&p](qreal x1, qreal y1, qreal x2, qreal y2) { p.drawLine(QPointF(x1, y1), QPointF(x2, y2)); };
     switch (icon) {
+    case HomeIcon::Minimize:
+      line(5, 12, 19, 12);
+      break;
+    case HomeIcon::Close:
+      line(6, 6, 18, 18);
+      line(18, 6, 6, 18);
+      break;
     case HomeIcon::Wifi:
       p.drawArc(QRectF(2, 4, 20, 17), 35 * 16, 110 * 16);
       p.drawArc(QRectF(6, 9, 12, 10), 35 * 16, 110 * 16);

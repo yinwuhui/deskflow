@@ -124,6 +124,11 @@ MainWindow::MainWindow()
 {
   m_coreProcess.setParent(this);
   setWindowFlag(Qt::FramelessWindowHint);
+  setWindowFlag(Qt::WindowMaximizeButtonHint, false);
+  setWindowFlag(Qt::WindowFullscreenButtonHint, false);
+#ifdef Q_OS_WIN
+  setWindowFlag(Qt::MSWindowsFixedSizeDialogHint);
+#endif
   setAttribute(Qt::WA_TranslucentBackground);
   setStyleSheet(QStringLiteral("QMainWindow#MainWindow { background: transparent; }"));
   ui->setupUi(this);
@@ -258,22 +263,21 @@ MainWindow::~MainWindow()
 
 void MainWindow::restoreWindow()
 {
-  auto windowGeometry = Settings::value(Settings::Gui::WindowGeometry).toRect();
-  const auto totalGeometry = QGuiApplication::primaryScreen()->availableGeometry();
-  if (!windowGeometry.isValid() || windowGeometry.width() < minimumWidth() || windowGeometry.height() < 500) {
-    resize(QSize(1060, 790).boundedTo(totalGeometry.size()));
-    windowGeometry = geometry();
-  } else {
-    setGeometry(windowGeometry);
-  }
-
-  if (!totalGeometry.contains(windowGeometry)) {
-    QRect screenGeometry = QGuiApplication::primaryScreen()->geometry();
-    move(screenGeometry.center() - rect().center());
-  }
-
-  // Old releases stored the compact toolbar-sized window. Grow it to the new homepage minimum.
-  resize(size().expandedTo(minimumSize()));
+  const auto saved = Settings::value(Settings::Gui::WindowGeometry).toRect();
+  auto *display = saved.isValid() ? QGuiApplication::screenAt(saved.topLeft()) : nullptr;
+  if (!display)
+    display = QGuiApplication::primaryScreen();
+  const auto available = display->availableGeometry();
+  // Use logical pixels so native desktop scaling remains enabled. Small work
+  // areas get one fixed, screen-bounded size instead of an inaccessible window.
+  setFixedSize(QSize(1000, 700).boundedTo(available.size()));
+  const auto position = saved.isValid() ? saved.topLeft() : available.center() - rect().center();
+  move(
+      qBound(available.left(), position.x(), available.right() - width() + 1),
+      qBound(available.top(), position.y(), available.bottom() - height() + 1)
+  );
+  // Restore only position; older user-resized dimensions must not change the page.
+  ui->homeScroll->setHorizontalScrollBarPolicy(width() < 740 ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
 }
 
 void MainWindow::setupControls()
@@ -537,7 +541,7 @@ void MainWindow::setupHome()
       close();
   });
   connect(ui->btnWindowMinimize, &QPushButton::clicked, this, &MainWindow::showMinimized);
-  connect(ui->btnWindowZoom, &QPushButton::clicked, this, [this] { isMaximized() ? showNormal() : showMaximized(); });
+  setupWindowChrome();
   qApp->installEventFilter(this);
   m_homeReady = true;
   m_pageStack = new QStackedWidget(ui->rightPanel);
@@ -890,6 +894,55 @@ void MainWindow::updatePageTitle()
   );
 }
 
+void MainWindow::setupWindowChrome()
+{
+  // Keep the content origin identical on all platforms; only the window controls differ.
+  ui->toolbar->setFixedHeight(62);
+  ui->sideTitleBar->setFixedHeight(20);
+  ui->btnWindowZoom->setEnabled(false);
+  ui->btnWindowClose->setToolTip(ui->btnWindowClose->accessibleName());
+  ui->btnWindowMinimize->setToolTip(ui->btnWindowMinimize->accessibleName());
+#ifndef Q_OS_MACOS
+  ui->btnWindowZoom->hide();
+  ui->sideTitleLayout->removeWidget(ui->btnWindowClose);
+  ui->sideTitleLayout->removeWidget(ui->btnWindowMinimize);
+  ui->sideTitleLayout->removeWidget(ui->lblVersion);
+  ui->sideTitleLayout->insertWidget(0, ui->lblVersion);
+  auto *controls = new QWidget(ui->toolbar);
+  controls->setObjectName("windowCaptionControls");
+  auto *layout = new QHBoxLayout(controls);
+  layout->setContentsMargins(12, 0, 0, 0);
+  layout->setSpacing(0);
+  auto *separator = new QFrame(controls);
+  separator->setObjectName("windowCaptionSeparator");
+  separator->setFixedSize(1, 22);
+  separator->setStyleSheet("background: #e6e9ee; border: none;");
+  layout->addWidget(separator, 0, Qt::AlignVCenter);
+  layout->addSpacing(10);
+  for (auto *button : {ui->btnWindowMinimize, ui->btnWindowClose}) {
+    button->setParent(controls);
+    button->setFixedSize(38, 32);
+    button->setIconSize(QSize(16, 16));
+    button->setStyleSheet(
+        QStringLiteral(
+            "QPushButton { background: transparent; border: 1px solid transparent; border-radius: 5px; padding: 0; }"
+            "QPushButton:hover { background: %1; }"
+            "QPushButton:pressed { background: %2; }"
+            "QPushButton[keyboardFocus=\"true\"] { border-color: #087fff; }"
+        )
+            .arg(
+                button == ui->btnWindowClose ? "#ffe5e6" : "#edf1f6",
+                button == ui->btnWindowClose ? "#ffcdd0" : "#dce4ef"
+            )
+    );
+    button->setIcon(homeIcon(button == ui->btnWindowClose ? HomeIcon::Close : HomeIcon::Minimize));
+    layout->addWidget(button);
+    button->show();
+  }
+  ui->toolbarLayout->addWidget(controls);
+#endif
+}
+
 void MainWindow::updateHomeMetrics()
 {
   if (m_actionTransition && m_actionTransition->state() == QAbstractAnimation::Running) {
@@ -900,7 +953,11 @@ void MainWindow::updateHomeMetrics()
   ui->sidebar->setFixedWidth(compact ? 170 : 182);
   const int margin = compact ? 20 : 28;
   ui->contentLayout->setContentsMargins(margin, 18, margin, 16);
-  ui->toolbarLayout->setContentsMargins(margin, 18, margin, 18);
+#ifdef Q_OS_MACOS
+  ui->toolbarLayout->setContentsMargins(margin, 0, margin, 0);
+#else
+  ui->toolbarLayout->setContentsMargins(margin, 0, 12, 0);
+#endif
   ui->localCardLayout->setContentsMargins(0, 0, 0, 0);
   ui->localCardLayout->setSpacing(compact ? 14 : 24);
   const auto name = Settings::value(Settings::Core::ComputerName).toString();
@@ -1679,7 +1736,7 @@ void MainWindow::handlePeerFingerprint(const QString &fingerprint)
 
 bool MainWindow::maybeHideToTray()
 {
-  if (!Settings::value(Settings::Gui::CloseToTray).toBool()) {
+  if (!Settings::value(Settings::Gui::CloseToTray).toBool() || !QSystemTrayIcon::isSystemTrayAvailable()) {
     return false;
   }
 
@@ -1830,7 +1887,13 @@ void MainWindow::hide()
 void MainWindow::changeEvent(QEvent *e)
 {
   QMainWindow::changeEvent(e);
-  if (e->type() == QEvent::ActivationChange && isActiveWindow()) {
+  if (e->type() == QEvent::WindowStateChange && (isMaximized() || isFullScreen())) {
+    // Reject external window-manager maximize/fullscreen requests as well.
+    QTimer::singleShot(0, this, [this] {
+      setWindowState(windowState() & ~(Qt::WindowMaximized | Qt::WindowFullScreen));
+      resize(minimumSize());
+    });
+  } else if (e->type() == QEvent::ActivationChange && isActiveWindow()) {
     refreshPermissionStatus();
   } else if (e->type() == QEvent::PaletteChange) {
     updateIconTheme();
@@ -1864,24 +1927,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     auto widget = qobject_cast<QWidget *>(obj);
     auto mouse = static_cast<QMouseEvent *>(event);
     if (widget && widget->window() == this && mouse->button() == Qt::LeftButton) {
-      const auto point = mapFromGlobal(mouse->globalPosition().toPoint());
-      Qt::Edges edges;
-      if (point.x() < 6)
-        edges |= Qt::LeftEdge;
-      if (point.x() > width() - 6)
-        edges |= Qt::RightEdge;
-      if (point.y() < 6)
-        edges |= Qt::TopEdge;
-      if (point.y() > height() - 6)
-        edges |= Qt::BottomEdge;
-      if (edges && windowHandle() && !isMaximized())
-        return windowHandle()->startSystemResize(edges);
       const bool title =
           obj == ui->toolbar || obj == ui->lblWorkspaceTitle || obj == ui->sideTitleBar || obj == ui->lblVersion;
       if (title && windowHandle()) {
-        if (event->type() == QEvent::MouseButtonDblClick)
-          isMaximized() ? showNormal() : showMaximized();
-        else
+        if (event->type() == QEvent::MouseButtonPress)
           windowHandle()->startSystemMove();
         return true;
       }

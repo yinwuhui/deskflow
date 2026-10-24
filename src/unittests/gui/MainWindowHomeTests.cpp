@@ -8,11 +8,11 @@
 #include "gui/core/BackupConnectionPanel.h"
 #include "gui/core/NearbyBluetoothModel.h"
 #include "gui/widgets/DiscoveryComboBox.h"
-#include "gui/widgets/LogDock.h"
 #include "gui/widgets/HomeCheckBox.h"
+#include "gui/widgets/LogDock.h"
 
-#include <QAction>
 #include <QAccessible>
+#include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
@@ -24,14 +24,15 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QLocalServer>
-#include <QMenuBar>
 #include <QMenu>
+#include <QMenuBar>
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
+#include <QScreen>
 #include <QScrollArea>
 #include <QScrollBar>
-#include <QScopeGuard>
 #include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTranslator>
@@ -264,8 +265,7 @@ private Q_SLOTS:
     QSignalSpy commands(&panel, &BackupConnectionPanel::command);
     panel.findChild<QPushButton *>("btnInitialBluetooth")->click();
     QVERIFY(panel.bluetoothSelected());
-    QCOMPARE(panel.findChild<QLabel *>("lblBackupStatus")->text(),
-             QString("Finding nearby Bluetooth devices…"));
+    QCOMPARE(panel.findChild<QLabel *>("lblBackupStatus")->text(), QString("Finding nearby Bluetooth devices…"));
     QCOMPARE(visibility.last().first().toBool(), true);
     // Cancel before the asynchronous permission callback can start hardware discovery.
     panel.findChild<QPushButton *>("btnInitialNetwork")->click();
@@ -732,15 +732,14 @@ private Q_SLOTS:
     core->processStateChanged(deskflow::core::ProcessState::Stopped);
   }
 
-  void restoresAResizableHomepageAndLogs()
+  void restoresAFixedHomepageAndLogs()
   {
     // An old profile must not restore the legacy expanded diagnostics layout.
     Settings::setValue(Settings::Gui::LogExpanded, true);
     MainWindow window;
     QVERIFY(window.height() >= 600);
     QVERIFY(window.width() >= 740);
-    QVERIFY(window.maximumWidth() > window.minimumWidth());
-    QVERIFY(window.maximumHeight() > window.minimumHeight());
+    QCOMPARE(window.minimumSize(), window.maximumSize());
     window.show();
     QCoreApplication::processEvents();
     auto logs = window.findChild<QPushButton *>("btnLogs");
@@ -777,10 +776,89 @@ private Q_SLOTS:
     close->click();
     QVERIFY(dock->isHidden());
     QVERIFY(!dock->toggleViewAction()->isChecked());
-    QVERIFY(window.maximumWidth() > window.minimumWidth());
     window.resize(880, 650);
     QCoreApplication::processEvents();
-    QCOMPARE(window.width(), 880);
+    QCOMPARE(window.size(), initialSize);
+  }
+
+  void fixedWindowRejectsResizeAndMaximize()
+  {
+    Settings::setValue(Settings::Gui::WindowGeometry, QRect(40, 40, 1500, 950));
+    MainWindow window;
+    window.show();
+    QCoreApplication::processEvents();
+    const auto available = QGuiApplication::primaryScreen()->availableGeometry();
+    const auto expected = QSize(1000, 700).boundedTo(available.size());
+    QCOMPARE(window.size(), expected);
+    QCOMPARE(window.minimumSize(), expected);
+    QCOMPARE(window.maximumSize(), expected);
+    QVERIFY(available.contains(window.geometry()));
+    QVERIFY(!window.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+    auto *zoom = window.findChild<QPushButton *>("btnWindowZoom");
+    QVERIFY(!zoom->isEnabled());
+    for (auto request : {QSize(740, 600), QSize(1600, 1000)}) {
+      window.resize(request);
+      QCoreApplication::processEvents();
+      QCOMPARE(window.size(), expected);
+    }
+    QTest::mouseDClick(window.findChild<QWidget *>("toolbar"), Qt::LeftButton);
+    QCoreApplication::processEvents();
+    QVERIFY(!window.isMaximized());
+    QCOMPARE(window.size(), expected);
+    window.showMaximized();
+    QTRY_VERIFY(!window.isMaximized());
+    QCOMPARE(window.size(), expected);
+    window.showFullScreen();
+    QTRY_VERIFY(!window.isFullScreen());
+    QCOMPARE(window.size(), expected);
+    for (const auto name : {"btnDevices", "btnLayout", "btnSettings", "btnHome"}) {
+      window.findChild<QPushButton *>(name)->click();
+      QCoreApplication::processEvents();
+      QCOMPARE(window.size(), expected);
+    }
+  }
+
+  void windowControlsFollowPlatformAndMinimize()
+  {
+    MainWindow window;
+    window.show();
+    QCoreApplication::processEvents();
+    auto *close = window.findChild<QPushButton *>("btnWindowClose");
+    auto *minimize = window.findChild<QPushButton *>("btnWindowMinimize");
+    auto *zoom = window.findChild<QPushButton *>("btnWindowZoom");
+    auto *toolbar = window.findChild<QWidget *>("toolbar");
+    QCOMPARE(toolbar->height(), 62);
+    QVERIFY(close->isVisible());
+    QVERIFY(minimize->isVisible());
+    QVERIFY(!zoom->isEnabled());
+#ifdef Q_OS_MACOS
+    QVERIFY(zoom->isVisible());
+    QCOMPARE(close->parentWidget()->objectName(), QString("sideTitleBar"));
+    QVERIFY(close->mapTo(&window, QPoint()).x() < minimize->mapTo(&window, QPoint()).x());
+    QVERIFY(close->icon().isNull());
+#else
+    QVERIFY(zoom->isHidden());
+    QCOMPARE(close->parentWidget()->objectName(), QString("windowCaptionControls"));
+    QVERIFY(!close->icon().isNull());
+    QVERIFY(!minimize->icon().isNull());
+    const auto closePosition = close->mapTo(&window, QPoint());
+    const auto minimizePosition = minimize->mapTo(&window, QPoint());
+    QVERIFY(closePosition.x() > window.width() - 60);
+    QVERIFY(minimizePosition.x() < closePosition.x());
+    QCOMPARE(minimizePosition.y(), closePosition.y());
+    QCOMPARE(close->size(), QSize(38, 32));
+    for (const auto name : {"btnDevices", "btnLayout", "btnSettings", "btnHome"}) {
+      window.findChild<QPushButton *>(name)->click();
+      QCoreApplication::processEvents();
+      QCOMPARE(close->mapTo(&window, QPoint()), closePosition);
+    }
+#endif
+    const auto originalSize = window.size();
+    minimize->click();
+    QTRY_VERIFY(window.isMinimized());
+    window.showNormal();
+    QTRY_VERIFY(!window.isMinimized());
+    QCOMPARE(window.size(), originalSize);
   }
 
   void menusRespectThePlatformAndShortcutsRemainAvailable()
