@@ -13,6 +13,7 @@ class QSpinBox;
 class QLineEdit;
 class QComboBox;
 class LayoutCanvas;
+class PeerUsageControl;
 
 class ScreenLayoutPage : public QWidget
 {
@@ -52,6 +53,7 @@ private:
   ServerConfig m_baseline;
   ServerConfig m_liveBaseline;
   ServerConfig m_draft;
+  PeerUsageControl *m_usage = nullptr;
   LayoutCanvas *m_canvas = nullptr;
   QPushButton *m_fixed = nullptr;
   QPushButton *m_free = nullptr;

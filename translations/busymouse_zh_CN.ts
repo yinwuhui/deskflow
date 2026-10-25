@@ -630,6 +630,10 @@ Address: %2</source>
         <source>Working mode</source>
         <translation>工作方式</translation>
     </message>
+    <message>
+        <source>The connection stays available when changing usage mode.</source>
+        <translation>切换使用模式时保留设备连接。</translation>
+    </message>
 </context>
 <context>
     <name>FingerprintDialog</name>
@@ -1822,6 +1826,10 @@ Enable this copy of busymouse in System Settings &gt; Privacy &amp; Security &gt
     <message>
         <source>Precise placement</source>
         <translation>精确调整</translation>
+    </message>
+    <message>
+        <source>Extended display arrangement is not supported yet. End the extension to edit keyboard and mouse positions.</source>
+        <translation>扩展屏位置编辑尚未接入；结束扩展后可编辑键鼠跨屏位置。</translation>
     </message>
 </context>
 <context>
@@ -3495,6 +3503,151 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
     <message>
         <source>This low energy device cannot use the current keyboard and mouse transport.</source>
         <translation>此设备仅支持低功耗蓝牙，当前无法用于键鼠连接。</translation>
+    </message>
+</context>
+<context>
+    <name>PeerUsageModel</name>
+    <message>
+        <source>The other computer declined the request.</source>
+        <translation>对方已拒绝请求。</translation>
+    </message>
+    <message>
+        <source>System permission is required.</source>
+        <translation>需要系统权限。</translation>
+    </message>
+    <message>
+        <source>Another display session is in use.</source>
+        <translation>已有其他扩展屏会话正在使用。</translation>
+    </message>
+    <message>
+        <source>A network connection is required for extended display.</source>
+        <translation>扩展屏幕需要可用的网络连接。</translation>
+    </message>
+    <message>
+        <source>Resources need cleanup before switching again.</source>
+        <translation>资源需要清理，暂时无法切换。</translation>
+    </message>
+    <message>
+        <source>Device capabilities have not been confirmed.</source>
+        <translation>尚未确认设备能力。</translation>
+    </message>
+    <message>
+        <source>Switch cancelled.</source>
+        <translation>已取消切换。</translation>
+    </message>
+    <message>
+        <source>The request timed out.</source>
+        <translation>请求已超时。</translation>
+    </message>
+    <message>
+        <source>This device does not support this mode.</source>
+        <translation>当前设备不支持此模式。</translation>
+    </message>
+    <message>
+        <source>Could not switch mode. Check the connection and try again.</source>
+        <translation>模式切换失败，请检查连接后重试。</translation>
+    </message>
+</context>
+<context>
+    <name>PeerUsageControl</name>
+    <message>
+        <source>Usage mode</source>
+        <translation>使用模式</translation>
+    </message>
+    <message>
+        <source>Keyboard &amp; mouse</source>
+        <translation>键鼠共享</translation>
+    </message>
+    <message>
+        <source>Extended display</source>
+        <translation>扩展屏幕</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>End extension</source>
+        <translation>结束扩展</translation>
+    </message>
+    <message>
+        <source>Connect this computer first.</source>
+        <translation>请先建立连接。</translation>
+    </message>
+    <message>
+        <source>Connected · usage capabilities are not yet available.</source>
+        <translation>已连接 · 用途能力尚未就绪。</translation>
+    </message>
+    <message>
+        <source>Submitting request…</source>
+        <translation>正在提交请求…</translation>
+    </message>
+    <message>
+        <source>Resources need cleanup before switching again.</source>
+        <translation>资源需要清理，暂时无法切换。</translation>
+    </message>
+    <message>
+        <source>Waiting for permission · current mode remains active.</source>
+        <translation>等待对方允许 · 当前模式继续生效。</translation>
+    </message>
+    <message>
+        <source>Preparing extended display · waiting for the first frame…</source>
+        <translation>正在准备扩展屏幕，等待首帧…</translation>
+    </message>
+    <message>
+        <source>Restoring the previous keyboard and mouse connection…</source>
+        <translation>正在恢复原键鼠连接…</translation>
+    </message>
+    <message>
+        <source>Switching mode…</source>
+        <translation>正在切换模式…</translation>
+    </message>
+    <message>
+        <source>Extended display active · drag local windows onto this screen.</source>
+        <translation>扩展屏幕已启用 · 可拖入本机窗口。</translation>
+    </message>
+    <message>
+        <source>Keyboard and mouse sharing · the other computer keeps its own desktop.</source>
+        <translation>键鼠共享 · 操作对方原有桌面。</translation>
+    </message>
+    <message>
+        <source>Connected · choose a supported usage mode.</source>
+        <translation>已连接 · 请选择可用模式。</translation>
+    </message>
+    <message>
+        <source>Share both keyboard and mouse; preserve the existing control direction.</source>
+        <translation>同时共享键盘和鼠标，保持原控制方向。</translation>
+    </message>
+    <message>
+        <source>Use this computer&apos;s screen to extend the local desktop. Requires permission on the other computer.</source>
+        <translation>将对方屏幕作为本机扩展桌面，需要对方允许。</translation>
+    </message>
+    <message>
+        <source>Extended display support and network availability have not been confirmed.</source>
+        <translation>尚未确认扩展屏幕能力及可用网络。</translation>
+    </message>
+</context>
+<context>
+    <name>DisplayRequestPanel</name>
+    <message>
+        <source>Screen use request</source>
+        <translation>屏幕使用请求</translation>
+    </message>
+    <message>
+        <source>Allow this computer&apos;s screen to extend the other desktop for this session?</source>
+        <translation>是否允许对方在本次会话中使用这台电脑的屏幕作为扩展桌面？</translation>
+    </message>
+    <message>
+        <source>Decline</source>
+        <translation>拒绝</translation>
+    </message>
+    <message>
+        <source>Allow once</source>
+        <translation>仅允许本次</translation>
+    </message>
+    <message>
+        <source>%1 wants to use this screen.</source>
+        <translation>%1 希望使用这台电脑的屏幕。</translation>
     </message>
 </context>
 </TS>

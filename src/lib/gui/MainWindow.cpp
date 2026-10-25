@@ -19,6 +19,8 @@
 #include "dialogs/HelpDialog.h"
 #include "widgets/BrandIcons.h"
 #include "widgets/DeviceListPage.h"
+#include "core/PeerUsageModel.h"
+#include "widgets/DisplayRequestPanel.h"
 #include "widgets/ScreenLayoutPage.h"
 #include "widgets/SettingsPage.h"
 #include <QStackedWidget>
@@ -317,6 +319,7 @@ void MainWindow::setupControls()
 
 void MainWindow::setupHome()
 {
+  new DisplayRequestPanel(ui->topLevelWidget);
   auto *backupPanel = new BackupConnectionPanel(ui->homeActionCard);
   m_backupPanel = backupPanel;
   ui->modeLinksLayout->insertWidget(0, backupPanel);
@@ -751,8 +754,6 @@ void MainWindow::openDevices()
 
 void MainWindow::updateDevicesPage()
 {
-  if (!m_devicesPage)
-    return;
   using Kind = DeviceListPage::Kind;
   using State = DeviceListPage::State;
   using Device = DeviceListPage::Device;
@@ -855,8 +856,14 @@ void MainWindow::updateDevicesPage()
     devices.append(d);
   for (const auto &d : servers)
     devices.append(d);
-  m_devicesPage->setDevices(devices, sharing, m_statusBar->statusText(), busy);
-  m_devicesPage->setDiscoveryAvailable(m_mdnsBrowser && m_mdnsBrowser->isRunning());
+  QSet<QString> connected;
+  for (const auto &device : devices)
+    if (device.state == State::Connected) connected.insert(device.id);
+  PeerUsageModel::applicationModel()->setConnectedDevices(connected);
+  if (m_devicesPage) {
+    m_devicesPage->setDevices(devices, sharing, m_statusBar->statusText(), busy);
+    m_devicesPage->setDiscoveryAvailable(m_mdnsBrowser && m_mdnsBrowser->isRunning());
+  }
 }
 
 void MainWindow::connectDeviceServer(const QString &address, const QString &name, bool autoConnect)

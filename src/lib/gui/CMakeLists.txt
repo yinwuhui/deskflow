@@ -48,6 +48,12 @@ add_library(${target} STATIC
   widgets/ScreenLayoutPage.h
   widgets/DeviceListPage.cpp
   widgets/DeviceListPage.h
+  core/PeerUsageModel.cpp
+  core/PeerUsageModel.h
+  widgets/PeerUsageControl.cpp
+  widgets/PeerUsageControl.h
+  widgets/DisplayRequestPanel.cpp
+  widgets/DisplayRequestPanel.h
   core/CoreProcess.cpp
   core/CoreProcess.h
   core/NetworkMonitor.cpp

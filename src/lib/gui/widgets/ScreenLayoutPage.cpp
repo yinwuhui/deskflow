@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-2.0-only WITH LicenseRef-OpenSSL-Exception
  */
 #include "ScreenLayoutPage.h"
+#include "PeerUsageControl.h"
+#include "gui/core/PeerUsageModel.h"
 #include "HomeIcons.h"
 #include "gui/StyleUtils.h"
 #include "common/Settings.h"
@@ -214,6 +216,7 @@ ScreenLayoutPage::ScreenLayoutPage(ServerConfig &config, QWidget *parent)
   build();
   load();
   connect(Settings::instance(), &Settings::settingsWritableChanged, this, [this] { updateControls(); });
+  connect(PeerUsageModel::applicationModel(), &PeerUsageModel::changed, this, [this] { updateControls(); });
 }
 
 void ScreenLayoutPage::build()
@@ -338,6 +341,8 @@ void ScreenLayoutPage::build()
   m_selection->setObjectName("layoutComputerSelector");
   m_selection->setAccessibleName(tr("Selected computer"));
   layout->addWidget(m_selection);
+  m_usage = new PeerUsageControl(content);
+  layout->addWidget(m_usage);
   connect(m_selection, &QComboBox::currentTextChanged, this, [this](const QString &name) {
     if (!m_loading)
       selectComputer(name);
@@ -512,6 +517,9 @@ void ScreenLayoutPage::selectComputer(const QString &name)
 {
   m_loading = true;
   m_selected = name;
+  const bool remote = !name.isEmpty() && name != Settings::value(Settings::Core::ComputerName).toString();
+  m_usage->setDevice("computer:" + name);
+  m_usage->setVisible(remote);
   m_canvas->selected = name;
   m_selection->setCurrentText(name);
   const auto r = rectangles().value(name);
@@ -697,13 +705,15 @@ void ScreenLayoutPage::message(const QString &text, bool error)
 
 void ScreenLayoutPage::updateControls()
 {
-  const bool editable = Settings::isWritable() && !m_config.useExternalConfig();
+  const bool displayBlocked = PeerUsageModel::applicationModel()->displayLayoutBlocked();
+  const bool editable = Settings::isWritable() && !m_config.useExternalConfig() && !displayBlocked;
   m_external->setVisible(m_config.useExternalConfig());
   for (auto w :
        {static_cast<QWidget *>(m_fixed), static_cast<QWidget *>(m_free), static_cast<QWidget *>(m_canvas),
         static_cast<QWidget *>(m_selection), static_cast<QWidget *>(m_x), static_cast<QWidget *>(m_y),
         static_cast<QWidget *>(m_editor)})
     w->setEnabled(editable);
+  m_selection->setEnabled(true);
   findChild<QPushButton *>("addLayoutComputer")->setEnabled(editable);
   m_width->setEnabled(editable && m_draft.freeLayout());
   m_height->setEnabled(editable && m_draft.freeLayout());
@@ -714,7 +724,8 @@ void ScreenLayoutPage::updateControls()
   m_save->setEnabled(editable && isModified() && error.isEmpty());
   m_discard->setEnabled(isModified());
   message(
-      !editable          ? tr("Arrangement is read-only.")
+      displayBlocked     ? tr("Extended display arrangement is not supported yet. End the extension to edit keyboard and mouse positions.")
+      : !editable        ? tr("Arrangement is read-only.")
       : !error.isEmpty() ? error
       : isModified()     ? tr("Unsaved arrangement. Saving restarts an active sharing service.")
                          : tr("Arrangement saved. Each mode keeps its own positions."),
@@ -724,7 +735,7 @@ void ScreenLayoutPage::updateControls()
 
 bool ScreenLayoutPage::save()
 {
-  if (!Settings::isWritable() || m_config.useExternalConfig())
+  if (!Settings::isWritable() || m_config.useExternalConfig() || PeerUsageModel::applicationModel()->displayLayoutBlocked())
     return false;
   if (!(m_config == m_liveBaseline)) {
     message(

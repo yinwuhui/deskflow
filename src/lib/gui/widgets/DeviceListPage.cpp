@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-2.0-only WITH LicenseRef-OpenSSL-Exception
  */
 #include "DeviceListPage.h"
+#include "PeerUsageControl.h"
+#include "gui/core/PeerUsageModel.h"
 #include "HomeIcons.h"
 #include "HomeCheckBox.h"
 #include "gui/StyleUtils.h"
@@ -454,6 +456,10 @@ void DeviceListPage::setDevices(const QList<Device> &devices, bool sharing, cons
 {
   const bool changed = devices != m_devices || sharing != m_sharing || busy != m_busy;
   m_devices = devices;
+  QSet<QString> connected;
+  for (const auto &d : devices)
+    if (d.state == State::Connected) connected.insert(d.id);
+  PeerUsageModel::applicationModel()->setConnectedDevices(connected);
   m_sharing = sharing;
   m_busy = busy;
   message(status);
@@ -653,6 +659,12 @@ void DeviceListPage::rebuildDetail()
                                    : tr("Connection history")
     );
   }
+  if (!local) {
+    auto usage = new PeerUsageControl(m_details);
+    usage->setDevice(d.id);
+    layout->addSpacing(12);
+    layout->addWidget(usage);
+  }
   layout->addSpacing(20);
   const auto mainText = local       ? tr("View screen arrangement")
                         : server    ? (connected ? tr("Disconnect") : tr("Use this computer's keyboard and mouse"))
@@ -668,7 +680,7 @@ void DeviceListPage::rebuildDetail()
   auto hint = label(
       server && !connected ? tr("Connecting switches this computer to receiving mode.")
       : local              ? tr("Set computer positions and the edges used to switch between them.")
-      : connected          ? tr("Keyboard and mouse sharing is connected.")
+      : connected          ? tr("The connection stays available when changing usage mode.")
                            : tr("Waiting for this computer to connect."),
       "status", m_details
   );
