@@ -155,3 +155,8 @@ if(BUILD_BLUETOOTH)
     target_link_libraries(gui PRIVATE Qt6::QDarwinBluetoothPermissionPlugin)
   endif()
 endif()
+
+if(BUILD_VIRTUAL_DISPLAY)
+  target_link_libraries(gui PUBLIC deskflow-display-service)
+  target_compile_definitions(gui PUBLIC DESKFLOW_DISPLAY)
+endif()

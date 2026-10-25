@@ -1390,3 +1390,9 @@ public:
 };
 
 /** @} */ // end of protocol_structures group
+
+// BMouse input-control extension, version 1. Negotiated through BIC1 before use.
+// These messages do not change the legacy keyboard or mouse packet formats.
+inline constexpr char kMsgDInputControlCapability[] = "DICV%4i";
+inline constexpr char kMsgCInputControl[] = "CICM%4i%1i";
+inline constexpr char kMsgDInputControlAck[] = "DICA%4i%1i";

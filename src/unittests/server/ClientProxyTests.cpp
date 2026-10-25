@@ -8,6 +8,8 @@
 
 #include "../deskflow/MockEventQueue.h"
 #include "deskflow/AppUtil.h"
+#include "deskflow/OptionTypes.h"
+#include "deskflow/ProtocolUtil.h"
 #include "io/IStream.h"
 #include "server/ClientProxy1_0.h"
 #include "server/ClientProxy1_1.h"
@@ -16,6 +18,7 @@
 #include "server/ClientProxy1_8.h"
 
 #include <memory>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -62,9 +65,15 @@ public:
   {
   }
 
-  uint32_t read(void *, uint32_t) override
+  QByteArray input;
+  std::string identity;
+  std::string peerIdentity() const override { return identity; }
+  uint32_t read(void* output, uint32_t count) override
   {
-    return 0;
+    auto size = std::min<size_t>(count, input.size());
+    if (output) std::memcpy(output, input.data(), size);
+    input.remove(0, size);
+    return size;
   }
 
   void flush() override
@@ -223,3 +232,69 @@ void ClientProxyTests::keyUp()
 }
 
 QTEST_MAIN(ClientProxyTests)
+
+namespace {
+class InputControlProxy : public ClientProxy1_0
+{
+public:
+  using ClientProxy1_0::ClientProxy1_0;
+  using ClientProxy1_0::parseMessage;
+};
+}
+void ClientProxyTests::inputControlNegotiationAndExactAcknowledgement()
+{
+  MockEventQueue events;
+  auto* stream = new CapturingStream;
+  stream->identity = std::string(64, 'a');
+  InputControlProxy proxy("client", stream, &events);
+  stream->take();
+  QVERIFY(!proxy.supportsInputControl());
+  QVERIFY(!proxy.requestInputControl(1, false));
+  QVERIFY(stream->take().isEmpty()); // No new packet before explicit opt-in.
+  proxy.setOptions({kOptionInputControl, 1});
+  stream->take();
+  stream->input = QByteArray::fromHex("00000001");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
+  QVERIFY(proxy.supportsInputControl());
+  QVERIFY(proxy.requestInputControl(7, false));
+  QCOMPARE(stream->take(), QByteArray::fromHex("4349434d0000000700"));
+  stream->input = QByteArray::fromHex("0000000601");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
+  QVERIFY(!proxy.inputControlAcknowledged(7, false));
+  stream->input = QByteArray::fromHex("0000000702");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
+  QVERIFY(!proxy.inputControlAcknowledged(7, false));
+  stream->input = QByteArray::fromHex("0000000701");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
+  QVERIFY(proxy.inputControlAcknowledged(7, false));
+  QVERIFY(!proxy.requestInputControl(7, true));
+  QVERIFY(!proxy.requestInputControl(6, true));
+  QVERIFY(proxy.requestInputControl(8, true));
+  QCOMPARE(stream->take(), QByteArray::fromHex("4349434d0000000801"));
+  QVERIFY(!proxy.inputControlAcknowledged(7, false));
+  stream->input = QByteArray::fromHex("0000000802");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
+  QVERIFY(proxy.inputControlAcknowledged(8, true));
+  QVERIFY(proxy.requestInputReadiness(9));
+  QCOMPARE(stream->take(),QByteArray::fromHex("4349434d0000000902"));
+  QVERIFY(!proxy.inputReadinessAcknowledged(9));
+  stream->input=QByteArray::fromHex("0000000903");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
+  QVERIFY(proxy.inputReadinessAcknowledged(9));
+  QVERIFY(!proxy.inputControlAcknowledged(9,true));
+}
+void ClientProxyTests::inputControlRejectsUnauthenticatedAndUnsolicitedCapability()
+{
+  MockEventQueue events;
+  auto* stream = new CapturingStream;
+  InputControlProxy proxy("client", stream, &events);
+  stream->take();
+  proxy.setOptions({kOptionInputControl, 1});
+  stream->input = QByteArray::fromHex("00000001");
+  QVERIFY(!proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
+  QVERIFY(!proxy.supportsInputControl());
+  stream->identity = std::string(64, 'a');
+  stream->input = QByteArray::fromHex("00000001");
+  QVERIFY(!proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
+  QVERIFY(!proxy.requestInputControl(1, false));
+}

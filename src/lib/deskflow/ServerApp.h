@@ -47,7 +47,8 @@ class ServerApp : public App
 
 public:
   explicit ServerApp(IEventQueue *events, const QString &processName = QString());
-  ~ServerApp() override = default;
+  ~ServerApp() override;
+  void queueInputControlCommand(const QString& json);
 
   //
   // IApp overrides
@@ -104,6 +105,7 @@ public:
 
 private:
   void handleComputerSwitched() const;
+  void handleInputControlCommand(const Event& event);
   std::unique_ptr<ISocketFactory> getSocketFactory() const;
   NetworkAddress getAddress(const NetworkAddress &address) const;
   void startMdnsPublisher();

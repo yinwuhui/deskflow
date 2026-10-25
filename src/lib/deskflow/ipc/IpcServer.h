@@ -28,6 +28,7 @@ public:
 
 Q_SIGNALS:
   void transportCommand(const QString &json);
+  void inputControlCommand(const QString &json);
   void commandBroadcast(const QString &command, const QString &args);
   void logLevelChanged(const QString &logLevel);
   void configFileChanged(const QString &configFile);

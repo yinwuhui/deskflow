@@ -68,6 +68,9 @@ public:
   Called when the user navigates off this computer.
   */
   bool leave();
+  // Release synthetic input even during a drag, without revoking portal access.
+  bool suspendRemoteInput();
+  bool isEnabled() const { return m_enabled; }
 
   //! Update configuration
   /*!

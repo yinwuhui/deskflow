@@ -178,6 +178,9 @@ public:
   // IClient overrides
   void enter(int32_t xAbs, int32_t yAbs, uint32_t seqNum, KeyModifierMask mask, bool forScreensaver) override;
   bool leave() override;
+  bool suspendRemoteInput();
+  bool inputReady() const;
+  bool resumeRemoteInput();
   void setClipboard(ClipboardID, const IClipboard *) override;
   void grabClipboard(ClipboardID) override;
   void setClipboardDirty(ClipboardID, bool) override;
@@ -233,6 +236,8 @@ private:
   EventQueueTimer *m_timer = nullptr;
   ServerProxy *m_server = nullptr;
   bool m_ready = false;
+  bool m_inputSuspended = false;
+  bool m_inputManaged = false;
   bool m_active = false;
   bool m_suspended = false;
   bool m_connectOnResume = false;

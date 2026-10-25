@@ -32,6 +32,10 @@
 
 // must be before computer header includes
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSet>
+#include <limits>
 
 #if defined(Q_OS_WIN)
 #include "platform/MSWindowsComputer.h"
@@ -60,7 +64,73 @@ using namespace deskflow::server;
 ServerApp::ServerApp(IEventQueue *events, const QString &processName) : App(events, processName)
 {
   m_name = Settings::value(Settings::Core::ComputerName).toString().toStdString();
-  // do nothing
+  events->addHandler(EventTypes::ServerInputControlCommand, this, [this](const auto& event) { handleInputControlCommand(event); });
+}
+
+namespace {
+class InputControlCommandData : public EventData
+{
+public:
+  explicit InputControlCommandData(QString text) : json(std::move(text)) {}
+  QString json;
+};
+bool lowerHex(const QString& text,int size)
+{
+  if(text.size()!=size)return false;
+  for(auto c:text)if(!((c>='0'&&c<='9')||(c>='a'&&c<='f')))return false;
+  return true;
+}
+}
+ServerApp::~ServerApp()
+{
+  getEvents()->removeHandler(EventTypes::ServerInputControlCommand,this);
+}
+void ServerApp::queueInputControlCommand(const QString& json)
+{
+  getEvents()->addEvent(Event(EventTypes::ServerInputControlCommand,this,new InputControlCommandData(json)));
+}
+void ServerApp::handleInputControlCommand(const Event& event)
+{
+  const auto* data=static_cast<const InputControlCommandData*>(event.getDataObject());
+  const auto document=QJsonDocument::fromJson(data->json.toUtf8());
+  const auto command=document.object();
+  auto result=QJsonObject{{"accepted",false},{"reasonCode","InvalidRequest"}};
+  const QSet<QString> required{"id","kind","peerId","sequence","operationId","operationGeneration","enabled"};
+  bool valid=document.isObject() && data->json.size()<=65536 && command.size()==required.size();
+  for(const auto& key:required)valid=valid&&command.contains(key);
+  const auto peer=command.value("peerId").toString();
+  const auto operation=command.value("operationId").toString();
+  const auto sequenceText=command.value("sequence").toString();
+  bool sequenceValid=false;auto sequence=sequenceText.toULongLong(&sequenceValid);
+  const auto generationText=command.value("operationGeneration").toString();
+  bool generationValid=false;auto generation=generationText.toULongLong(&generationValid);
+  const auto kind=command.value("kind").toString();
+  const auto id=command.value("id").toString();
+  const auto enabled=command.value("enabled");
+  valid=valid&&!id.isEmpty()&&id.size()<=64&&lowerHex(peer,64)&&lowerHex(operation,32)&&operation!=QString(32,'0')&&
+    sequenceValid&&sequence<=std::numeric_limits<uint32_t>::max()&&QString::number(sequence)==sequenceText&&
+    generationValid&&generation>0&&QString::number(generation)==generationText&&
+    (kind=="probe"||kind=="status"||kind=="suspend"||kind=="resume"||kind=="commitResume")&&enabled.isBool()&&
+    (kind=="status"||kind=="probe"||(kind=="suspend"?!enabled.toBool():enabled.toBool()));
+  if(valid){
+    for(auto key:{"id","peerId","sequence","operationId","operationGeneration","kind","enabled"})result.insert(key,command.value(key));
+    if(!m_server)result.insert("reasonCode","SessionUnavailable");
+    else{
+      bool accepted=kind=="status";
+      if(kind=="probe")accepted=m_server->requestInputProbe(peer.toStdString(),static_cast<uint32_t>(sequence));
+      else if(kind=="suspend"||kind=="resume")accepted=m_server->requestInputRoute(peer.toStdString(),static_cast<uint32_t>(sequence),kind=="resume");
+      else if(kind=="commitResume")accepted=m_server->commitInputResume(peer.toStdString(),static_cast<uint32_t>(sequence));
+      const auto status=m_server->inputRouteStatus(peer.toStdString(),static_cast<uint32_t>(sequence),enabled.toBool());
+      result.insert("accepted",accepted);result.insert("reasonCode",accepted?"None":!status.connected?"ConnectionLost":!status.supported?"InputIsolationUnsupported":"InputReleaseFailed");
+      result.insert("connected",status.connected);result.insert("supported",status.supported);result.insert("suspended",status.suspended);
+      result.insert("inputPermissionsReady",status.permissionsReady);
+      result.insert("acknowledgementReceived",status.responseReceived);
+      result.insert("lastSequence",QString::number(status.lastSequence));
+      result.insert("otherRoutesIsolated",status.otherRoutesIsolated);
+      result.insert("localFocus",status.localFocus);result.insert("acknowledged",status.acknowledged);
+    }
+  }
+  ipcSendToClient("inputControlResult",QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact)));
 }
 
 void ServerApp::parseArgs()

@@ -71,6 +71,9 @@ add_subdirectory(gui)
 add_subdirectory(net)
 add_subdirectory(platform)
 add_subdirectory(server)
+if(BUILD_VIRTUAL_DISPLAY)
+  add_subdirectory(display)
+endif()
 
 #make sure to use CI only plugin on Unix
 if (UNIX AND NOT APPLE)

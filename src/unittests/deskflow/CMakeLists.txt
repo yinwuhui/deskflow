@@ -65,7 +65,7 @@ endif()
 
 
 create_test(NAME InputReleaseTests DEPENDS app
-  LIBS arch base io mt net platform server
+  LIBS arch base io mt net platform server client
   SOURCE InputReleaseTests.cpp
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow")
 

@@ -107,6 +107,7 @@ private:
   void screensaver();
   void resetOptions();
   void setOptions();
+  void inputControl();
   void queryInfo();
   void infoAcknowledgment();
 
@@ -117,6 +118,10 @@ private:
   deskflow::IStream *m_stream = nullptr;
 
   uint32_t m_seqNum = 0;
+  bool m_inputControlNegotiated = false;
+  uint32_t m_inputControlSequence = 0;
+  uint8_t m_inputControlMode = 0;
+  uint8_t m_inputControlResult = 0;
 
   bool m_compressMouse = false;
   bool m_compressMouseRelative = false;

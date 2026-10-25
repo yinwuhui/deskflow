@@ -28,6 +28,14 @@ public:
   ClientProxy1_0 &operator=(ClientProxy1_0 const &) = delete;
   ClientProxy1_0 &operator=(ClientProxy1_0 &&) = delete;
 
+  uint32_t inputControlSequence() const override { return m_inputControlPending; }
+  bool inputControlResponseReceived(uint32_t sequence) const override { return sequence!=0 && sequence==m_inputControlPending && m_inputControlResponded; }
+  bool supportsInputControl() const override { return m_inputControlSupported; }
+  bool requestInputControl(uint32_t sequence, bool enabled) override;
+  bool requestInputReadiness(uint32_t sequence) override;
+  bool inputReadinessAcknowledged(uint32_t sequence) const override;
+  bool inputControlAcknowledged(uint32_t sequence, bool enabled) const override;
+
   // IComputer
   bool getClipboard(ClipboardID id, IClipboard *) const override;
   void getShape(int32_t &x, int32_t &y, int32_t &width, int32_t &height) const override;
@@ -95,6 +103,13 @@ protected:
 private:
   using MessageParser = bool (ClientProxy1_0::*)(const uint8_t *);
 
+  bool m_inputControlOffered = false;
+  bool m_inputControlSupported = false;
+  uint32_t m_inputControlPending = 0;
+  uint8_t m_inputControlResult = 0;
+  bool m_inputControlResponded = false;
+  uint8_t m_inputControlMode = 0;
+  bool requestInputControlMode(uint32_t sequence,uint8_t mode);
   ClientInfo m_info;
   double m_heartbeatAlarm;
   EventQueueTimer *m_heartbeatTimer = nullptr;

@@ -280,6 +280,12 @@ ServerProxy::ConnectionResult ServerProxy::parseMessage(const uint8_t *code)
     enter();
   }
 
+  else if (memcmp(code, kMsgCInputControl, 4) == 0) {
+    if (!m_inputControlNegotiated)
+      return Unknown;
+    inputControl();
+  }
+
   else if (memcmp(code, kMsgCLeave, 4) == 0) {
     leave();
   }
@@ -776,7 +782,10 @@ void ServerProxy::setOptions()
   // update modifier table
   for (uint32_t i = 0, n = (uint32_t)options.size(); i < n; i += 2) {
     KeyModifierID id = kKeyModifierIDNull;
-    if (options[i] == kOptionModifierMapForShift) {
+    if (options[i] == kOptionInputControl && options[i + 1] == 1 && !m_stream->peerIdentity().empty()) {
+      m_inputControlNegotiated = true;
+      ProtocolUtil::writef(m_stream, kMsgDInputControlCapability, 1);
+    } else if (options[i] == kOptionModifierMapForShift) {
       id = kKeyModifierIDShift;
     } else if (options[i] == kOptionModifierMapForControl) {
       id = kKeyModifierIDControl;
@@ -798,6 +807,31 @@ void ServerProxy::setOptions()
       LOG_VERBOSE("modifier %d mapped to %d", id, m_modifierTranslationTable[id]);
     }
   }
+}
+
+void ServerProxy::inputControl()
+{
+  uint32_t sequence = 0;
+  uint8_t mode = 0;
+  ProtocolUtil::readf(m_stream, kMsgCInputControl + 4, &sequence, &mode);
+  if (sequence == 0 || mode > 2 || sequence < m_inputControlSequence ||
+      (sequence == m_inputControlSequence && mode != m_inputControlMode)) {
+    ProtocolUtil::writef(m_stream, kMsgDInputControlAck, sequence, 0);
+    return;
+  }
+  if (sequence != m_inputControlSequence) {
+    // Discard pending compressed motion on both transitions. Motion from the
+    // old desktop must not be delivered after resuming input later.
+    if (mode != 2) {
+      m_compressMouse = m_compressMouseRelative = false;
+      m_dxMouse = m_dyMouse = 0;
+    }
+    m_inputControlSequence = sequence;
+    m_inputControlMode = mode;
+    bool verified = mode == 0 ? m_client->suspendRemoteInput() : mode == 1 ? m_client->resumeRemoteInput() : m_client->inputReady();
+    m_inputControlResult = verified ? mode + 1 : 0;
+  }
+  ProtocolUtil::writef(m_stream, kMsgDInputControlAck, sequence, m_inputControlResult);
 }
 
 void ServerProxy::queryInfo()

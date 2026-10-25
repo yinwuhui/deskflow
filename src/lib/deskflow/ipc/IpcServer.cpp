@@ -106,12 +106,16 @@ void IpcServer::processMessage(QLocalSocket *clientSocket, const QString &messag
 {
   LOG_VERBOSE(
       "%s ipc server got message: %s", m_typeName.constData(),
-      (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+      ((message.startsWith("transport") || message.startsWith("inputControl")) ? "transport [redacted]" : message.toUtf8().constData())
   );
   const auto split = message.indexOf('=');
   const auto parts = split < 0 ? QStringList{message} : QStringList{message.left(split), message.mid(split + 1)};
   if (parts.first() != "hello" && !m_authenticated.contains(clientSocket))
     return;
+  if (parts.first() == "inputControl" && parts.size() == 2) {
+    Q_EMIT inputControlCommand(parts[1]);
+    return;
+  }
   if (parts.first() == "transport" && parts.size() == 2) {
     Q_EMIT transportCommand(parts[1]);
     return;
@@ -119,7 +123,7 @@ void IpcServer::processMessage(QLocalSocket *clientSocket, const QString &messag
   if (parts.isEmpty()) {
     LOG_ERR(
         "%s ipc server got invalid message: %s", m_typeName.constData(),
-        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+        ((message.startsWith("transport") || message.startsWith("inputControl")) ? "transport [redacted]" : message.toUtf8().constData())
     );
     writeToClientSocket(clientSocket, QStringLiteral("error"));
     return;
@@ -179,7 +183,7 @@ void IpcServer::broadcastCommand(const QString &command, const QString &args)
   if (m_clients.isEmpty()) {
     LOG_VERBOSE(
         "%s ipc server has no clients, message queued: %s", m_typeName.constData(),
-        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+        ((message.startsWith("transport") || message.startsWith("inputControl")) ? "transport [redacted]" : message.toUtf8().constData())
     );
     if (command == "transportState") {
       for (int i = m_pendingMessages.size() - 1; i >= 0; --i)
@@ -196,7 +200,7 @@ void IpcServer::broadcastCommand(const QString &command, const QString &args)
 
   LOG_VERBOSE(
       "%s ipc server broadcasting message to %d clients: %s", m_typeName.constData(), m_clients.size(),
-      (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+      ((message.startsWith("transport") || message.startsWith("inputControl")) ? "transport [redacted]" : message.toUtf8().constData())
   );
   for (auto *client : std::as_const(m_clients)) {
     writeToClientSocket(client, message);
@@ -213,7 +217,7 @@ void IpcServer::writeToClientSocket(QLocalSocket *&clientSocket, const QString &
   } else {
     LOG_VERBOSE(
         "%s ipc server wrote message to client socket: %s", m_typeName.constData(),
-        (message.startsWith("transport") ? "transport [redacted]" : message.toUtf8().constData())
+        ((message.startsWith("transport") || message.startsWith("inputControl")) ? "transport [redacted]" : message.toUtf8().constData())
     );
   }
 }

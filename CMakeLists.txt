@@ -23,6 +23,7 @@ endif()
 
 #Project level options
 option(BUILD_INSTALLER "Build installer" ON)
+option(BUILD_VIRTUAL_DISPLAY "Build experimental virtual-display foundations" OFF)
 
 option(ENABLE_COVERAGE "Enable test coverage" OFF)
 if(UNIX)

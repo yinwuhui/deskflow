@@ -28,6 +28,9 @@ enum class EventTypes : uint32_t
   /// This event is sent when the client has successfully connected to the server.
   ClientConnected,
 
+  /// Authenticated local IPC input-route request, handled on the core thread.
+  ServerInputControlCommand,
+
   /** This event is sent when the server refuses the client */
   ClientConnectionRefused,
 

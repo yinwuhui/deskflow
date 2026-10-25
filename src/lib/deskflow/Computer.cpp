@@ -159,6 +159,18 @@ void Computer::enter(KeyModifierMask toggleMask)
   }
 }
 
+bool Computer::suspendRemoteInput()
+{
+  if (m_isPrimary || !m_enabled)
+    return false;
+  releaseSyntheticInput();
+  if (m_entered) {
+    m_computer->leave();
+    m_entered = false;
+  }
+  return true;
+}
+
 bool Computer::leave()
 {
   LOG_INFO("leaving computer");

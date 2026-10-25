@@ -169,6 +169,21 @@ public:
   The caller can also just destroy this object to force the disconnection.
   */
   void disconnect();
+  struct InputRouteStatus {
+    bool connected = false;
+    bool supported = false;
+    bool suspended = false;
+    bool localFocus = false;
+    bool acknowledged = false;
+    bool permissionsReady = false;
+    bool responseReceived = false;
+    bool otherRoutesIsolated = false;
+    uint32_t lastSequence = 0;
+  };
+  InputRouteStatus inputRouteStatus(const std::string& peer, uint32_t sequence, bool enabled) const;
+  bool requestInputRoute(const std::string& peer, uint32_t sequence, bool enabled);
+  bool requestInputProbe(const std::string& peer, uint32_t sequence);
+  bool commitInputResume(const std::string& peer, uint32_t sequence);
 
   //! Store ClientListener pointer
   void setListener(ClientListener *p)
@@ -377,6 +392,10 @@ private:
   PrimaryClient *m_primaryClient = nullptr;
 
   // the client with focus
+  bool inputRouteSuspended(const BaseClientProxy* client) const;
+  std::set<std::string> m_suspendedInputPeers;
+  std::set<std::string> m_managedInputPeers;
+  bool inputKeyboardRouteEnabled(const BaseClientProxy* client) const;
   BaseClientProxy *m_active = nullptr;
 
   // current configuration

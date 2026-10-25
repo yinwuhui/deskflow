@@ -400,6 +400,8 @@ int32_t Server::getJumpZoneSize(const BaseClientProxy *client) const
 void Server::switchComputer(BaseClientProxy *dst, int32_t x, int32_t y, bool forScreensaver)
 {
   assert(dst != nullptr);
+  if (inputRouteSuspended(dst))
+    return;
 
   int32_t dx;
   int32_t dy;
@@ -615,6 +617,8 @@ BaseClientProxy *Server::getNeighbor(const BaseClientProxy *src, Direction dir, 
     // ready then we can stop.
     if (ClientList::const_iterator index = m_clients.find(dstName); index != m_clients.end()) {
       LOG_VERBOSE("\"%s\" is on %s of \"%s\" at %f", dstName.c_str(), Config::dirName(dir), srcName.c_str(), t);
+      if (inputRouteSuspended(index->second))
+        return nullptr;
       mapToPixel(index->second, dir, tTmp, x, y);
       return index->second;
     }
@@ -1075,6 +1079,12 @@ void Server::sendOptions(BaseClientProxy *client) const
     }
   }
 
+  // Explicitly advertise the current input-control capability on the
+  // authenticated connection before allowing any mode transition.
+  if (client != m_primaryClient && client->getStream() && !client->getStream()->peerIdentity().empty()) {
+    optionsList.push_back(kOptionInputControl);
+    optionsList.push_back(1);
+  }
   // send the options
   client->resetOptions();
   client->setOptions(optionsList);
@@ -1552,7 +1562,7 @@ void Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button, const s
       }
     }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
-      if (IKeyState::KeyInfo::contains(computers, index->first)) {
+      if (inputKeyboardRouteEnabled(index->second) && IKeyState::KeyInfo::contains(computers, index->first)) {
         index->second->keyDown(id, mask, button, lang);
       }
     }
@@ -1575,7 +1585,7 @@ void Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button, const cha
       }
     }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
-      if (IKeyState::KeyInfo::contains(computers, index->first)) {
+      if (inputKeyboardRouteEnabled(index->second) && IKeyState::KeyInfo::contains(computers, index->first)) {
         index->second->keyUp(id, mask, button);
       }
     }
@@ -2065,4 +2075,90 @@ void Server::forceLeaveClient(const BaseClientProxy *client)
 
   // tell primary client about the active sides
   m_primaryClient->reconfigure(getActivePrimarySides());
+}
+
+bool Server::inputRouteSuspended(const BaseClientProxy* client) const
+{
+  return client != m_primaryClient && client->getStream() &&
+         m_suspendedInputPeers.contains(client->getStream()->peerIdentity());
+}
+
+Server::InputRouteStatus Server::inputRouteStatus(const std::string& peer, uint32_t sequence, bool enabled) const
+{
+  InputRouteStatus result;
+  if (peer.empty())
+    return result;
+  ClientProxy* found = nullptr;
+  for (const auto& [name, client] : m_clients) {
+    if (client == m_primaryClient || !client->getStream() || client->getStream()->peerIdentity() != peer)
+      continue;
+    if (found) // Ambiguous authenticated connections cannot own one input lease.
+      return {};
+    found = dynamic_cast<ClientProxy*>(client);
+  }
+  if (!found)
+    return result;
+  result.connected = true;
+  result.supported = found->supportsInputControl();
+  result.suspended = m_suspendedInputPeers.contains(peer);
+  result.localFocus = m_active == m_primaryClient;
+  result.acknowledged = found->inputControlAcknowledged(sequence, enabled);
+  result.permissionsReady = m_computer->isEnabled() && found->inputReadinessAcknowledged(sequence);
+  result.responseReceived = found->inputControlResponseReceived(sequence);
+  result.lastSequence = found->inputControlSequence();
+  result.otherRoutesIsolated = true;
+  for (const auto& [name, client] : m_clients)
+    if (client != m_primaryClient && client != found && !inputRouteSuspended(client))
+      result.otherRoutesIsolated = false;
+  return result;
+}
+
+bool Server::requestInputRoute(const std::string& peer, uint32_t sequence, bool enabled)
+{
+  auto status = inputRouteStatus(peer, sequence, enabled);
+  if (!status.connected || !status.supported || sequence == 0)
+    return false;
+  ClientProxy* found = nullptr;
+  for (const auto& [name, client] : m_clients)
+    if (client != m_primaryClient && client->getStream() && client->getStream()->peerIdentity() == peer)
+      found = dynamic_cast<ClientProxy*>(client);
+  if (!found)
+    return false;
+  // Both transitions initially block routing. The GUI must finalize resume only
+  // after its exact acknowledgement; focus stays local throughout the barrier.
+  if (!found->requestInputControl(sequence, enabled))
+    return false;
+  m_managedInputPeers.insert(peer);
+  m_suspendedInputPeers.insert(peer);
+  forceLeaveClient(found);
+  return true;
+}
+
+bool Server::commitInputResume(const std::string& peer, uint32_t sequence)
+{
+  auto status = inputRouteStatus(peer, sequence, true);
+  if (!status.connected || !status.supported || !status.suspended || !status.acknowledged || !status.localFocus)
+    return false;
+  m_suspendedInputPeers.erase(peer);
+  m_primaryClient->reconfigure(getActivePrimarySides());
+  return true;
+}
+
+bool Server::requestInputProbe(const std::string& peer, uint32_t sequence)
+{
+  auto status = inputRouteStatus(peer, sequence, false);
+  if (!status.connected || !status.supported || sequence == 0)
+    return false;
+  for (const auto& [name, client] : m_clients)
+    if (client != m_primaryClient && client->getStream() && client->getStream()->peerIdentity() == peer)
+      return static_cast<ClientProxy*>(client)->requestInputReadiness(sequence);
+  return false;
+}
+
+bool Server::inputKeyboardRouteEnabled(const BaseClientProxy* client) const
+{
+  if (inputRouteSuspended(client))
+    return false;
+  return client == m_primaryClient || !client->getStream() ||
+         !m_managedInputPeers.contains(client->getStream()->peerIdentity()) || client == m_active;
 }

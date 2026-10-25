@@ -1,0 +1,68 @@
+# SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
+# SPDX-License-Identifier: MIT
+add_executable(DisplayFoundationTests DisplayFoundationTests.cpp)
+target_link_libraries(DisplayFoundationTests PRIVATE deskflow-display)
+foreach(case GoldenHeader Fragmented Coalesced MalformedHeaders Truncated PayloadLimits
+             VideoBoundary ChannelIsolation ReplayIsolation Cancellation Recovery LeaseOwnership LeaseExpiry)
+  add_test(NAME Display.${case} COMMAND DisplayFoundationTests ${case})
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayFoundationTests)
+
+# Protocol fixtures use only the Python standard library and the OpenSSL CLI.
+find_package(Python3 QUIET COMPONENTS Interpreter)
+find_program(DISPLAY_OPENSSL_EXECUTABLE openssl)
+if(Python3_Interpreter_FOUND AND DISPLAY_OPENSSL_EXECUTABLE)
+  get_filename_component(DISPLAY_PROTOTYPE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype" ABSOLUTE)
+  add_test(NAME Display.Transport COMMAND "${Python3_EXECUTABLE}" -m unittest -v test_display_transport)
+  set_tests_properties(Display.Transport PROPERTIES
+    WORKING_DIRECTORY "${DISPLAY_PROTOTYPE_DIR}"
+    ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1" TIMEOUT 30)
+
+  option(DISPLAY_LIVE_TESTS "Run loopback TLS/FFmpeg display fixtures (opens sockets)" OFF)
+  if(DISPLAY_LIVE_TESTS)
+    find_program(DISPLAY_FFMPEG_EXECUTABLE ffmpeg REQUIRED)
+    add_test(NAME Display.LiveSynthetic COMMAND "${Python3_EXECUTABLE}" validate_live_session.py)
+    set_tests_properties(Display.LiveSynthetic PROPERTIES
+      WORKING_DIRECTORY "${DISPLAY_PROTOTYPE_DIR}"
+      ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1" TIMEOUT 60 RUN_SERIAL TRUE)
+  endif()
+elseif(DISPLAY_LIVE_TESTS)
+  message(FATAL_ERROR "DISPLAY_LIVE_TESTS requires Python3 and the OpenSSL CLI")
+endif()
+
+add_executable(DisplayCoordinatorTests CoordinatorTests.cpp)
+target_link_libraries(DisplayCoordinatorTests PRIVATE deskflow-display)
+foreach(case ConsentBeforeResources ExpiryAndLateConsent PermissionWaitPaused ReceiverPermissionBarrier PresentationGate PresentationRace
+             CancelGeneration CleanupRequired BusyAndPreference InputConflict IdentityAndCapability LockDuringSession NoInputOrTelemetry)
+  add_test(NAME Display.Product.${case} COMMAND DisplayCoordinatorTests ${case})
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayCoordinatorTests)
+
+if(TARGET deskflow-display-service AND TARGET Qt6::Test)
+  add_executable(DisplayServiceTests DisplayServiceTests.cpp)
+  target_link_libraries(DisplayServiceTests PRIVATE deskflow-display-service Qt6::Test)
+  foreach(case AsyncAndSnapshot PeerAndRouteGates NoForgedCallbacks CancelQueuedPreparation PreferencePersistence JournalOwnership CorruptJournal ApplicationSingleton)
+    add_test(NAME Display.Service.${case} COMMAND DisplayServiceTests ${case})
+    set_tests_properties(Display.Service.${case} PROPERTIES ENVIRONMENT
+      "XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-profiles/DisplayServiceTests/config;XDG_STATE_HOME=${CMAKE_BINARY_DIR}/test-profiles/DisplayServiceTests/state")
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayServiceTests)
+endif()
+
+add_executable(UsageCoordinatorTests UsageCoordinatorTests.cpp)
+target_link_libraries(UsageCoordinatorTests PRIVATE deskflow-display)
+foreach(case IdleSelection KeepInputBeforeConsent BluetoothPreflightFailure ReleaseBeforeDisplay ReleaseFailureBlocks
+             RollbackOnlyAfterCleanup NoRollbackWhenRevoked DisplayBeforeInput CleanupBlocksInput StopCancelsRollback
+             CompleteInputPermission UnknownCapabilities StopDoesNotChangeMode CancelDuringRelease FocusReleaseBarrier CancelDisplayTeardown ConnectionLostDuringInputStart CancelRollback ReleaseTimeout OperationReplay InputStartTimeout)
+  add_test(NAME Display.Usage.${case} COMMAND UsageCoordinatorTests ${case})
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests UsageCoordinatorTests)
+
+if(TARGET deskflow-display-service AND TARGET Qt6::Test)
+  add_executable(PeerUsageServiceTests PeerUsageServiceTests.cpp)
+  target_link_libraries(PeerUsageServiceTests PRIVATE deskflow-display-service Qt6::Test)
+  foreach(case SelectionAndStatus RejectSplitInput NoForgedCompletion SingleDisplayReservation CancelQueuedStart StalePermission DisplayTransactionBridge PeerRefusalPreservesInput InputRouteAdapterAcknowledgements InputRouteAdapterStaleResult)
+    add_test(NAME Display.UsageService.${case} COMMAND PeerUsageServiceTests ${case})
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests PeerUsageServiceTests)
+endif()

@@ -11,6 +11,7 @@
 #include "base/IEventQueue.h"
 #include "base/Log.h"
 #include "deskflow/DeskflowException.h"
+#include "deskflow/OptionTypes.h"
 #include "deskflow/ProtocolUtil.h"
 #include "io/IStream.h"
 
@@ -165,7 +166,25 @@ bool ClientProxy1_0::parseHandshakeMessage(const uint8_t *code)
 
 bool ClientProxy1_0::parseMessage(const uint8_t *code)
 {
-  if (memcmp(code, kMsgDInfo, 4) == 0) {
+  if (memcmp(code, kMsgDInputControlCapability, 4) == 0) {
+    uint32_t version = 0;
+    ProtocolUtil::readf(getStream(), kMsgDInputControlCapability + 4, &version);
+    if (!m_inputControlOffered || getStream()->peerIdentity().empty())
+      return false;
+    m_inputControlSupported = version == 1;
+    return true;
+  } else if (memcmp(code, kMsgDInputControlAck, 4) == 0) {
+    uint32_t sequence = 0;
+    uint8_t result = 0;
+    ProtocolUtil::readf(getStream(), kMsgDInputControlAck + 4, &sequence, &result);
+    if (!m_inputControlSupported)
+      return false;
+    if (sequence == m_inputControlPending && (result == 0 || result == (m_inputControlMode + 1))) {
+      m_inputControlResult = result;
+      m_inputControlResponded = true;
+    }
+    return true;
+  } else if (memcmp(code, kMsgDInfo, 4) == 0) {
     if (recvInfo()) {
       m_events->addEvent(Event(EventTypes::ComputerShapeChanged, getEventTarget()));
       return true;
@@ -349,6 +368,10 @@ void ClientProxy1_0::resetOptions()
 
 void ClientProxy1_0::setOptions(const OptionsList &options)
 {
+  for (size_t i = 0; i + 1 < options.size(); i += 2)
+    if (options[i] == kOptionInputControl && options[i + 1] == 1 && !getStream()->peerIdentity().empty())
+      m_inputControlOffered = true;
+
   LOG_VERBOSE("send set options to \"%s\" size=%d", getName().c_str(), options.size());
   if (options.size() % 2 != 0) {
     LOG_ERR("options are the incorrect size, not sending");
@@ -437,4 +460,34 @@ bool ClientProxy1_0::recvGrabClipboard()
   m_events->addEvent(Event(EventTypes::ClipboardGrabbed, getEventTarget(), info));
 
   return true;
+}
+
+bool ClientProxy1_0::requestInputControl(uint32_t sequence, bool enabled)
+{
+  return requestInputControlMode(sequence,enabled ? 1 : 0);
+}
+bool ClientProxy1_0::requestInputReadiness(uint32_t sequence)
+{
+  return requestInputControlMode(sequence,2);
+}
+bool ClientProxy1_0::inputReadinessAcknowledged(uint32_t sequence) const
+{
+  return m_inputControlSupported && sequence!=0 && sequence==m_inputControlPending && m_inputControlMode==2 && m_inputControlResult==3;
+}
+bool ClientProxy1_0::requestInputControlMode(uint32_t sequence,uint8_t mode)
+{
+  if (!m_inputControlSupported || sequence == 0 || sequence <= m_inputControlPending)
+    return false;
+  m_inputControlPending = sequence;
+  m_inputControlResult = 0;
+  m_inputControlResponded = false;
+  m_inputControlMode = mode;
+  ProtocolUtil::writef(getStream(), kMsgCInputControl, sequence, mode);
+  return true;
+}
+
+bool ClientProxy1_0::inputControlAcknowledged(uint32_t sequence, bool enabled) const
+{
+  return m_inputControlSupported && sequence != 0 && sequence == m_inputControlPending &&
+         (enabled ? 1 : 0) == m_inputControlMode && m_inputControlResult == (enabled ? 2 : 1);
 }

@@ -36,6 +36,13 @@ public:
   Ask the client to disconnect, using \p msg as the reason.
   */
   void close(const char *msg) const;
+  virtual uint32_t inputControlSequence() const { return 0; }
+  virtual bool inputControlResponseReceived(uint32_t) const { return false; }
+  virtual bool supportsInputControl() const { return false; }
+  virtual bool requestInputControl(uint32_t, bool) { return false; }
+  virtual bool requestInputReadiness(uint32_t) { return false; }
+  virtual bool inputReadinessAcknowledged(uint32_t) const { return false; }
+  virtual bool inputControlAcknowledged(uint32_t, bool) const { return false; }
 
   //@}
   //! @name accessors

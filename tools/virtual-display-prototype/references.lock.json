@@ -1,0 +1,116 @@
+{
+  "checkedAt": "2026-10-25",
+  "note": "Reference snapshots only, not runtime dependencies. Recursive submodule download/update was still running at inspection; status is not final.",
+  "projects": [
+    {
+      "name": "opendisplay",
+      "origin": "https://github.com/peetzweg/opendisplay.git",
+      "commit": "018a6a34ebcaa9c4efee825f62c5839457f2039c",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "",
+      "submoduleCount": 0,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "DeskPad",
+      "origin": "https://github.com/Stengo/DeskPad.git",
+      "commit": "c3349f0e237e000cb4826fb3ea1cdd1c44949461",
+      "licenseFiles": [
+        "LICENSE.md"
+      ],
+      "submoduleStatus": "",
+      "submoduleCount": 0,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "Virtual-Display-Driver",
+      "origin": "https://github.com/VirtualDrivers/Virtual-Display-Driver.git",
+      "commit": "d7244969b2aa8bb38e76d79505eda217996cefea",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "3b9780e847cf68d6199dafe0f87650cf1f9c227f ThirdParty/Windows-Driver-Frameworks (win-10.0.14393.0-10-g3b9780e)",
+      "submoduleCount": 1,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "Sunshine",
+      "origin": "https://github.com/LizardByte/Sunshine.git",
+      "commit": "d0b4a88ef727f8dabf80cc970a14739b55c885de",
+      "licenseFiles": [
+        "LICENSE",
+        "NOTICE"
+      ],
+      "submoduleStatus": "74697c75b630d7330e77250fc13cb5ea688d9479 packaging/linux/flatpak/deps/flatpak-builder-tools (74697c7)\n 546895a93a29062bb178367b46c7afb72da9881e third-party/Simple-Web-Server (v3.1.1-53-g546895a)\n cc520397504bb72bc6df79ff03eb72988a6dc50d third-party/TPCircularBuffer (1.6.2-1-gcc52039)\n 8d71f6740ffff4671cdadbca255ce528e3cd3fef third-party/ViGEmClient (v1.21.222.0-40-g8d71f67)\n d0ac5ef4b7673a8d8d2b03981ab5226cbf25810c third-party/build-deps (v2026.1017.131201)\n 57ee0cfb0e1a08d9041f77435653794c1b012be0 third-party/build-deps/third-party/FFmpeg/AMF (v1.5.2-5-g57ee0cf)\n+a881f0a9addd3d104b87d4f6b58b111b1d0cfd28 third-party/build-deps/third-party/FFmpeg/FFmpeg (heads/master)\n+7563df357019ba5eefa0dbb29b98265b71165594 third-party/build-deps/third-party/FFmpeg/SVT-AV1 (heads/master)\n+73814d006638aa00bd553215b054f0f02e457e22 third-party/build-deps/third-party/FFmpeg/Vulkan-Headers (v1.4.366)\n+3172c4859f613576c1811b9e7a25d61230ecaeaa third-party/build-deps/third-party/FFmpeg/Vulkan-Loader (heads/main)\n+0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee third-party/build-deps/third-party/FFmpeg/x264 (heads/master)\n+b81f650e21e8aacbe6a9ad04ce14aefc05b932c0 third-party/build-deps/third-party/FFmpeg/x265_git (heads/master)\n+f9f9e21454bd9e8f7d978efe33321b2025e07708 third-party/dockle (v2026.1012.133225-8-gf9f9e21)\n+0a7cf1af9e25e02821587bd4095807fc90b6426a third-party/glad (v0.1.11a-313-g0a7cf1a)\n+a970aed6b1d225246a228faf16c58788431072d3 third-party/libdisplaydevice (v2026.1008.124543-3-ga970aed)\n+45c9b4db05779d18224a751e33cb8dfea78201bb third-party/libvirtualhid (v2026.1022.2339.24)\n+cdc291c8e844741365582262f5d64b5378d75134 third-party/lizardbyte-common (v2026.905.172735-31-gcdc291c)\n+421bd74e0184a5cfd760efbf84433134c6f6e00b third-party/moonlight-common-c (heads/master)\n+70d337db9186e968eab622f7e786de7e437faf3d third-party/nvapi (heads/main)\n+1db07441870d54157e937674b99380a7dcc0fb32 third-party/plasma-wayland-protocols (v1.23.0-2-g1db0744)\n+8d49be1f9ea1a5cb40668e8651cf02300abd4b49 third-party/tray (v2026.917.153417-15-g8d49be1)\n+b9edf66597586c914b5b1ff3d964d7ed201adab9 third-party/wayland-protocols (1.49-8-gb9edf66)\n bf4fc79abc359eea5a0edec0ac6d4a2b2955f82a third-party/wlr-protocols (heads/master)",
+      "submoduleCount": 23,
+      "submodulesComplete": false,
+      "submoduleCheckoutState": "pending; git submodule fetch/update is still running; do not reset worktrees"
+    },
+    {
+      "name": "moonlight-qt",
+      "origin": "https://github.com/moonlight-stream/moonlight-qt.git",
+      "commit": "781b26fd1ca245cc241ded27da252452533fa3b0",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "8d9fefd7b810f2541f78cc7a8ccbd185bc84c7a5 app/SDL_GameControllerDB (remotes/origin/docs-364-g8d9fefd)\n 04053843c90c4268583f2496b997d54d59f03957 moonlight-common-c/moonlight-common-c (0405384)\n aca87840b57f045a1f7f9299e4b1b9b8e2a5e2f1 moonlight-common-c/moonlight-common-c/enet (v1.3.15-118-gaca8784)\n b1e3c22ca0cdc0bb83e3cd6ed1a2fc77869ed99a moonlight-common-c/moonlight-common-c/nanors (b1e3c22)\n 920c097ffa742e2968290f15d4dde6693aec02e5 qmdnsengine/qmdnsengine (0.1.0-82-g920c097)",
+      "submoduleCount": 5,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "Apollo",
+      "origin": "https://github.com/ClassicOldSong/Apollo.git",
+      "commit": "adc5c5a0bd80831ce495434bb16aee2cd4175fb8",
+      "licenseFiles": [
+        "LICENSE",
+        "NOTICE"
+      ],
+      "submoduleStatus": "ea92dc22ab7e4ab44133407b883c9a6792e54302 packaging/linux/flatpak/deps/flatpak-builder-tools (ea92dc2)\n 231e052557e37e120c94d584881f43daac3391fd packaging/linux/flatpak/deps/shared-modules (231e052)\n 5b29c7004cc53252a8eff06d62899c8847ada971 third-party/Simple-Web-Server (heads/master)\n cc520397504bb72bc6df79ff03eb72988a6dc50d third-party/TPCircularBuffer (1.6.2-1-gcc52039)\n 8d71f6740ffff4671cdadbca255ce528e3cd3fef third-party/ViGEmClient (v1.21.222.0-40-g8d71f67)\n+d0ac5ef4b7673a8d8d2b03981ab5226cbf25810c third-party/build-deps (v2026.1017.131201)\n+388d8d9501663d3996588d3ff47e9bc8541a314b third-party/doxyconfig (v2026.912.180347-1-g388d8d9)\n+cd8e73f067129f8489e35c7b51c7a68552b289d2 third-party/googletest (release-1.8.0-3745-gcd8e73f0)\n+d28ec79eb63324e68d73a7de22bcb5ff0a6f6bf8 third-party/inputtino (heads/stable)\n+a970aed6b1d225246a228faf16c58788431072d3 third-party/libdisplaydevice (v2026.1008.124543-3-ga970aed)\n c999436858471dfefa7617af3b7dc03ec1644ce4 third-party/moonlight-common-c (heads/master)\n+a9b1636f9c98dbfdd0daeaf6982ccd24d1c30f29 third-party/nanors (heads/master)\n+71acc268a541f7d7f33cf0387229e3015cfb4977 third-party/nv-codec-headers (n13.1.15.0-2-g71acc26)\n+1791a9bb052aa225b164e125c6866d865f955bbb third-party/nvapi-open-source-sdk (heads/master)\n+8d49be1f9ea1a5cb40668e8651cf02300abd4b49 third-party/tray (v2026.917.153417-15-g8d49be1)\n+b9edf66597586c914b5b1ff3d964d7ed201adab9 third-party/wayland-protocols (1.49-8-gb9edf66)\n+bf4fc79abc359eea5a0edec0ac6d4a2b2955f82a third-party/wlr-protocols (heads/master)",
+      "submoduleCount": 17,
+      "submodulesComplete": false,
+      "submoduleCheckoutState": "pending; git submodule fetch/update is still running; do not reset worktrees"
+    },
+    {
+      "name": "Windows-driver-samples",
+      "origin": "https://github.com/microsoft/Windows-driver-samples.git",
+      "commit": "bb68ed5e770bce04dc5395ec9258dafab034184d",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "3c00e7f1d8cf9930bbb8e5be3ef0df65c84e8928 wil (v1.0.220914.1~70)",
+      "submoduleCount": 1,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "Weylus",
+      "origin": "https://github.com/H-M-H/Weylus.git",
+      "commit": "38a01a8f8e429500c7e9f67fc1c88ca37a4d1e93",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "",
+      "submoduleCount": 0,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    },
+    {
+      "name": "deskreen",
+      "origin": "https://github.com/pavlobu/deskreen.git",
+      "commit": "b5dc3d4d1a74ec38091d36578fd84174db3792bc",
+      "licenseFiles": [
+        "LICENSE"
+      ],
+      "submoduleStatus": "",
+      "submoduleCount": 0,
+      "submodulesComplete": true,
+      "submoduleCheckoutState": "verified"
+    }
+  ]
+}

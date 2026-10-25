@@ -170,6 +170,8 @@ void Client::refuseConnection(deskflow::core::ConnectionRefusal reason, const ch
 void Client::handshakeComplete()
 {
   m_ready = true;
+  m_inputSuspended = false;
+  m_inputManaged = false;
   m_computer->enable();
   if (m_relativeMouseMoves && !m_hasRelativeRestorePosition) {
     saveRelativeRestorePosition();
@@ -219,6 +221,8 @@ void Client::getCursorPos(int32_t &x, int32_t &y) const
 
 void Client::enter(int32_t xAbs, int32_t yAbs, uint32_t, KeyModifierMask mask, bool)
 {
+  if (m_inputSuspended)
+    return;
   m_active = true;
   if (m_relativeMouseMoves && m_hasRelativeRestorePosition) {
     xAbs = m_relativeRestoreX;
@@ -227,6 +231,29 @@ void Client::enter(int32_t xAbs, int32_t yAbs, uint32_t, KeyModifierMask mask, b
   }
   m_computer->mouseMove(xAbs, yAbs);
   m_computer->enter(mask);
+}
+
+bool Client::inputReady() const
+{
+  return m_ready && m_computer->isEnabled();
+}
+
+bool Client::suspendRemoteInput()
+{
+  m_inputManaged = true;
+  m_inputSuspended = true; // Fail closed if the platform cannot release input.
+  m_active = false;
+  return m_computer->suspendRemoteInput();
+}
+
+bool Client::resumeRemoteInput()
+{
+  if (!inputReady())
+    return false;
+  m_inputManaged = true;
+  m_inputSuspended = false;
+  m_active = false; // Resume edge routing, never enter the remote desktop here.
+  return true;
 }
 
 bool Client::leave()
@@ -271,41 +298,57 @@ void Client::setClipboardDirty(ClipboardID, bool)
 
 void Client::keyDown(KeyID id, KeyModifierMask mask, KeyButton button, const std::string &lang)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->keyDown(id, mask, button, lang);
 }
 
 void Client::keyRepeat(KeyID id, KeyModifierMask mask, int32_t count, KeyButton button, const std::string &lang)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->keyRepeat(id, mask, count, button, lang);
 }
 
 void Client::keyUp(KeyID id, KeyModifierMask mask, KeyButton button)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->keyUp(id, mask, button);
 }
 
 void Client::mouseDown(ButtonID id)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->mouseDown(id);
 }
 
 void Client::mouseUp(ButtonID id)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->mouseUp(id);
 }
 
 void Client::mouseMove(int32_t x, int32_t y)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->mouseMove(x, y);
 }
 
 void Client::mouseRelativeMove(int32_t dx, int32_t dy)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->mouseRelativeMove(dx, dy);
 }
 
 void Client::mouseWheel(int32_t xDelta, int32_t yDelta)
 {
+  if (m_inputSuspended || (m_inputManaged && !m_active))
+    return;
   m_computer->mouseWheel(xDelta, yDelta);
 }
 
