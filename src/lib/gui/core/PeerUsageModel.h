@@ -2,6 +2,7 @@
 #pragma once
 #include <QHash>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QObject>
 #include <QSet>
 
@@ -22,12 +23,16 @@ public:
   void choose(const QString &device, const QString &mode);
   void cancel(const QString &device);
   void stop(const QString &device);
+  void retryCleanup(const QString &device);
+  void receiveConnection(const QJsonObject& connection);
+  QJsonArray authenticatedConnections() const;
   bool pending(const QString &device) const;
   bool displayLayoutBlocked() const;
   QString error(const QString &device) const;
   static QString reasonText(const QString &reason);
 Q_SIGNALS:
   void changed();
+  void connectionsChanged();
   void commandRequested(const QJsonObject &command);
 
 private:
@@ -35,4 +40,5 @@ private:
   QSet<QString> m_connected;
   QHash<QString, QString> m_bindings, m_pending, m_errors;
   QHash<QString, QJsonObject> m_snapshots;
+  QHash<QString,QJsonObject> m_connections;
 };

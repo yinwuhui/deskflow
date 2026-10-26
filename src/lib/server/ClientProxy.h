@@ -6,6 +6,8 @@
  */
 
 #pragma once
+#include <functional>
+#include <QJsonObject>
 
 #include "server/BaseClientProxy.h"
 
@@ -36,6 +38,10 @@ public:
   Ask the client to disconnect, using \p msg as the reason.
   */
   void close(const char *msg) const;
+  std::function<uint8_t(uint8_t)> remoteInputControl;
+  std::function<bool(const QJsonObject&)> usageControlReceived;
+  virtual void publishInputRouteState(uint8_t) {}
+  virtual bool inputPermissionsConfirmed() const { return false; }
   virtual uint32_t inputControlSequence() const { return 0; }
   virtual bool inputControlResponseReceived(uint32_t) const { return false; }
   virtual bool supportsInputControl() const { return false; }

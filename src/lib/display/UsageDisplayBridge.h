@@ -10,6 +10,10 @@ class UsageDisplayBridge : public QObject {
   Q_OBJECT
 public:
   UsageDisplayBridge(PeerUsageService* usage,DisplayService* display,QObject* parent=nullptr);
+  Outcome adoptIncoming();
+  Outcome adoptCleanup();
+Q_SIGNALS:
+  void receiverInputReady();
 private:
   void effect(const QJsonObject& command);
   void displayChanged();
@@ -19,5 +23,6 @@ private:
   UsageKey m_usageKey;
   SessionId m_request{};
   bool m_active=false;
+  bool m_incoming=false;
 };
 }

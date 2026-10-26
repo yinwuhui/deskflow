@@ -59,3 +59,8 @@ if(BUILD_BLUETOOTH)
     SOURCE ConnectionManagerTests.cpp
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net")
 endif()
+
+create_test(NAME LocalTransportIdentityTests DEPENDS net
+  LIBS common arch base io mt Qt6::Network
+  SOURCE LocalTransportIdentityTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/net")

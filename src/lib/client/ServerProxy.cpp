@@ -7,6 +7,7 @@
  */
 
 #include "client/ServerProxy.h"
+#include "deskflow/UsageControlWire.h"
 #include "common/PeerPolicy.h"
 
 #include "base/IEventQueue.h"
@@ -280,6 +281,27 @@ ServerProxy::ConnectionResult ServerProxy::parseMessage(const uint8_t *code)
     enter();
   }
 
+  else if(memcmp(code,"CICS",4)==0){
+    uint8_t flags=0;ProtocolUtil::readf(m_stream,"%1i",&flags);
+    if(!m_inputControlNegotiated||flags>7)return Disconnect;
+    m_sourceRouteKnown=true;m_sourceRouteActive=(flags&2)!=0;m_sourceFocusLocal=(flags&4)!=0;
+    m_sourceInputReady=(flags&1)!=0;
+    m_client->publishUsageConnection();
+  }
+  else if(memcmp(code,"CUSG",4)==0){
+    QJsonObject body;
+    if(!m_inputControlNegotiated||!deskflow::input::readUsageControl(m_stream,body))return Disconnect;
+    m_client->receiveUsageControl(body);
+  }
+  else if(memcmp(code,"CICA",4)==0){
+    uint32_t sequence=0;uint8_t result=0;ProtocolUtil::readf(m_stream,"%4i%1i",&sequence,&result);
+    if(!m_inputControlNegotiated)return Unknown;
+    if(sequence==m_receiverSequence&&(result==0||result==m_receiverMode+1)){
+      m_receiverResult=result;m_receiverResponded=true;
+      if(m_receiverMode==2)m_sourceInputReady=result==3;
+      m_client->publishUsageConnection();
+    }
+  }
   else if (memcmp(code, kMsgCInputControl, 4) == 0) {
     if (!m_inputControlNegotiated)
       return Unknown;
@@ -846,4 +868,11 @@ void ServerProxy::infoAcknowledgment()
 {
   LOG_VERBOSE("recv info acknowledgment");
   m_ignoreMouse = false;
+}
+
+bool ServerProxy::requestReceiverInputControl(uint8_t mode)
+{
+  if(!m_inputControlNegotiated||mode>3||m_receiverSequence==UINT32_MAX)return false;
+  ++m_receiverSequence;m_receiverMode=mode;m_receiverResult=0;m_receiverResponded=false;
+  ProtocolUtil::writef(m_stream,"DICR%4i%1i",m_receiverSequence,mode);return true;
 }

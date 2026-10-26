@@ -922,3 +922,25 @@ bool ArchNetworkWinsock::isEqualAddr(ArchNetAddress a, ArchNetAddress b)
     throw ArchNetworkNameException(windowsErrorToString(err));
   }
 }
+
+bool ArchNetworkWinsock::getLoopbackPorts(ArchSocket s,uint16_t& localPort,uint16_t& peerPort)
+{
+  if(!s)return false;
+  sockaddr_storage local{},peer{};int localSize=sizeof(local),peerSize=sizeof(peer);
+  if(getsockname(s->m_socket,reinterpret_cast<sockaddr*>(&local),&localSize)!=0||
+     getpeername(s->m_socket,reinterpret_cast<sockaddr*>(&peer),&peerSize)!=0)return false;
+  const auto port=[](const sockaddr_storage& address)->uint16_t {
+    if(address.ss_family==AF_INET){
+      const auto& value=reinterpret_cast<const sockaddr_in&>(address);
+      return (ntohl(value.sin_addr.s_addr)>>24)==127?ntohs(value.sin_port):0;
+    }
+    if(address.ss_family==AF_INET6){
+      const auto& value=reinterpret_cast<const sockaddr_in6&>(address);
+      const auto* bytes=reinterpret_cast<const unsigned char*>(&value.sin6_addr);
+      bool loopback=bytes[15]==1;for(int i=0;i<15;++i)loopback=loopback&&bytes[i]==0;
+      if(loopback)return ntohs(value.sin6_port);
+    }
+    return 0;
+  };
+  localPort=port(local);peerPort=port(peer);return localPort&&peerPort;
+}

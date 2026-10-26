@@ -7,6 +7,7 @@
  */
 
 #include "server/ClientProxy1_0.h"
+#include "deskflow/UsageControlWire.h"
 
 #include "base/IEventQueue.h"
 #include "base/Log.h"
@@ -166,7 +167,23 @@ bool ClientProxy1_0::parseHandshakeMessage(const uint8_t *code)
 
 bool ClientProxy1_0::parseMessage(const uint8_t *code)
 {
-  if (memcmp(code, kMsgDInputControlCapability, 4) == 0) {
+  if(memcmp(code,"DUSG",4)==0){
+    QJsonObject body;
+    if(!supportsInputControl()||!deskflow::input::readUsageControl(getStream(),body))return false;
+    if(usageControlReceived)usageControlReceived(body);
+    return true;
+  } else if(memcmp(code,"DICR",4)==0){
+    uint32_t sequence=0;uint8_t mode=0;
+    ProtocolUtil::readf(getStream(),"%4i%1i",&sequence,&mode);
+    if(!m_inputControlSupported||!sequence||mode>3||sequence<m_reverseSequence||
+       (sequence==m_reverseSequence&&mode!=m_reverseMode)){
+      ProtocolUtil::writef(getStream(),"CICA%4i%1i",sequence,0);return true;
+    }
+    if(sequence!=m_reverseSequence){
+      m_reverseSequence=sequence;m_reverseMode=mode;m_reverseResult=remoteInputControl?remoteInputControl(mode):0;
+    }
+    ProtocolUtil::writef(getStream(),"CICA%4i%1i",sequence,m_reverseResult);return true;
+  } else if (memcmp(code, kMsgDInputControlCapability, 4) == 0) {
     uint32_t version = 0;
     ProtocolUtil::readf(getStream(), kMsgDInputControlCapability + 4, &version);
     if (!m_inputControlOffered || getStream()->peerIdentity().empty())
@@ -182,6 +199,7 @@ bool ClientProxy1_0::parseMessage(const uint8_t *code)
     if (sequence == m_inputControlPending && (result == 0 || result == (m_inputControlMode + 1))) {
       m_inputControlResult = result;
       m_inputControlResponded = true;
+      if(m_inputControlMode==2)m_inputPermissionsConfirmed=result==3;
     }
     return true;
   } else if (memcmp(code, kMsgDInfo, 4) == 0) {
@@ -490,4 +508,10 @@ bool ClientProxy1_0::inputControlAcknowledged(uint32_t sequence, bool enabled) c
 {
   return m_inputControlSupported && sequence != 0 && sequence == m_inputControlPending &&
          (enabled ? 1 : 0) == m_inputControlMode && m_inputControlResult == (enabled ? 2 : 1);
+}
+
+void ClientProxy1_0::publishInputRouteState(uint8_t flags)
+{
+  if(!supportsInputControl()||flags>7||flags==m_lastRouteFlags)return;
+  m_lastRouteFlags=flags;ProtocolUtil::writef(getStream(),"CICS%1i",flags);
 }

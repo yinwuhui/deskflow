@@ -12,13 +12,40 @@ endif()
 # The core remains independently buildable without Qt. The product facade is
 # linked into the application only when BUILD_VIRTUAL_DISPLAY is enabled.
 if(TARGET Qt6::Core)
-  add_library(deskflow-display-service STATIC CoreInputChannel.cpp CoreInputChannel.h InputRouteAdapter.cpp InputRouteAdapter.h UsageDisplayBridge.cpp UsageDisplayBridge.h PeerUsageService.cpp PeerUsageService.h DisplayService.cpp DisplayService.h ResourceJournal.cpp ResourceJournal.h MediaSupervisor.cpp MediaSupervisor.h)
+  add_library(deskflow-display-service STATIC ProductDisplayRuntime.cpp ProductDisplayRuntime.h CoreInputChannel.cpp CoreInputChannel.h InputRouteAdapter.cpp InputRouteAdapter.h UsageDisplayBridge.cpp UsageDisplayBridge.h PeerUsageService.cpp PeerUsageService.h DisplayService.cpp DisplayService.h ResourceJournal.cpp ResourceJournal.h MediaSupervisor.cpp MediaSupervisor.h)
   target_link_libraries(deskflow-display-service PUBLIC deskflow-display Qt6::Core Qt6::Network PRIVATE common)
   set_target_properties(deskflow-display-service PROPERTIES AUTOMOC ON)
+  target_compile_definitions(deskflow-display-service PRIVATE DESKFLOW_DISPLAY_RUNTIME_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype")
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/display_session.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/display_transport.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/h264_access_units.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/virtual_display_probe.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/product_probe.py"
+    DESTINATION share/busymouse/display)
 endif()
 
 if(TARGET Qt6::Widgets)
   add_executable(busymouse-display-viewer DisplayViewer.cpp)
-  target_link_libraries(busymouse-display-viewer PRIVATE Qt6::Widgets)
+  target_link_libraries(busymouse-display-viewer PRIVATE Qt6::Widgets Qt6::Network)
   install(TARGETS busymouse-display-viewer RUNTIME DESTINATION bin)
+endif()
+
+if(APPLE AND TARGET Qt6::Core)
+  enable_language(OBJCXX)
+  add_executable(busymouse-display-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/macos/VirtualDisplayProbe.mm")
+  set_target_properties(busymouse-display-probe PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED ON)
+  target_compile_options(busymouse-display-probe PRIVATE -fobjc-arc)
+  target_link_libraries(busymouse-display-probe PRIVATE "-framework Cocoa" "-framework CoreGraphics" "-framework CoreMedia" "-framework CoreVideo" "-framework ScreenCaptureKit" "-framework VideoToolbox")
+  install(TARGETS busymouse-display-probe RUNTIME DESTINATION bin)
+endif()
+
+if(APPLE AND BUILD_OSX_BUNDLE AND TARGET busymouse-display-probe)
+  foreach(helper busymouse-display-probe busymouse-display-viewer)
+    set_target_properties(${helper} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+      INSTALL_RPATH "@loader_path/../Libraries;@loader_path/../Frameworks"
+      RUNTIME_OUTPUT_DIRECTORY $<TARGET_BUNDLE_CONTENT_DIR:${CMAKE_PROJECT_PROPER_NAME}>/MacOS)
+    if(APPLE_CODESIGN_DEV)
+      configure_mac_codesign(${helper})
+    endif()
+  endforeach()
 endif()

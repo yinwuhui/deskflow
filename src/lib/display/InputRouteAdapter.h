@@ -21,10 +21,12 @@ private:
   struct Pending {
     UsageKey key;
     QString effect;
+    QString connectionId,connectionGeneration;
     QString requestId;
     QString kind;
     uint32_t sequence=0;
     bool enabled=false;
+    bool committing=false;
     QElapsedTimer elapsed;
   };
   void effect(const QJsonObject& command);

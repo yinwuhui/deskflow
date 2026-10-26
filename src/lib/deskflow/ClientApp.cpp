@@ -7,6 +7,7 @@
  */
 
 #include "deskflow/ClientApp.h"
+#include "deskflow/InputControlCommand.h"
 
 #include "base/Event.h"
 #include "base/IEventQueue.h"
@@ -45,7 +46,20 @@
 
 ClientApp::ClientApp(IEventQueue *events, const QString &processName) : App(events, processName)
 {
-  // do nothing
+  events->addHandler(EventTypes::ServerInputControlCommand,this,[this](const auto& event){handleInputControlCommand(event);});
+}
+ClientApp::~ClientApp()
+{
+  getEvents()->removeHandler(EventTypes::ServerInputControlCommand,this);
+}
+void ClientApp::queueInputControlCommand(const QString& json)
+{
+  getEvents()->addEvent(Event(EventTypes::ServerInputControlCommand,this,new deskflow::input::InputControlCommandData(json)));
+}
+void ClientApp::handleInputControlCommand(const Event& event)
+{
+  const auto result=deskflow::input::executeInputControl(event,m_client);
+  ipcSendToClient("inputControlResult",QString::fromUtf8(QJsonDocument(result).toJson(QJsonDocument::Compact)));
 }
 
 void ClientApp::parseArgs()
@@ -235,6 +249,9 @@ void ClientApp::handleClientDisconnected()
 Client *ClientApp::openClient(const std::string &name, const NetworkAddress &address, deskflow::Computer *computer)
 {
   auto *client = new Client(getEvents(), name, address, getSocketFactory(), computer);
+  const auto configured=Settings::value(Settings::Client::RemoteHost).toString().split(',',Qt::SkipEmptyParts);
+  const auto index=localTransportPort()?0:static_cast<int>(m_currentServerIndex);
+  client->setUsageRemoteAddress(localTransportPort()?QString():configured.value(index).trimmed());
   client->setLocalTransport(localTransportPort() != 0);
 
   try {

@@ -7,6 +7,12 @@
  */
 
 #include "client/Client.h"
+#include "common/UsageInputState.h"
+#include "deskflow/UsageControlWire.h"
+#include "common/PeerConnectionRegistry.h"
+#include <QJsonArray>
+#include <QUrl>
+#include <QUuid>
 #include "common/PeerPolicy.h"
 
 #include "arch/Arch.h"
@@ -173,8 +179,14 @@ void Client::handshakeComplete()
   m_inputSuspended = false;
   m_inputManaged = false;
   m_computer->enable();
+  if(UsageInputState::displayOwned())suspendRemoteInput();
   if (m_relativeMouseMoves && !m_hasRelativeRestorePosition) {
     saveRelativeRestorePosition();
+  }
+  if(m_stream&&m_stream->peerIdentity().size()==64){
+    m_usageConnectionId=QUuid::createUuid().toString(QUuid::Id128).toStdString();
+    if(m_server&&m_server->supportsInputControl())m_server->requestReceiverInputControl(2);
+    publishUsageConnection();
   }
   sendEvent(EventTypes::ClientConnected);
 }
@@ -231,6 +243,7 @@ void Client::enter(int32_t xAbs, int32_t yAbs, uint32_t, KeyModifierMask mask, b
   }
   m_computer->mouseMove(xAbs, yAbs);
   m_computer->enter(mask);
+  publishUsageConnection();
 }
 
 bool Client::inputReady() const
@@ -243,13 +256,16 @@ bool Client::suspendRemoteInput()
   m_inputManaged = true;
   m_inputSuspended = true; // Fail closed if the platform cannot release input.
   m_active = false;
-  return m_computer->suspendRemoteInput();
+  const bool released=m_computer->suspendRemoteInput();
+  publishUsageConnection();
+  return released;
 }
 
 bool Client::resumeRemoteInput()
 {
-  if (!inputReady())
+  if (!inputReady()||UsageInputState::displayOwned())
     return false;
+  if(m_stream&&m_stream->peerIdentity().size()==64&&!UsageInputState::setPaused(QString::fromStdString(m_stream->peerIdentity()),false))return false;
   m_inputManaged = true;
   m_inputSuspended = false;
   m_active = false; // Resume edge routing, never enter the remote desktop here.
@@ -264,6 +280,7 @@ bool Client::leave()
   m_active = false;
 
   m_computer->leave();
+  publishUsageConnection();
 
   if (m_enableClipboard) {
     // send clipboards that we own and that have changed
@@ -583,6 +600,8 @@ void Client::cleanupConnection()
 
 void Client::cleanupComputer()
 {
+  const auto retiredConnection=m_usageConnectionId;
+  const bool releaseVerified=!retiredConnection.empty()&&m_ready&&suspendRemoteInput();
   if (m_server != nullptr) {
     if (m_ready) {
       m_computer->disable();
@@ -593,6 +612,8 @@ void Client::cleanupComputer()
     delete m_server;
     m_server = nullptr;
   }
+  if(!retiredConnection.empty())PeerConnectionRegistry::remove(QString::fromStdString(retiredConnection),releaseVerified);
+  m_usageConnectionId.clear();
 }
 
 void Client::cleanupTimer()
@@ -814,4 +835,73 @@ void Client::bindNetworkInterface(IDataSocket *socket) const
   bindAddress.resolve();
 
   socket->bind(bindAddress);
+}
+
+void Client::publishUsageConnection()
+{
+  if(!m_ready||!m_stream||m_usageConnectionId.empty())return;
+  const auto peer=m_stream->peerIdentity();if(peer.size()!=64)return;
+  const auto remote=m_usageRemoteAddress;
+  QUrl endpoint("tcp://"+remote);QString host=endpoint.host().toLower();int port=endpoint.port(Settings::value(Settings::Core::Port).toInt());
+  if(port<=0)port=24800;
+  if(host.contains(':'))host="["+host+"]";
+  QJsonArray keys{QString::fromStdString("peer:"+peer)};
+  if(!host.isEmpty())keys.append("server:"+host+":"+QString::number(port));
+  const bool ready=inputReady()&&m_server&&m_server->sourceInputReady();
+  PeerConnectionRegistry::update({{"peerId",QString::fromStdString(peer)},{"peerName",remote},
+    {"baseConnectionId",QString::fromStdString(m_usageConnectionId)},{"baseConnected",true},{"originalInputRole","receiver"},
+    {"inputActive",ready&&m_server->sourceRouteActive()&&!m_inputSuspended},{"inputPermissionsReady",ready},{"inputControlSupported",m_server&&m_server->supportsInputControl()},
+    {"inputFocusOwner",m_active?QString::fromStdString(peer):"local"},{"deviceKeys",keys}});
+}
+InputRouteStatus Client::inputRouteStatus(const std::string& peer,uint32_t sequence,bool enabled) const
+{
+  InputRouteStatus status;if(!m_stream||peer.size()!=64||m_stream->peerIdentity()!=peer||!m_server)return status;
+  status.connected=m_ready;status.supported=m_server->supportsInputControl();status.suspended=m_inputSuspended;
+  status.localFocus=!m_active;status.lastSequence=m_receiverCoreSequence;status.otherRoutesIsolated=true;
+  const bool matches=sequence!=0&&sequence==m_receiverCoreSequence;
+  status.responseReceived=matches&&m_server->receiverControlResponded();
+  status.permissionsReady=matches&&status.responseReceived&&m_server->receiverControlMode()==2&&m_server->receiverControlResult()==3&&inputReady();
+  const auto mode=m_server->receiverControlMode(),result=m_server->receiverControlResult();
+  status.acknowledged=matches&&status.responseReceived&&(enabled?((mode==1&&result==2)||(mode==3&&result==4)):
+    mode==0&&result==1&&m_receiverReleaseVerified);
+  // Resume preparation is still suspended until commit arrives at both ends.
+  if(mode==1)status.suspended=true;
+  return status;
+}
+bool Client::requestInputRoute(const std::string& peer,uint32_t sequence,bool enabled)
+{
+  const auto status=inputRouteStatus(peer,sequence,enabled);
+  if(!status.connected||!status.supported||!sequence||sequence<=m_receiverCoreSequence)return false;
+  m_receiverCoreSequence=sequence;
+  if(!enabled){m_receiverReleaseVerified=suspendRemoteInput();publishUsageConnection();}
+  return m_server->requestReceiverInputControl(enabled?1:0);
+}
+bool Client::requestInputProbe(const std::string& peer,uint32_t sequence)
+{
+  const auto status=inputRouteStatus(peer,sequence,false);
+  if(!status.connected||!status.supported||!sequence||sequence<=m_receiverCoreSequence)return false;
+  m_receiverCoreSequence=sequence;return m_server->requestReceiverInputControl(2);
+}
+bool Client::commitInputResume(const std::string& peer,uint32_t sequence)
+{
+  const auto status=inputRouteStatus(peer,sequence,true);
+  if(!status.acknowledged||m_server->receiverControlMode()!=1||!resumeRemoteInput())return false;
+  return m_server->requestReceiverInputControl(3);
+}
+
+bool Client::sendUsageControl(const QString& peer,const QString& connection,const QJsonObject& body)
+{
+  if(!m_ready||!m_stream||!m_server||!m_server->supportsInputControl()||
+    peer.toStdString()!=m_stream->peerIdentity()||connection.toStdString()!=m_usageConnectionId)return false;
+  return deskflow::input::writeUsageControl(m_stream,"DUSG%s",body);
+}
+void Client::receiveUsageControl(const QJsonObject& body)
+{
+  if(m_ready&&m_stream&&!m_usageConnectionId.empty())
+    PeerConnectionRegistry::controlReceived(QString::fromStdString(m_stream->peerIdentity()),QString::fromStdString(m_usageConnectionId),body);
+}
+
+bool Client::matchesUsageConnection(const QString& peer,const QString& connection) const
+{
+  return m_ready&&m_stream&&peer.toStdString()==m_stream->peerIdentity()&&connection.toStdString()==m_usageConnectionId;
 }

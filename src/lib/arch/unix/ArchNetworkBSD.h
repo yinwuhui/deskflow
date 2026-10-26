@@ -73,6 +73,7 @@ public:
   // IArchNetwork overrides
   ArchSocket newSocket(AddressFamily, SocketType) override;
   ArchSocket copySocket(ArchSocket s) override;
+  bool getLoopbackPorts(ArchSocket s,uint16_t& localPort,uint16_t& peerPort) override;
   void closeSocket(ArchSocket s) override;
   void closeSocketForRead(ArchSocket s) override;
   void closeSocketForWrite(ArchSocket s) override;

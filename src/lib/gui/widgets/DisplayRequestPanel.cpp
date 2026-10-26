@@ -10,6 +10,7 @@
 #include <QVBoxLayout>
 #ifdef DESKFLOW_DISPLAY
 #include "display/DisplayService.h"
+#include "display/PeerUsageService.h"
 #endif
 DisplayRequestPanel::DisplayRequestPanel(QWidget *parent) : QWidget(parent)
 {
@@ -59,6 +60,10 @@ DisplayRequestPanel::DisplayRequestPanel(QWidget *parent) : QWidget(parent)
     if (!r.value("accepted").toBool())
       m_status->setText(PeerUsageModel::reasonText(r.value("reasonCode").toString()));
   });
+  connect(deskflow::display::PeerUsageService::applicationService(),&deskflow::display::PeerUsageService::commandFinished,this,[this,service](const QJsonObject& reply){
+    if(reply.value("id")!=m_pending)return;m_pending.clear();updateRequest(service->snapshot());
+    if(!reply.value("accepted").toBool())m_status->setText(PeerUsageModel::reasonText(reply.value("reasonCode").toString()));
+  });
   updateRequest(service->snapshot());
 #endif
 }
@@ -81,10 +86,13 @@ void DisplayRequestPanel::updateRequest(const QJsonObject &snapshot)
   m_snapshot = snapshot;
   const bool incoming = snapshot.value("localDisplayRole") == "receiver" &&
                         snapshot.value("availableActions").toArray().contains("Allow");
-  setVisible(incoming);
-  if (!incoming)
+  const bool cleanup=snapshot.value("state")=="CleanupRequired";
+  setVisible(incoming||cleanup);
+  m_reject->setVisible(!cleanup);m_allow->setText(cleanup?tr("Retry cleanup"):tr("Allow once"));
+  if (!incoming&&!cleanup)
     return;
-  m_peer->setText(tr("%1 wants to use this screen.").arg(snapshot.value("peerName").toString()));
+  m_peer->setText(cleanup?tr("Display resources need cleanup."):tr("%1 wants to use this screen.").arg(snapshot.value("peerName").toString()));
+  m_status->setText(cleanup?tr("Verify cleanup before starting another use."):tr("Allow this computer's screen to extend the other desktop for this session?"));
   m_allow->setEnabled(m_pending.isEmpty());
   m_reject->setEnabled(m_pending.isEmpty());
   place();
@@ -92,6 +100,12 @@ void DisplayRequestPanel::updateRequest(const QJsonObject &snapshot)
 void DisplayRequestPanel::respond(bool allow)
 {
 #ifdef DESKFLOW_DISPLAY
+  if(m_snapshot.value("state")=="CleanupRequired"&&allow&&m_pending.isEmpty()){
+    auto service=deskflow::display::PeerUsageService::applicationService();const auto peer=m_snapshot.value("peerId").toString();const auto usage=service->snapshot(peer);
+    m_pending=QUuid::createUuid().toString(QUuid::Id128);m_allow->setEnabled(false);
+    service->execute({{"id",m_pending},{"operation","retryPeerUsageCleanup"},{"args",QJsonObject{{"peerId",peer},{"operationId",QUuid::createUuid().toString(QUuid::Id128)},
+      {"baseConnectionId",usage.value("baseConnectionId")},{"baseConnectionGeneration",usage.value("baseConnectionGeneration")}}}});return;
+  }
   if (!m_pending.isEmpty() || !m_snapshot.value("availableActions").toArray().contains("Allow"))
     return;
   QJsonObject args;

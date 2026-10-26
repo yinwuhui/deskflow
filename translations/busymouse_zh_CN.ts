@@ -785,6 +785,7 @@ Do you want to connect to the server?
 </context>
 <context>
     <name>MainWindow</name>
+    <message><source>Connected computer</source><translation>已连接的电脑</translation></message>
     <message><source>The server configuration file could not be read: %1</source><translation>无法读取服务器配置文件：%1</translation></message>
     <message><source>The server configuration file could not be saved: %1</source><translation>无法保存服务器配置文件：%1</translation></message>
     <message>
@@ -3626,6 +3627,10 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
         <source>Extended display support and network availability have not been confirmed.</source>
         <translation>尚未确认扩展屏幕能力及可用网络。</translation>
     </message>
+    <message>
+        <source>Retry cleanup</source>
+        <translation>重试清理</translation>
+    </message>
 </context>
 <context>
     <name>DisplayRequestPanel</name>
@@ -3648,6 +3653,18 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
     <message>
         <source>%1 wants to use this screen.</source>
         <translation>%1 希望使用这台电脑的屏幕。</translation>
+    </message>
+    <message>
+        <source>Retry cleanup</source>
+        <translation>重试清理</translation>
+    </message>
+    <message>
+        <source>Display resources need cleanup.</source>
+        <translation>显示资源需要清理。</translation>
+    </message>
+    <message>
+        <source>Verify cleanup before starting another use.</source>
+        <translation>确认清理完成后，才能开始其他用途。</translation>
     </message>
 </context>
 </TS>

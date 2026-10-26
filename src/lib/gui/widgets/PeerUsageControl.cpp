@@ -67,6 +67,8 @@ PeerUsageControl::PeerUsageControl(QWidget *parent, PeerUsageModel *model)
   m_cancel->setObjectName("usageCancel");
   m_stop = new QPushButton(tr("End extension"), this);
   m_stop->setObjectName("usageStop");
+  m_retry = new QPushButton(tr("Retry cleanup"),this);m_retry->setObjectName("usageRetryCleanup");
+  statusRow->addWidget(m_retry);
   statusRow->addWidget(m_cancel);
   statusRow->addWidget(m_stop);
   layout->addLayout(statusRow);
@@ -81,6 +83,7 @@ PeerUsageControl::PeerUsageControl(QWidget *parent, PeerUsageModel *model)
   });
   connect(m_cancel, &QPushButton::clicked, this, [this] { m_model->cancel(m_device); });
   connect(m_stop, &QPushButton::clicked, this, [this] { m_model->stop(m_device); });
+  connect(m_retry,&QPushButton::clicked,this,[this]{m_model->retryCleanup(m_device);});
   refresh();
 }
 void PeerUsageControl::setDevice(const QString &key)
@@ -125,6 +128,7 @@ void PeerUsageControl::refresh()
   m_input->setEnabled(enabled && caps.value("input") == "supported");
   m_extended->setEnabled(enabled && caps.value("extended") == "supported");
   m_selection->setVisible(!s.isEmpty());
+  m_retry->setVisible(actions.contains("retryCleanup"));m_retry->setEnabled(!waiting);
   m_cancel->setVisible(actions.contains("cancel"));
   m_cancel->setEnabled(!waiting);
   m_stop->setVisible(effective == "extended" && actions.contains("stop") && !switching);

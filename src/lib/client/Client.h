@@ -7,6 +7,8 @@
  */
 
 #pragma once
+#include <QJsonObject>
+#include "common/InputRouteStatus.h"
 
 #include "deskflow/IClient.h"
 
@@ -180,6 +182,15 @@ public:
   bool leave() override;
   bool suspendRemoteInput();
   bool inputReady() const;
+  void publishUsageConnection();
+  bool matchesUsageConnection(const QString& peer,const QString& connection) const;
+  bool sendUsageControl(const QString& peer,const QString& connection,const QJsonObject& body);
+  void receiveUsageControl(const QJsonObject& body);
+  void setUsageRemoteAddress(const QString& address) { m_usageRemoteAddress=address; }
+  InputRouteStatus inputRouteStatus(const std::string& peer,uint32_t sequence,bool enabled) const;
+  bool requestInputRoute(const std::string& peer,uint32_t sequence,bool enabled);
+  bool requestInputProbe(const std::string& peer,uint32_t sequence);
+  bool commitInputResume(const std::string& peer,uint32_t sequence);
   bool resumeRemoteInput();
   void setClipboard(ClipboardID, const IClipboard *) override;
   void grabClipboard(ClipboardID) override;
@@ -238,12 +249,16 @@ private:
   bool m_ready = false;
   bool m_inputSuspended = false;
   bool m_inputManaged = false;
+  std::string m_usageConnectionId;
+  QString m_usageRemoteAddress;
+  uint32_t m_receiverCoreSequence=0;
+  bool m_receiverReleaseVerified=false;
   bool m_active = false;
   bool m_suspended = false;
   bool m_connectOnResume = false;
-  bool m_ownClipboard[kClipboardEnd];
-  bool m_sentClipboard[kClipboardEnd];
-  IClipboard::Time m_timeClipboard[kClipboardEnd];
+  bool m_ownClipboard[kClipboardEnd]{};
+  bool m_sentClipboard[kClipboardEnd]{};
+  IClipboard::Time m_timeClipboard[kClipboardEnd]{};
   std::string m_dataClipboard[kClipboardEnd];
   IEventQueue *m_events = nullptr;
   bool m_useSecureNetwork = false;

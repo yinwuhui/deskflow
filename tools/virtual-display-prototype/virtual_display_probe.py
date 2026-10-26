@@ -93,6 +93,103 @@ def exercise_gnome(width, height, fps, duration, h264_output=None, h264_stream=F
         return [{"x": int(item[0]), "y": int(item[1]), "scale": float(item[2]),
                  "connectors": [str(spec[0]) for spec in item[5]]} for item in state[2]]
 
+    # Commands are handled inside the process retaining this ScreenCast session.
+    # A connector name from a journal is never sufficient authority to mutate it.
+    control_directory = os.environ.get("DESKFLOW_LAYOUT_DIRECTORY", "")
+    control_token = os.environ.get("DESKFLOW_LAYOUT_TOKEN", "")
+    last_command = None
+
+    def topology(owned, request=None, allow_rollback=True):
+        state = config.GetCurrentState(timeout=3)
+        primary = next((item for item in state[2] if item[4]), None)
+        if primary is None:
+            raise RuntimeError("Primary display unavailable")
+        origin_x, origin_y = int(primary[0]), int(primary[1])
+        monitors = {str(item[0][0]): item for item in state[1]}
+        displays = []
+        configurations = []
+        target = None
+        for logical in state[2]:
+            x, y, scale, transform, is_primary, specs, properties = logical
+            entries = []
+            for spec in specs:
+                connector = str(spec[0])
+                monitor = monitors[connector]
+                mode = next((mode for mode in monitor[1] if mode[6].get("is-current", False)), None)
+                if mode is None:
+                    raise RuntimeError("Current display mode unavailable")
+                entries.append((connector, str(mode[0]), dbus.Dictionary({}, signature="sv")))
+                width, height = int(mode[1]), int(mode[2])
+                if int(transform) % 2:
+                    width, height = height, width
+                item = dict(displayId=connector, x=int(x)-origin_x, y=int(y)-origin_y,
+                            width=round(width/float(scale)), height=round(height/float(scale)),
+                            pixelWidth=int(mode[1]), pixelHeight=int(mode[2]), scale=float(scale),
+                            primary=bool(is_primary), owned=connector == owned)
+                displays.append(item)
+                if connector == owned:
+                    if len(specs) != 1 or is_primary:
+                        raise RuntimeError("Owned display is mirrored or primary")
+                    target = item
+            configurations.append([int(x), int(y), float(scale), int(transform), bool(is_primary), entries])
+        if target is None:
+            raise RuntimeError("Owned display no longer exists")
+        if request is not None:
+            if request.get("scale", target["scale"]) != target["scale"]:
+                raise ValueError("Scale is read-only")
+            for logical in configurations:
+                if any(entry[0] == owned for entry in logical[5]):
+                    logical[0], logical[1] = request["x"]+origin_x, request["y"]+origin_y
+            min_x = min(item[0] for item in configurations)
+            min_y = min(item[1] for item in configurations)
+            for logical in configurations:
+                logical[0] -= min_x
+                logical[1] -= min_y
+            properties = dbus.Dictionary({}, signature="sv")
+            if "layout-mode" in state[3]:
+                properties["layout-mode"] = state[3]["layout-mode"]
+            config.ApplyMonitorsConfig(state[0], dbus.UInt32(1),
+                dbus.Array([dbus.Struct(item, signature="iiduba(ssa{sv})") for item in configurations],
+                           signature="(iiduba(ssa{sv}))"), properties, timeout=3)
+            confirmed = topology(owned)
+            if any(confirmed["layout"][key] != request[key] for key in ("x", "y")):
+                if allow_rollback:
+                    topology(owned, {"x": target["x"], "y": target["y"]}, False)
+                raise RuntimeError("System did not confirm requested position")
+            return confirmed
+        return dict(coordinateSpace="primary-relative-logical", displays=displays, layout=target,
+                    capabilities=dict(position=True, scale=False))
+
+    def layout_commands(owned):
+        nonlocal last_command
+        if not control_directory or not control_token:
+            return
+        path = Path(control_directory)
+        request_file = path / "request.json"
+        if not request_file.exists() or request_file.stat().st_size > 4096:
+            return
+        try:
+            request = json.loads(request_file.read_text())
+            if request.get("token") != control_token or request.get("id") == last_command:
+                return
+            last_command = request["id"]
+            result = dict(token=control_token, id=last_command, accepted=False)
+            if request.get("operation") not in ("QueryDisplayLayout", "SetDisplayLayout"):
+                raise ValueError("Unknown layout operation")
+            layout = request.get("layout") if request["operation"] == "SetDisplayLayout" else None
+            if layout is not None:
+                if set(layout)-{"x", "y", "scale"} or not all(type(layout.get(k)) is int and abs(layout[k]) <= 32768 for k in ("x", "y")):
+                    raise ValueError("Invalid layout")
+            result["data"] = topology(owned, layout)
+            result["accepted"] = True
+        except Exception as error:
+            if last_command is None:
+                return
+            result = dict(token=control_token, id=last_command, accepted=False, error=str(error))
+        temporary = path / "response.tmp"
+        temporary.write_text(json.dumps(result, separators=(",", ":")))
+        temporary.replace(path / "response.json")
+
     report = {"schemaVersion": 1, "backend": "gnome-mutter-private-dbus",
               "mode": {"width": width, "height": height, "fps": fps},
               "frames": 0, "created": False, "extended": False, "captured": False,
@@ -239,10 +336,12 @@ def exercise_gnome(width, height, fps, duration, h264_output=None, h264_stream=F
         if h264_stream and len(added) == 1 and not announced:
             announced = True
             print(json.dumps({"event": "displayCreated", "virtualDisplayId": next(iter(added))}), file=sys.stderr, flush=True)
+        if len(added) == 1:
+            layout_commands(next(iter(added)))
         report["logicalDisplaysDuring"] = logical_displays()
         report["extended"] = any(set(item["connectors"]) <= added and item["connectors"]
                                  for item in report["logicalDisplaysDuring"])
-        if time.monotonic() - first_frame >= duration:
+        if duration > 0 and time.monotonic() - first_frame >= duration:
             loop.quit()
             return False
         return True
@@ -395,7 +494,8 @@ def main():
     if args.h264_output and args.output and args.h264_output.resolve() == args.output.resolve():
         parser.error("JSON and video outputs must be different files")
     if not (16 <= args.width <= 1920 and 16 <= args.height <= 1080 and
-            1 <= args.fps <= 60 and 1 <= args.duration <= (3600 if args.framed_h264_stdout else 30)):
+            1 <= args.fps <= 60 and (1 <= args.duration <= (3600 if args.framed_h264_stdout else 30) or
+                                    (args.duration == 0 and args.framed_h264_stdout and args.parent_pid))):
         parser.error("Mode or duration out of range")
     try:
         if args.query_topology:

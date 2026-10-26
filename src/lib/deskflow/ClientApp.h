@@ -27,7 +27,9 @@ class ClientApp : public App
 {
 public:
   explicit ClientApp(IEventQueue *events, const QString &processName = QString());
-  ~ClientApp() override = default;
+  ~ClientApp() override;
+  void queueInputControlCommand(const QString& json);
+  void handleInputControlCommand(const Event& event);
 
   //
   // IApp overrides

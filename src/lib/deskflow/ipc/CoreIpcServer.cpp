@@ -8,6 +8,8 @@
 
 #include "base/Log.h"
 #include "common/Constants.h"
+#include "common/PeerConnectionRegistry.h"
+#include <QJsonDocument>
 
 #include <QLocalSocket>
 
@@ -30,6 +32,20 @@ CoreIpcServer &CoreIpcServer::instance()
 void CoreIpcServer::processCommand(QLocalSocket *clientSocket, const QString &command, const QStringList &parts)
 {
   Q_UNUSED(parts)
+  if(command==QStringLiteral("peerUsageSnapshot")){
+    const auto snapshot=PeerConnectionRegistry::snapshot();QJsonArray ids;
+    broadcastCommand("peerUsageSnapshotBegin");
+    for(const auto& value:snapshot.value("connections").toArray()){
+      const auto record=value.toObject();ids.append(record.value("baseConnectionId"));
+      broadcastCommand("peerUsageConnection",QString::fromUtf8(QJsonDocument(record).toJson(QJsonDocument::Compact)));
+    }
+    for(const auto& value:snapshot.value("closed").toArray())
+      broadcastCommand("peerUsageConnectionClosed",QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)));
+    broadcastCommand("peerUsageSnapshotEnd",QString::fromUtf8(QJsonDocument(ids).toJson(QJsonDocument::Compact)));
+    for(const auto& value:snapshot.value("events").toArray())
+      broadcastCommand("peerUsageControlEvent",QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact)));
+    return;
+  }
   if (command == QStringLiteral("stop")) {
     LOG_DEBUG("core ipc server got stop message");
     writeToClientSocket(clientSocket, QStringLiteral("ok"));

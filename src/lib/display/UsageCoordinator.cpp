@@ -192,6 +192,36 @@ Outcome UsageCoordinator::cancel(const UsageKey& key){
   }
   return {false,Reason::ModeConflict};
 }
+Outcome UsageCoordinator::synchronizeInput(Permission permission,std::string focusOwner,bool active,SessionId owner){
+  if(m_snapshot.state==UsageState::Switching||m_snapshot.state==UsageState::CleanupRequired||m_snapshot.effectiveMode==UsageMode::Extended)
+    return {false,Reason::ModeConflict};
+  if(active&&permission!=Permission::Granted)return {false,Reason::InputPermissionDenied};
+  if(active&&(m_snapshot.key.operation==SessionId{}||owner!=SessionId{})){
+    if(owner==SessionId{})return {false,Reason::InvalidRequest};
+    m_snapshot.key={owner,m_snapshot.key.generation+1};
+  }
+  m_snapshot.inputPermission=permission;m_snapshot.inputFocusOwner=std::move(focusOwner);
+  complete(active?UsageMode::Input:UsageMode::None);return {true,Reason::None};
+}
+Outcome UsageCoordinator::restoreDisplayCleanup(SessionId owner){
+  if(owner==SessionId{}||m_snapshot.state!=UsageState::Inactive)return {false,Reason::InvalidRequest};
+  m_snapshot.key={owner,m_snapshot.key.generation+1};m_snapshot.selectedMode=UsageMode::Extended;
+  m_snapshot.state=UsageState::CleanupRequired;m_snapshot.stage=SwitchStage::CleaningDisplay;
+  m_snapshot.reason=Reason::CleanupFailed;m_allowRollback=false;m_stopAll=true;changed();return {true,Reason::None};
+}
+Outcome UsageCoordinator::retryCleanup(SessionId operation){
+  if(m_snapshot.state!=UsageState::CleanupRequired)return {false,Reason::InvalidRequest};
+  if(operation==SessionId{}||std::find(m_recentOperations.begin(),m_recentOperations.end(),operation)!=m_recentOperations.end())return {false,Reason::InvalidRequest};
+  if(m_snapshot.key.generation==std::numeric_limits<uint64_t>::max())throw std::overflow_error("Usage generation exhausted");
+  m_recentOperations.push_back(operation);if(m_recentOperations.size()>128)m_recentOperations.pop_front();
+  m_snapshot.key={operation,m_snapshot.key.generation+1};m_allowRollback=false;m_stopAll=true;
+  m_snapshot.rollback=RollbackResult::Cancelled;m_snapshot.targetMode=UsageMode::None;
+  // Retry only releases owned resources. It can never resume the cancelled use.
+  if(m_snapshot.stage==SwitchStage::CleaningDisplay||m_snapshot.stage==SwitchStage::StoppingDisplay){
+    m_snapshot.state=UsageState::Switching;m_snapshot.stage=SwitchStage::CleaningDisplay;effect(UsageEffectKind::StopDisplay);
+  }else effect(UsageEffectKind::RevokeInput);
+  changed();return {true,Reason::None};
+}
 Outcome UsageCoordinator::stop(SessionId operation){
   if(operation==SessionId{}||std::find(m_recentOperations.begin(),m_recentOperations.end(),operation)!=m_recentOperations.end())return {false,Reason::InvalidRequest};
   if(m_snapshot.state==UsageState::CleanupRequired)return {false,Reason::CleanupFailed};
@@ -208,9 +238,20 @@ Outcome UsageCoordinator::stop(SessionId operation){
   }else complete(UsageMode::None,Reason::UserStopped);
   return {true,Reason::None};
 }
-void UsageCoordinator::connectionLost(){
+void UsageCoordinator::invalidateRollback(SessionId stopOperation){
+  m_allowRollback=false;
+  if(m_snapshot.state==UsageState::Switching&&(m_snapshot.stage==SwitchStage::CheckingRollback||m_snapshot.stage==SwitchStage::RestoringInput||m_snapshot.stage==SwitchStage::StartingInput)){
+    stop(stopOperation);
+    m_snapshot.reason=Reason::SessionUnavailable;m_snapshot.rollback=RollbackResult::Unavailable;changed();
+  }
+}
+void UsageCoordinator::connectionLost(bool inputReleaseVerified){
   m_allowRollback=false;m_stopAll=true;
   if(m_snapshot.effectiveMode==UsageMode::Input || m_snapshot.stage==SwitchStage::StartingInput || m_snapshot.stage==SwitchStage::RestoringInput){
+    if(inputReleaseVerified){
+      m_snapshot.inputFocusOwner="local";m_snapshot.pressedInputsReleased=true;m_snapshot.oldModeStopped=true;
+      complete(UsageMode::None,Reason::ConnectionLost);return;
+    }
     m_snapshot.state=UsageState::Switching;m_snapshot.stage=SwitchStage::ReleasingInputs;
     m_snapshot.reason=Reason::ConnectionLost;m_snapshot.pressedInputsReleased=false;
     effect(UsageEffectKind::RevokeInput);effect(UsageEffectKind::ReleaseInputs);changed();return;

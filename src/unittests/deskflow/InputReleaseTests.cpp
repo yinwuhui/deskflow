@@ -3,6 +3,7 @@
 #include "base/IEventQueue.h"
 #include "base/Log.h"
 #include "common/Settings.h"
+#include "common/UsageInputState.h"
 #include "deskflow/Computer.h"
 #include "client/Client.h"
 #include "client/ServerProxy.h"
@@ -281,6 +282,7 @@ private Q_SLOTS:
     };
     sender.setOptions({kOptionInputControl,1});QVERIFY(receive());QVERIFY(acknowledge());
     QVERIFY(sender.supportsInputControl());
+    sender.publishInputRouteState(7);QVERIFY(receive());QVERIFY(receiver.sourceRouteActive());
     client.enter(0,0,1,0,false);client.keyDown(0x61,0,30,"");client.mouseDown(kButtonLeft);
     QCOMPARE(platform.keyPresses,1);QCOMPARE(platform.buttons.size(),1);
     platform.allowLeave=false;
@@ -331,6 +333,25 @@ private Q_SLOTS:
     QVERIFY(server.commitInputResume(std::string(64,'a'),2));
     QVERIFY(!server.inputRouteStatus(std::string(64,'a'),2,true).suspended);
     QVERIFY(secondStream->take().isEmpty());
+  }
+  void pausedRouteSurvivesCoreRecreation()
+  {
+    auto run=[&](bool pause){
+      deskflow::server::Config config(&events);QVERIFY(config.addComputer("source"));QVERIFY(config.addComputer("target"));
+      auto& platform=*new RecordingPlatform(&events,true);deskflow::Computer computer(&platform,&events);PrimaryClient primary("source",&computer);
+      Server server(config,&primary,&computer,&events);auto* stream=new ControlStream;auto* target=new SendingProxy("target",stream,&events);server.adoptClient(target);
+      if(pause)QCOMPARE(server.remoteInputControl(target,0),uint8_t(1));
+      else{
+        QVERIFY(server.inputRouteStatus(std::string(64,'a'),0,false).suspended);
+        QCOMPARE(server.remoteInputControl(target,3),uint8_t(0)); // No inherited resume preparation.
+        QVERIFY(UsageInputState::setDisplayOwned(QString(64,'a'),true));
+        QCOMPARE(server.remoteInputControl(target,1),uint8_t(0));
+        QVERIFY(UsageInputState::setDisplayOwned(QString(64,'a'),false));
+        QCOMPARE(server.remoteInputControl(target,1),uint8_t(2));
+        QCOMPARE(server.remoteInputControl(target,3),uint8_t(4));
+        QVERIFY(!server.inputRouteStatus(std::string(64,'a'),0,false).suspended);
+      }
+    };run(true);run(false);
   }
   void primaryPhysicalInputIsNotReleased()
   {

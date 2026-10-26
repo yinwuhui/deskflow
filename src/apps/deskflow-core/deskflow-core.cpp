@@ -218,6 +218,8 @@ int main(int argc, char **argv)
   QObject::connect(ipcServer, &deskflow::core::ipc::IpcServer::inputControlCommand, &app, [&](const QString& json) {
     if (auto* serverApp=dynamic_cast<ServerApp*>(coreApp))
       serverApp->queueInputControlCommand(json);
+    else if(auto* clientApp=dynamic_cast<ClientApp*>(coreApp))
+      clientApp->queueInputControlCommand(json);
     else
       ipcServer->broadcastCommand("inputControlResult", "{\"accepted\":false,\"reasonCode\":\"UnsupportedPlatform\"}");
   });

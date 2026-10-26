@@ -10,6 +10,7 @@
 #include "deskflow/AppUtil.h"
 #include "deskflow/OptionTypes.h"
 #include "deskflow/ProtocolUtil.h"
+#include "deskflow/UsageControlWire.h"
 #include "io/IStream.h"
 #include "server/ClientProxy1_0.h"
 #include "server/ClientProxy1_1.h"
@@ -281,6 +282,10 @@ void ClientProxyTests::inputControlNegotiationAndExactAcknowledgement()
   stream->input=QByteArray::fromHex("0000000903");
   QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlAck)));
   QVERIFY(proxy.inputReadinessAcknowledged(9));
+  proxy.publishInputRouteState(7);QCOMPARE(stream->take(),QByteArray::fromHex("4349435307"));
+  proxy.publishInputRouteState(7);QVERIFY(stream->take().isEmpty());
+  proxy.publishInputRouteState(3);QCOMPARE(stream->take(),QByteArray::fromHex("4349435303"));
+  proxy.publishInputRouteState(9);QVERIFY(stream->take().isEmpty());
   QVERIFY(!proxy.inputControlAcknowledged(9,true));
 }
 void ClientProxyTests::inputControlRejectsUnauthenticatedAndUnsolicitedCapability()
@@ -297,4 +302,35 @@ void ClientProxyTests::inputControlRejectsUnauthenticatedAndUnsolicitedCapabilit
   stream->input = QByteArray::fromHex("00000001");
   QVERIFY(!proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
   QVERIFY(!proxy.requestInputControl(1, false));
+}
+
+void ClientProxyTests::receiverControlIsCorrelatedAndReplaySafe()
+{
+  MockEventQueue events;auto* stream=new CapturingStream;stream->identity=std::string(64,'a');
+  InputControlProxy proxy("client",stream,&events);stream->take();proxy.setOptions({kOptionInputControl,1});stream->take();
+  stream->input=QByteArray::fromHex("00000001");QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
+  int calls=0;proxy.remoteInputControl=[&](uint8_t mode){++calls;return static_cast<uint8_t>(mode+1);};
+  stream->input=QByteArray::fromHex("0000000100");QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>("DICR")));
+  QCOMPARE(stream->take(),QByteArray::fromHex("434943410000000101"));QCOMPARE(calls,1);
+  stream->input=QByteArray::fromHex("0000000100");QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>("DICR")));
+  QCOMPARE(stream->take(),QByteArray::fromHex("434943410000000101"));QCOMPARE(calls,1);
+  stream->input=QByteArray::fromHex("0000000101");QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>("DICR")));
+  QCOMPARE(stream->take(),QByteArray::fromHex("434943410000000100"));QCOMPARE(calls,1);
+  stream->input=QByteArray::fromHex("0000000203");QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>("DICR")));
+  QCOMPARE(stream->take(),QByteArray::fromHex("434943410000000204"));QCOMPARE(calls,2);
+}
+void ClientProxyTests::boundedUsageControlOnAuthenticatedStream()
+{
+  MockEventQueue events;auto* stream=new CapturingStream;stream->identity=std::string(64,'a');
+  InputControlProxy proxy("client",stream,&events);stream->take();
+  stream->input=QByteArray::fromHex("00004001");QVERIFY(!proxy.parseMessage(reinterpret_cast<const uint8_t*>("DUSG")));
+  proxy.setOptions({kOptionInputControl,1});stream->take();stream->input=QByteArray::fromHex("00000001");
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>(kMsgDInputControlCapability)));
+  int calls=0;QJsonObject received;proxy.usageControlReceived=[&](const QJsonObject& body){++calls;received=body;return true;};
+  const QJsonObject message{{"type","request"},{"protocol","usage-display/1"}};
+  QVERIFY(deskflow::input::writeUsageControl(stream,"DUSG%s",message));auto frame=stream->take();
+  QCOMPARE(frame.left(4),QByteArray("DUSG"));stream->input=frame.mid(4);
+  QVERIFY(proxy.parseMessage(reinterpret_cast<const uint8_t*>("DUSG")));QCOMPARE(calls,1);QCOMPARE(received,message);
+  stream->input=QByteArray::fromHex("00004001");QVERIFY(!proxy.parseMessage(reinterpret_cast<const uint8_t*>("DUSG")));QCOMPARE(calls,1);
+  QVERIFY(!deskflow::input::writeUsageControl(stream,"DUSG%s",{{"large",QString(16384,'x')}}));
 }

@@ -108,3 +108,15 @@ elseif(APPLE)
 else()
   generate_app_man(${target} "${CMAKE_PROJECT_DESCRIPTION} \\(GUI\\)")
 endif()
+
+if(APPLE AND BUILD_OSX_BUNDLE AND TARGET busymouse-display-probe)
+  add_dependencies(${target} busymouse-display-viewer busymouse-display-probe)
+  set(display_scripts)
+  foreach(script display_session display_transport h264_access_units virtual_display_probe product_probe)
+    list(APPEND display_scripts "${CMAKE_SOURCE_DIR}/tools/virtual-display-prototype/${script}.py")
+  endforeach()
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources/display"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${display_scripts} "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources/display"
+    VERBATIM)
+endif()

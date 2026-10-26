@@ -112,6 +112,8 @@ public:
   Returns a reference to to socket referred to by \c s.
   */
   virtual ArchSocket copySocket(ArchSocket s) = 0;
+  // Return ports only when both actual socket endpoints are loopback.
+  virtual bool getLoopbackPorts(ArchSocket,uint16_t&,uint16_t&) { return false; }
 
   //! Release a socket reference
   /*!

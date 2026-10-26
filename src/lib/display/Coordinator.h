@@ -29,6 +29,7 @@ struct Capabilities {
   bool fullscreen = false;
   bool sessionAvailable = false;
   unsigned protocol = 1;
+  bool minimize = false;
   // P0 deliberately has no remote input, automatic recovery or dynamic modes.
 };
 struct Peer {
@@ -111,6 +112,8 @@ public:
   Outcome retryCleanup(const Key& key, TimePoint now);
   bool cleaned(const Key& key, bool verified);
   Outcome showWindow(const Key& key);
+  bool adapterStateChanged(const Key& key);
+  bool windowState(const Key& key,std::string screen,bool fullscreen);
   bool restorePending(Peer peer, const Key& owner, Role role, std::string displayId);
   void tick(TimePoint now);
 private:

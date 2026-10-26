@@ -257,6 +257,14 @@ bool Coordinator::cleaned(const Key& key, bool verified) {
   }
   changed(); return true;
 }
+bool Coordinator::adapterStateChanged(const Key& key){
+  if(!matches(key)||(m_state.state()!=State::Preparing&&m_state.state()!=State::Streaming))return false;
+  changed();return true;
+}
+bool Coordinator::windowState(const Key& key,std::string screen,bool fullscreen){
+  if(!matches(key)||m_state.state()!=State::Streaming||m_snapshot.role!=Role::Receiver||screen.empty()||screen.size()>256)return false;
+  m_snapshot.receiverScreenId=std::move(screen);m_snapshot.fullscreen=fullscreen;changed();return true;
+}
 Outcome Coordinator::showWindow(const Key& key) {
   if (!matches(key) || m_state.state() != State::Streaming || m_snapshot.role != Role::Receiver)
     return {false, Reason::InvalidRequest};

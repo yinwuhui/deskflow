@@ -107,6 +107,26 @@ int main(int argc,char** argv) {
       ResourceJournal journal(path);check(journal.status()==ResourceJournal::Status::Corrupt,"invalid record treated as clean");
       OwnedResource record;record.owner.session[0]=1;record.owner.request[0]=2;record.owner.generation=1;record.peerIdentity=QString(64,'a');record.role=Role::Host;
       check(!journal.claim(record),"corrupt ownership overwritten");
+    } else if(name=="LayoutOwnership") {
+      auto capabilities=caps();capabilities.layout=true;service.updateCapabilities(capabilities);
+      service.authenticatedPeer(peer());service.setInputRouting(Routing::Clear);SessionId request{};request[0]=1;
+      check(service.requestManagedSession(QString(64,'a'),request).accepted,"managed start");auto current=key(service.snapshot());
+      service.peerResponse(current,true,Reason::None);service.permissionResult(current,Permission::Granted);service.resumeManagedSession(current);
+      service.backendPrepared(current,"owned-display");service.peerReady(current);service.firstFramePresented(current);drain();
+      check(service.snapshot().value("state")=="Streaming","fixture not streaming");
+      service.execute(command("queryDisplayLayout",keyJson(service.snapshot())));drain();
+      auto effect=effects.last().at(0).toJsonObject();check(effect.value("operation")=="QueryDisplayLayout","missing layout adapter command");
+      auto stale=current;++stale.generation;
+      QJsonObject data{{"layout",QJsonObject{{"displayId","owned-display"},{"x",1920},{"y",0},{"scale",1}}},{"displays",QJsonArray{}}};
+      service.layoutResult(stale,effect.value("commandId").toString(),true,data);check(service.snapshot().value("confirmedLayout").isNull(),"stale layout published");
+      const auto oldRevision=service.snapshot().value("revision").toString().toULongLong();
+      service.layoutResult(current,effect.value("commandId").toString(),true,data);check(service.snapshot().value("revision").toString().toULongLong()>oldRevision,"layout revision did not advance");check(reply(replies).value("accepted").toBool(),"confirmed layout rejected");
+      auto args=keyJson(service.snapshot());args.insert("layout",QJsonObject{{"x",1.5},{"y",0}});
+      service.execute(command("setDisplayLayout",args));drain();check(!reply(replies).value("accepted").toBool(),"fractional position accepted");
+      service.execute(command("queryDisplayLayout",keyJson(service.snapshot())));drain();effect=effects.last().at(0).toJsonObject();
+      service.stopManagedSession(current);drain();service.layoutResult(current,effect.value("commandId").toString(),true,data);
+      check(!reply(replies).value("accepted").toBool(),"late layout revived stopping session");
+      service.cleanupFinished(service.currentKey(),true);check(service.snapshot().value("confirmedLayout").isNull()&&service.snapshot().value("receiverWindow").isNull()&&service.snapshot().value("streamConfig").isNull(),"idle retained active presentation state");
     } else if(name=="ApplicationSingleton") {
       auto a=DisplayService::applicationService(); auto b=DisplayService::applicationService(); check(a==b,"multiple product services");
       check(a->localCapabilities().value("send")=="unknown","unprobed product capability advertised");

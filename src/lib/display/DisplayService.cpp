@@ -10,6 +10,7 @@
 #include <QThread>
 #include <QUuid>
 #include <cmath>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 
@@ -51,7 +52,7 @@ void fields(const QJsonObject& value, const QSet<QString>& required, const QSet<
 const QSet<QString> keyFields{"sessionId", "requestId", "generation", "displayEpoch"};
 QJsonObject capabilityJson(const Capabilities& capability) {
   return {{"send", availabilityName(capability.send)}, {"receive", availabilityName(capability.receive)},
-    {"layout", capability.layout}, {"fullscreen", capability.fullscreen}, {"sessionAvailable", capability.sessionAvailable},
+    {"layout", capability.layout}, {"fullscreen", capability.fullscreen},{"minimize",capability.minimize}, {"sessionAvailable", capability.sessionAvailable},
     {"protocolVersion", static_cast<int>(capability.protocol)}, {"receiverInput", false}, {"reconnect", false},
     {"dynamicResolution", false}, {"initialMode", QJsonObject{{"width",1920},{"height",1080},{"targetFps",30},{"codec","h264"},{"color","SDR"}}}};
 }
@@ -103,9 +104,10 @@ QJsonObject DisplayService::snapshot() const {
   const char* permission[] = {"unknown","required","granted","denied"};
   result.insert("cleanupStatus", cleanup[static_cast<unsigned>(source.cleanup)]);
   result.insert("permissions", QJsonObject{{"capture", permission[static_cast<unsigned>(source.permission)]}, {"receiverInput", "disabled"}});
-  result.insert("confirmedLayout", QJsonValue::Null);
+  result.insert("confirmedLayout",source.state!=State::Idle&&source.key==m_layoutOwner&&!m_layoutState.isEmpty()?QJsonValue(m_layoutState):QJsonValue(QJsonValue::Null));
+  result.insert("receiverWindow",source.state!=State::Idle&&!m_windowState.isEmpty()&&source.key==m_windowOwner?QJsonValue(m_windowState):QJsonValue(QJsonValue::Null));
   result.insert("statistics", QJsonValue::Null); // No invented fps/latency.
-  result.insert("streamConfig", QJsonValue::Null); // Adapter must report an agreed configuration.
+  result.insert("streamConfig",source.state!=State::Idle&&source.key==m_streamOwner&&!m_streamConfig.isEmpty()?QJsonValue(m_streamConfig):QJsonValue(QJsonValue::Null));
   QJsonArray actions; for (auto action : source.actions) actions.append(actionName(action)); result.insert("availableActions", actions);
   return result;
 }
@@ -134,7 +136,7 @@ void DisplayService::execute(const QJsonObject& command) {
   QTimer::singleShot(0, this, [this, command] { runCommand(command); });
 }
 void DisplayService::runCommand(const QJsonObject& command) {
-  ownerThread(); QString correlation; Outcome outcome{false, Reason::InvalidRequest}; QJsonObject data;
+  ownerThread(); QString correlation; Outcome outcome{false, Reason::InvalidRequest}; QJsonObject data;bool deferred=false;
   try {
     if (QJsonDocument(command).toJson(QJsonDocument::Compact).size() > 65536) throw std::invalid_argument("size");
     fields(command, {"id","operation","args"});
@@ -161,16 +163,52 @@ void DisplayService::runCommand(const QJsonObject& command) {
     } else if (op == "cancelDisplayRequest" || op == "stopDisplaySession") {
       fields(args, keyFields); outcome = m_coordinator.stop(keyFrom(args), op == "cancelDisplayRequest" ? Reason::Cancelled : Reason::UserStopped, now);
     } else if (op == "retryDisplayCleanup") { fields(args, keyFields); outcome = m_coordinator.retryCleanup(keyFrom(args), now); }
-    else if (op == "presentReceiverWindow") { fields(args, keyFields); outcome = m_coordinator.showWindow(keyFrom(args)); }
+    else if(op=="presentReceiverWindow"||op=="setReceiverPresentation"){
+      fields(args,keyFields,op=="setReceiverPresentation"?QSet<QString>{"presentationMode","receiverScreenId","windowState","scaleMode"}:QSet<QString>{});
+      const auto key=keyFrom(args);const auto state=m_coordinator.snapshot();
+      if(op=="setReceiverPresentation"&&args.value("presentationMode")!="window"&&args.value("presentationMode")!="fullscreen")throw std::invalid_argument("presentation mode");
+      if(args.contains("scaleMode")&&args.value("scaleMode")!="fit"&&args.value("scaleMode")!="actual")throw std::invalid_argument("scale mode");
+      if(args.contains("windowState")&&args.value("windowState")!="normal"&&args.value("windowState")!="minimized")throw std::invalid_argument("window state");
+      if(args.contains("receiverScreenId")&&(!args.value("receiverScreenId").isString()||args.value("receiverScreenId").toString().size()>256))throw std::invalid_argument("screen");
+      if(key!=state.key||state.role!=Role::Receiver||state.state!=State::Streaming)outcome={false,Reason::InvalidRequest};
+      else if(op=="setReceiverPresentation"&&!m_coordinator.capabilities().fullscreen)outcome={false,Reason::UnsupportedPlatform};
+      else if(args.value("windowState")=="minimized"&&!m_coordinator.capabilities().minimize)outcome={false,Reason::UnsupportedPlatform};
+      else if(m_windowCommands.size()>=16)outcome={false,Reason::PeerBusy};
+      else if(std::any_of(m_windowCommands.cbegin(),m_windowCommands.cend(),[&](const WindowPending& pending){return pending.id==correlation;}))outcome={false,Reason::InvalidRequest};
+      else{
+        const auto transaction=QUuid::createUuid().toString(QUuid::Id128);m_windowCommands.insert(transaction,{key,correlation});deferred=true;
+        auto request=args;request.insert("operation",op=="presentReceiverWindow"?"ShowWindow":"SetReceiverPresentation");request.insert("commandId",transaction);
+        QTimer::singleShot(0,this,[this,request,key]{if(currentKey()==key)Q_EMIT backendCommand(request);});
+        QTimer::singleShot(3000,this,[this,transaction,key]{if(m_windowCommands.contains(transaction))receiverWindowResult(key,transaction,false,{});});
+      }
+    }
     else if (op == "setReceiveRequestsEnabled") {
       fields(args, {"enabled"}); if (!args.value("enabled").isBool()) throw std::invalid_argument("enabled");
       const auto enabled = args.value("enabled").toBool(); m_coordinator.setReceiveRequestsEnabled(enabled);
       if (m_preferences) m_preferences->setValue("display/receiveRequestsEnabled", enabled);
       outcome = {true, Reason::None};
-    } else if (op == "setDisplayLayout" || op == "setReceiverPresentation") outcome = {false, Reason::UnsupportedPlatform};
+    } else if (op == "setDisplayLayout" || op == "queryDisplayLayout") {
+      auto required=keyFields;if(op=="setDisplayLayout")required.insert("layout");fields(args,required);
+      const auto key=keyFrom(args);const auto state=m_coordinator.snapshot();
+      if(op=="setDisplayLayout"){
+        if(!args.value("layout").isObject())throw std::invalid_argument("layout");
+        const auto layout=args.value("layout").toObject();fields(layout,{"x","y"},{"scale"});
+        for(const auto* axis:{"x","y"}){const auto v=layout.value(axis);if(!v.isDouble()||!std::isfinite(v.toDouble())||std::floor(v.toDouble())!=v.toDouble()||std::abs(v.toDouble())>32768)throw std::invalid_argument("position");}
+        if(layout.contains("scale")&&(!layout.value("scale").isDouble()||!std::isfinite(layout.value("scale").toDouble())||layout.value("scale").toDouble()<=0))throw std::invalid_argument("scale");
+      }
+      if(key!=state.key||state.role!=Role::Host||state.state!=State::Streaming)outcome={false,Reason::InvalidRequest};
+      else if(!m_coordinator.capabilities().layout)outcome={false,Reason::UnsupportedPlatform};
+      else if(!m_layoutCommands.isEmpty())outcome={false,Reason::PeerBusy};
+      else{
+        const auto transaction=QUuid::createUuid().toString(QUuid::Id128);m_layoutCommands.insert(transaction,{key,correlation});deferred=true;
+        auto request=args;request.insert("operation",op=="setDisplayLayout"?"SetDisplayLayout":"QueryDisplayLayout");request.insert("commandId",transaction);
+        QTimer::singleShot(0,this,[this,request,key]{if(currentKey()==key)Q_EMIT backendCommand(request);});
+        QTimer::singleShot(5000,this,[this,key,transaction]{layoutResult(key,transaction,false,{});});
+      }
+    }
   } catch (const std::invalid_argument&) { outcome = {false, Reason::InvalidRequest}; }
   publish();
-  Q_EMIT commandFinished(QJsonObject{{"id",correlation},{"accepted",outcome.accepted},{"reasonCode",reasonName(outcome.reason)},
+  if(!deferred)Q_EMIT commandFinished(QJsonObject{{"id",correlation},{"accepted",outcome.accepted},{"reasonCode",reasonName(outcome.reason)},
     {"data", data},{"snapshot",snapshot()}});
 }
 Outcome DisplayService::requestManagedSession(const QString& peerId,SessionId request){
@@ -179,8 +217,10 @@ Outcome DisplayService::requestManagedSession(const QString& peerId,SessionId re
     m_coordinator.request(*it,randomId(),request,m_routing,Coordinator::Clock::now(),true);
   publish();return outcome;
 }
+Outcome DisplayService::retryManagedCleanup(const Key& key){ownerThread();auto result=m_coordinator.retryCleanup(key,Coordinator::Clock::now());publish();return result;}
 Outcome DisplayService::resumeManagedSession(const Key& key){ownerThread();auto result=m_coordinator.resumePreparation(key,m_routing,Coordinator::Clock::now());publish();return result;}
-Outcome DisplayService::stopManagedSession(const Key& key,Reason reason){ownerThread();auto result=m_coordinator.stop(key,reason,Coordinator::Clock::now());publish();return result;}
+Outcome DisplayService::stopManagedSession(const Key& key,Reason reason){ownerThread();auto result=(reason==Reason::Cancelled||reason==Reason::UserStopped||reason==Reason::ApplicationExit)?
+    m_coordinator.stop(key,reason,Coordinator::Clock::now()):Outcome{m_coordinator.fail(key,reason,Coordinator::Clock::now()),reason};publish();return result;}
 void DisplayService::updateCapabilities(Capabilities local) { ownerThread(); m_coordinator.setCapabilities(local, Coordinator::Clock::now()); publish(); }
 void DisplayService::authenticatedPeer(Peer peer) { ownerThread(); const auto identity = QString::fromStdString(peer.id); m_peers.insert(identity, std::move(peer)); }
 void DisplayService::forgetPeer(const QString& identity) { ownerThread(); m_peers.remove(identity); }
@@ -196,6 +236,32 @@ void DisplayService::backendFailed(const Key& key, Reason reason) { ownerThread(
 void DisplayService::cleanupFinished(const Key& key, bool verified) { ownerThread(); m_coordinator.cleaned(key,verified); publish(); }
 bool DisplayService::restorePendingResource(Peer peer, const Key& owner, Role role, const QString& displayId) {
   ownerThread(); auto result=m_coordinator.restorePending(std::move(peer),owner,role,displayId.toStdString()); publish(); return result;
+}
+void DisplayService::receiverWindowState(const Key& key,const QJsonObject& state){
+  ownerThread();const auto screen=state.value("receiverScreenId").toString();
+  if(!state.value("fullscreen").isBool()||!m_coordinator.windowState(key,screen.toStdString(),state.value("fullscreen").toBool()))return;
+  m_windowOwner=key;m_windowState=state;publish();
+}
+void DisplayService::receiverWindowResult(const Key& key,const QString& commandId,bool accepted,const QJsonObject& state){
+  ownerThread();auto it=m_windowCommands.find(commandId);if(it==m_windowCommands.end()||it.value().key!=key)return;const auto correlation=it.value().id;m_windowCommands.erase(it);
+  accepted=accepted&&currentKey()==key&&m_coordinator.snapshot().state==State::Streaming&&
+    !state.value("receiverScreenId").toString().isEmpty()&&state.value("fullscreen").isBool()&&state.value("visible").isBool()&&state.value("minimized").isBool();
+  if(accepted)receiverWindowState(key,state);
+  Q_EMIT commandFinished({{"id",correlation},{"accepted",accepted},{"reasonCode",accepted?"None":"PresentationFailed"},{"data",state},{"snapshot",snapshot()}});
+}
+void DisplayService::streamConfiguration(const Key& key,const QJsonObject& config){
+  ownerThread();if(currentKey()!=key)return;
+  if(config.value("codec")!="h264"||config.value("width")!=1920||config.value("height")!=1080||config.value("fps")!=30||config.value("input")!=false)return;
+  if(!m_coordinator.adapterStateChanged(key))return;
+  m_streamOwner=key;m_streamConfig=config;publish();
+}
+void DisplayService::layoutResult(const Key& key,const QString& commandId,bool accepted,const QJsonObject& data){
+  ownerThread();QString correlation;
+  if(!commandId.isEmpty()){auto it=m_layoutCommands.find(commandId);if(it==m_layoutCommands.end()||it->key!=key)return;correlation=it->id;m_layoutCommands.erase(it);}
+  const auto state=m_coordinator.snapshot();
+  accepted=accepted&&state.key==key&&state.role==Role::Host&&state.state==State::Streaming&&data.value("layout").isObject()&&data.value("displays").isArray();
+  if(accepted){m_coordinator.adapterStateChanged(key);m_layoutOwner=key;m_layoutState=data;publish();}
+  if(!commandId.isEmpty())Q_EMIT commandFinished({{"id",correlation},{"accepted",accepted},{"reasonCode",accepted?"None":"LayoutRejected"},{"data",data},{"snapshot",snapshot()}});
 }
 void DisplayService::setInputRouting(Routing routing) { ownerThread(); m_routing = routing; }
 } // namespace deskflow::display

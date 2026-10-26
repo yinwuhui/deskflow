@@ -7,6 +7,14 @@
  */
 
 #include "server/Server.h"
+#include "deskflow/UsageControlWire.h"
+#include "common/PeerConnectionRegistry.h"
+#include <QJsonArray>
+#include <QUuid>
+#include <QFileInfo>
+#include <QDir>
+#include "common/Settings.h"
+#include "common/UsageInputState.h"
 
 #include "base/IEventQueue.h"
 #include "base/Log.h"
@@ -48,6 +56,9 @@ Server::Server(ServerConfig &config, PrimaryClient *primaryClient, deskflow::Com
       m_computer(computer),
       m_events(events)
 {
+  m_usagePreferences=std::make_unique<QSettings>(QFileInfo(Settings::settingsFile()).dir().filePath("usage-input.ini"),QSettings::IniFormat);
+  m_usageTimer=m_events->newTimer(0.5,nullptr);
+  if(m_usageTimer)m_events->addHandler(EventTypes::Timer,m_usageTimer,[this](const auto&){publishUsageConnections();});
   // must have a primary client and it must have a canonical name
   assert(m_primaryClient != nullptr);
   assert(config.isComputer(primaryClient->getName()));
@@ -152,6 +163,9 @@ Server::Server(ServerConfig &config, PrimaryClient *primaryClient, deskflow::Com
 
 Server::~Server()
 {
+  if(m_usageTimer){m_events->removeHandler(EventTypes::Timer,m_usageTimer);m_events->deleteTimer(m_usageTimer);}
+  for(const auto& [client,id]:m_usageConnections)PeerConnectionRegistry::remove(QString::fromStdString(id));
+  m_usageConnections.clear();
   // remove event handlers and timers
   using enum EventTypes;
   m_events->removeHandler(KeyStateKeyDown, m_inputFilter);
@@ -259,6 +273,9 @@ void Server::adoptClient(BaseClientProxy *client)
     return;
   }
 
+  if(UsageInputState::displayOwned()&&(!client->getStream()||client->getStream()->peerIdentity().size()!=64)){
+    closeClient(client,kMsgEBusy);return;
+  }
   // add client to client list
   if (!addClient(client)) {
     // can only have one computer with a given name at any given time
@@ -272,8 +289,22 @@ void Server::adoptClient(BaseClientProxy *client)
   if (auto *stream = client->getStream(); stream && !stream->peerIdentity().empty())
     ipcSendToClient("peerCore", QString::fromStdString(stream->peerIdentity()) + ":connected");
 
+  if(auto* proxy=dynamic_cast<ClientProxy*>(client)){
+    proxy->remoteInputControl=[this,client](uint8_t mode){return remoteInputControl(client,mode);};
+    proxy->usageControlReceived=[this,client](const QJsonObject& body){
+      if(!m_usageConnections.contains(client)||!client->getStream())return false;
+      return PeerConnectionRegistry::controlReceived(QString::fromStdString(client->getStream()->peerIdentity()),
+        QString::fromStdString(m_usageConnections.at(client)),body);
+    };
+  }
+  if(client->getStream()){
+    const auto identity=client->getStream()->peerIdentity();
+    if(identity.size()==64&&(m_usagePreferences->value(QString::fromStdString(identity),false).toBool()||UsageInputState::displayOwned()))m_suspendedInputPeers.insert(identity);
+  }
   // send configuration options to client
   sendOptions(client);
+  m_usageConnections[client]=QUuid::createUuid().toString(QUuid::Id128).toStdString();
+  publishUsageConnections();
 
   // activate computer saver on new client if active on the primary computer
   if (m_activeSaver != nullptr) {
@@ -1948,6 +1979,15 @@ bool Server::removeClient(BaseClientProxy *client)
   m_events->removeHandler(ClipboardGrabbed, client->getEventTarget());
   m_events->removeHandler(ClipboardChanged, client->getEventTarget());
 
+  if(auto record=m_usageConnections.find(client);record!=m_usageConnections.end()){
+    const auto identity=client->getStream()?client->getStream()->peerIdentity():std::string{};
+    const bool wasSuspended=m_suspendedInputPeers.contains(identity);
+    if(!identity.empty())m_suspendedInputPeers.insert(identity);
+    forceLeaveClient(client);
+    if(!wasSuspended)m_suspendedInputPeers.erase(identity);
+    PeerConnectionRegistry::remove(QString::fromStdString(record->second),m_active!=client);m_usageConnections.erase(record);
+    if(client->getStream())m_remotePreparedPeers.erase(client->getStream()->peerIdentity());
+  }
   // remove from list
   m_clients.erase(getName(client));
   m_clientSet.erase(i);
@@ -2126,12 +2166,14 @@ bool Server::requestInputRoute(const std::string& peer, uint32_t sequence, bool 
     return false;
   // Both transitions initially block routing. The GUI must finalize resume only
   // after its exact acknowledgement; focus stays local throughout the barrier.
+  if(enabled&&UsageInputState::displayOwned())return false;
   if (!found->requestInputControl(sequence, enabled))
     return false;
   m_managedInputPeers.insert(peer);
   m_suspendedInputPeers.insert(peer);
+  const bool persisted=rememberInputSuspended(peer,true);
   forceLeaveClient(found);
-  return true;
+  return persisted;
 }
 
 bool Server::commitInputResume(const std::string& peer, uint32_t sequence)
@@ -2139,6 +2181,7 @@ bool Server::commitInputResume(const std::string& peer, uint32_t sequence)
   auto status = inputRouteStatus(peer, sequence, true);
   if (!status.connected || !status.supported || !status.suspended || !status.acknowledged || !status.localFocus)
     return false;
+  if(UsageInputState::displayOwned()||!rememberInputSuspended(peer,false))return false;
   m_suspendedInputPeers.erase(peer);
   m_primaryClient->reconfigure(getActivePrimarySides());
   return true;
@@ -2161,4 +2204,72 @@ bool Server::inputKeyboardRouteEnabled(const BaseClientProxy* client) const
     return false;
   return client == m_primaryClient || !client->getStream() ||
          !m_managedInputPeers.contains(client->getStream()->peerIdentity()) || client == m_active;
+}
+
+void Server::publishUsageConnections()
+{
+  for(const auto& [name,client]:m_clients){
+    if(client==m_primaryClient||!client->getStream())continue;
+    const auto identity=client->getStream()->peerIdentity();if(identity.size()!=64)continue;
+    auto* proxy=dynamic_cast<ClientProxy*>(client);if(!proxy)continue;
+    auto found=m_usageConnections.find(client);if(found==m_usageConnections.end())continue;
+    if(proxy->supportsInputControl()){
+      m_managedInputPeers.insert(identity); // Keyboard follows the same focus as mouse from import onward.
+      if(proxy->inputControlSequence()==0)proxy->requestInputReadiness(1);
+    }
+    const bool ready=m_computer->isEnabled()&&proxy->inputPermissionsConfirmed();
+    const uint8_t flags=(m_computer->isEnabled()?1:0)|(!inputRouteSuspended(client)?2:0)|(m_active==m_primaryClient?4:0);
+    proxy->publishInputRouteState(flags);
+    PeerConnectionRegistry::update({{"peerId",QString::fromStdString(identity)},{"peerName",QString::fromStdString(name)},
+      {"baseConnectionId",QString::fromStdString(found->second)},{"baseConnected",true},{"originalInputRole","source"},
+      {"inputActive",ready&&!inputRouteSuspended(client)},{"inputPermissionsReady",ready},
+      {"inputControlSupported",proxy->supportsInputControl()},{"inputFocusOwner",m_active==m_primaryClient?"local":m_active==client?QString::fromStdString(identity):QString()},
+      {"deviceKeys",QJsonArray{QString::fromStdString("computer:"+name)}}});
+  }
+}
+
+uint8_t Server::remoteInputControl(BaseClientProxy* client,uint8_t mode)
+{
+  if(!client||client==m_primaryClient||!client->getStream())return 0;
+  const auto peer=client->getStream()->peerIdentity();if(peer.size()!=64||!m_clientSet.contains(client))return 0;
+  if(mode==2)return m_computer->isEnabled()?3:0;
+  if(mode==0){
+    m_managedInputPeers.insert(peer);m_suspendedInputPeers.insert(peer);m_remotePreparedPeers.erase(peer);
+    const bool persisted=rememberInputSuspended(peer,true);
+    forceLeaveClient(client);publishUsageConnections();return persisted&&m_active==m_primaryClient?1:0;
+  }
+  if(m_active!=m_primaryClient||!m_computer->isEnabled()||!m_suspendedInputPeers.contains(peer)||UsageInputState::displayOwned())return 0;
+  if(mode==1){m_remotePreparedPeers.insert(peer);return 2;}
+  if(mode==3&&m_remotePreparedPeers.erase(peer)){
+    if(!rememberInputSuspended(peer,false))return 0;
+    m_suspendedInputPeers.erase(peer);m_primaryClient->reconfigure(getActivePrimarySides());publishUsageConnections();return 4;
+  }
+  return 0;
+}
+
+bool Server::sendUsageControl(const QString& peer,const QString& connection,const QJsonObject& body)
+{
+  for(auto* client:m_clientSet){
+    if(client==m_primaryClient||!client->getStream()||!m_usageConnections.contains(client)||
+      client->getStream()->peerIdentity()!=peer.toStdString()||m_usageConnections.at(client)!=connection.toStdString())continue;
+    auto* proxy=dynamic_cast<ClientProxy*>(client);
+    return proxy&&proxy->supportsInputControl()&&deskflow::input::writeUsageControl(client->getStream(),"CUSG%s",body);
+  }
+  return false;
+}
+
+bool Server::matchesUsageConnection(const QString& peer,const QString& connection) const
+{
+  unsigned count=0;bool matches=false;
+  for(const auto* client:m_clientSet)if(client!=m_primaryClient&&client->getStream()&&client->getStream()->peerIdentity()==peer.toStdString()){
+    ++count;const auto found=m_usageConnections.find(client);matches=found!=m_usageConnections.end()&&found->second==connection.toStdString();
+  }
+  return count==1&&matches;
+}
+
+bool Server::rememberInputSuspended(const std::string& peer,bool suspended)
+{
+  if(peer.size()!=64)return false;
+  m_usagePreferences->setValue(QString::fromStdString(peer),suspended);m_usagePreferences->sync();
+  return m_usagePreferences->status()==QSettings::NoError;
 }

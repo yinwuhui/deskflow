@@ -22,6 +22,9 @@ PeerUsageModel *PeerUsageModel::applicationModel()
     connect(model, &PeerUsageModel::commandRequested, service, &deskflow::display::PeerUsageService::execute);
     connect(service, &deskflow::display::PeerUsageService::snapshotChanged, model, &PeerUsageModel::receiveSnapshot);
     connect(service, &deskflow::display::PeerUsageService::commandFinished, model, &PeerUsageModel::receiveReply);
+    connect(service,&deskflow::display::PeerUsageService::connectionChanged,model,&PeerUsageModel::receiveConnection);
+    for(const auto& connection:service->connectedPeers())model->receiveConnection(connection.toObject());
+    for(const auto& snapshot:service->retainedSnapshots())model->receiveSnapshot(snapshot.toObject());
 #endif
   }
   return model;
@@ -37,11 +40,36 @@ void PeerUsageModel::setConnectedDevices(const QSet<QString> &devices)
     m_errors.remove(device);
   }
   m_connected = devices;
+  const auto connections=m_connections.values();
+  for(const auto& connection:connections)receiveConnection(connection);
   Q_EMIT changed();
 }
 bool PeerUsageModel::connected(const QString &device) const
 {
   return m_connected.contains(device);
+}
+QJsonArray PeerUsageModel::authenticatedConnections()const{
+  QJsonArray result;for(const auto& connection:m_connections)if(connection.value("baseConnected").toBool())result.append(connection);return result;
+}
+void PeerUsageModel::receiveConnection(const QJsonObject& connection)
+{
+  const auto peer=connection.value("peerId").toString();if(peer.isEmpty())return;
+  const auto old=m_connections.value(peer);
+  bool valid=false;auto generation=connection.value("baseConnectionGeneration").toString().toULongLong(&valid);
+  if(!valid||generation==0)return;
+  if(!old.isEmpty()&&generation<old.value("baseConnectionGeneration").toString().toULongLong())return;
+  const bool changedConnection=old.value("baseConnectionId")!=connection.value("baseConnectionId");
+  m_connections.insert(peer,connection);
+  const bool connectionsChangedValue=old!=connection;
+  if(!connection.value("baseConnected").toBool()||changedConnection){
+    const auto devices=m_bindings.keys(peer);
+    for(const auto& device:devices){m_bindings.remove(device);m_pending.remove(device);m_errors.remove(device);}
+  }
+  if(connection.value("baseConnected").toBool()){
+    for(const auto& key:connection.value("deviceKeys").toArray())bindAuthenticatedDevice(key.toString(),peer);
+  }
+  if(connectionsChangedValue)Q_EMIT connectionsChanged();
+  Q_EMIT changed();
 }
 void PeerUsageModel::bindAuthenticatedDevice(const QString &device, const QString &peerId)
 {
@@ -51,20 +79,26 @@ void PeerUsageModel::bindAuthenticatedDevice(const QString &device, const QStrin
   if (m_bindings.value(device) == peerId)
     return;
   m_pending.remove(device);
-  m_snapshots.remove(peerId);
+  // Keep dirty ownership until the backend confirms its cleanup across reconnects.
   m_bindings.insert(device, peerId);
   m_errors.remove(device);
   send(device, "subscribePeerUsageEvents", {});
 }
 QJsonObject PeerUsageModel::snapshot(const QString &device) const
 {
-  return connected(device) ? m_snapshots.value(m_bindings.value(device)) : QJsonObject{};
+  if(!connected(device))return {};
+  const auto peer=m_bindings.value(device);const auto state=m_snapshots.value(peer);const auto connection=m_connections.value(peer);
+  if(!connection.isEmpty()&&(connection.value("baseConnectionId")!=state.value("baseConnectionId")||connection.value("baseConnectionGeneration")!=state.value("baseConnectionGeneration")))return {};
+  return state;
 }
 void PeerUsageModel::receiveSnapshot(const QJsonObject &value)
 {
   const auto peer = value.value("peerId").toString();
   if (peer.isEmpty())
     return;
+  const auto connection=m_connections.value(peer);
+  if(!connection.isEmpty() && (value.value("baseConnectionId")!=connection.value("baseConnectionId")||
+      value.value("baseConnectionGeneration")!=connection.value("baseConnectionGeneration")))return;
   bool valid = false;
   const auto revision = value.value("revision").toString().toULongLong(&valid);
   if (!valid)
@@ -89,8 +123,7 @@ void PeerUsageModel::receiveReply(const QJsonObject &reply)
 }
 bool PeerUsageModel::displayLayoutBlocked() const
 {
-  for (const auto &device : m_connected) {
-    const auto s = snapshot(device);
+  for (const auto &s : m_snapshots) {
     if (s.value("effectiveMode") == "extended" || s.value("targetMode") == "extended" ||
         s.value("usageState") == "CleanupRequired")
       return true;
@@ -111,6 +144,11 @@ void PeerUsageModel::send(const QString &device, const QString &operation, QJson
     return;
   const auto id = QUuid::createUuid().toString(QUuid::Id128);
   args.insert("peerId", m_bindings.value(device));
+  const auto current=snapshot(device);
+  if(!current.value("baseConnectionId").toString().isEmpty()){
+    args.insert("baseConnectionId",current.value("baseConnectionId"));
+    args.insert("baseConnectionGeneration",current.value("baseConnectionGeneration"));
+  }
   m_pending.insert(device, id);
   m_errors.remove(device);
   Q_EMIT changed();
@@ -151,6 +189,11 @@ void PeerUsageModel::stop(const QString &device)
   if (!snapshot(device).value("availableActions").toArray().contains("stop"))
     return;
   send(device, "stopPeerUsage", {{"reason", "UserStopped"}});
+}
+void PeerUsageModel::retryCleanup(const QString& device)
+{
+  if(!snapshot(device).value("availableActions").toArray().contains("retryCleanup"))return;
+  send(device,"retryPeerUsageCleanup",{{"operationId",QUuid::createUuid().toString(QUuid::Id128)}});
 }
 QString PeerUsageModel::reasonText(const QString &reason)
 {

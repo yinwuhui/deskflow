@@ -18,6 +18,7 @@ class PeerUsageControlTests : public QObject
   {
     return {
         {"peerId", peer},
+        {"baseConnectionId",QString(32,'c')},{"baseConnectionGeneration","1"},{"baseConnected",true},
         {"revision", QString::number(revision)},
         {"effectiveMode", effective},
         {"usageState", usage},
@@ -63,6 +64,18 @@ private Q_SLOTS:
     QCOMPARE(service->snapshot().value("firstFramePresented").toBool(), false);
     service->stopManagedSession(service->currentKey());
 #endif
+  }
+  void reconnectKeepsDirtyLayoutGuard()
+  {
+    PeerUsageModel model;QSignalSpy commands(&model,&PeerUsageModel::commandRequested);bind(model,commands);
+    auto dirty=state(3,"extended","CleanupRequired");dirty.insert("availableActions",QJsonArray{"retryCleanup"});model.receiveSnapshot(dirty);
+    QVERIFY(model.displayLayoutBlocked());model.retryCleanup("computer:work");
+    const auto cleanup=commands.last()[0].toJsonObject();QCOMPARE(cleanup.value("operation").toString(),QString("retryPeerUsageCleanup"));
+    QCOMPARE(cleanup.value("args").toObject().value("baseConnectionId").toString(),QString(32,'c'));
+    model.receiveConnection({{"peerId",peer},{"baseConnected",true},{"baseConnectionId",QString(32,'d')},{"baseConnectionGeneration","2"},{"deviceKeys",QJsonArray{"computer:work"}}});
+    QVERIFY(model.snapshot("computer:work").isEmpty());QVERIFY(model.displayLayoutBlocked());
+    auto current=state(4,"none","Inactive");current.insert("baseConnectionId",QString(32,'d'));current.insert("baseConnectionGeneration","2");model.receiveSnapshot(current);
+    QVERIFY(!model.displayLayoutBlocked());
   }
   void unavailableDevicesCannotIssueCommands()
   {

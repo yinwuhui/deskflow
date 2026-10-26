@@ -5,7 +5,10 @@
 #include <QDir>
 #include <QJsonArray>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QJsonDocument>
+#include <QLocalSocket>
+#include <QUuid>
 #include <QSslCertificate>
 #include <QCryptographicHash>
 #include <algorithm>
@@ -55,6 +58,8 @@ void MediaSupervisor::command(const QJsonObject& value) {
   if(op=="PrepareHost")start(key,Role::Host);
   else if(op=="PrepareReceiver")start(key,Role::Receiver);
   else if(op=="CleanupResources")cleanup(key);
+  else if(op=="QueryDisplayLayout"||op=="SetDisplayLayout")layoutCommand(key,value);
+  else if(op=="ShowWindow"||op=="SetReceiverPresentation")windowCommand(key,value);
 }
 void MediaSupervisor::start(const Key& key,Role role) {
   if(!m_service || parseKey(m_service->snapshot())!=key || m_process)return;
@@ -75,10 +80,22 @@ void MediaSupervisor::start(const Key& key,Role role) {
     "--peer-cert",endpoint.certificate,"--product-events","--parent-pid",QString::number(QCoreApplication::applicationPid()),
     "--session-id",hex(key.session),"--request-id",hex(key.request)};
   if(role==Role::Host){
-    args<<"--source"<<m_runtime.source<<"--duration"<<"3600"<<"--bind"<<m_runtime.bindAddress<<"--port"<<QString::number(m_runtime.port);
+    args<<"--source"<<m_runtime.source<<"--duration"<<"0"<<"--bind"<<m_runtime.bindAddress<<"--port"<<QString::number(m_runtime.port);
     if(m_runtime.source=="macos")args<<"--macos-probe"<<m_runtime.macosProbe;
   } else args<<"--host"<<endpoint.address<<"--port"<<QString::number(endpoint.port)<<"--native-viewer"<<m_runtime.nativeViewer;
-  process->setProcessEnvironment(m_runtime.environment);
+  auto environment=m_runtime.environment;
+  if(role==Role::Receiver){
+    m_viewerEndpoint="busymouse-viewer-"+QUuid::createUuid().toString(QUuid::Id128);m_viewerToken=QUuid::createUuid().toString(QUuid::Id128);
+    environment.insert("DESKFLOW_VIEWER_CONTROL_ENDPOINT",m_viewerEndpoint);environment.insert("DESKFLOW_VIEWER_CONTROL_TOKEN",m_viewerToken);
+  }
+  m_layoutDirectory.reset();
+  if(role==Role::Host){
+    m_layoutDirectory=std::make_unique<QTemporaryDir>(QDir::tempPath()+"/busymouse-layout-XXXXXX");
+    if(!m_layoutDirectory->isValid()){m_process=nullptr;process->deleteLater();m_service->backendFailed(key,Reason::LayoutRejected);return;}
+    m_layoutToken=QUuid::createUuid().toString(QUuid::Id128);
+    environment.insert("DESKFLOW_LAYOUT_DIRECTORY",m_layoutDirectory->path());environment.insert("DESKFLOW_LAYOUT_TOKEN",m_layoutToken);
+  }
+  process->setProcessEnvironment(environment);
   process->setProgram(m_runtime.python);process->setArguments(args);
   connect(process,&QProcess::readyReadStandardError,this,[this,process,key]{consume(process,key);});
   connect(process,&QProcess::readyReadStandardOutput,this,[this,process,key]{
@@ -108,10 +125,59 @@ void MediaSupervisor::consume(QProcess* process,const Key& owner) {
       if(id.isEmpty()||!m_journal.updateDisplay(owner,id)){m_service->backendFailed(owner,Reason::CleanupFailed);continue;}
       m_service->backendPrepared(owner,id);
     } else if(name=="receiverPrepared")m_service->backendPrepared(owner,{});
-    else if(name=="firstFramePresented")m_service->firstFramePresented(owner);
+    else if(name=="firstFramePresented"){
+      m_service->firstFramePresented(owner);
+      if(m_service->snapshot().value("localDisplayRole")=="host")layoutCommand(owner,{{"operation","QueryDisplayLayout"}});
+    }
+    else if(name=="streamConfiguration")m_service->streamConfiguration(owner,event.value("config").toObject());
+    else if(name=="receiverWindowState")m_service->receiverWindowState(owner,event);
     else if(name=="viewerClosed")m_service->execute({{"id","viewer-close"},{"operation","stopDisplaySession"},{"args",identity(parseKey(m_service->snapshot()))}});
     else if(name=="sourceStopped" || name=="receiverStopped")m_cleanupVerified=event.value("cleanupVerified").isBool()&&event.value("cleanupVerified").toBool();
   }
+}
+void MediaSupervisor::layoutCommand(const Key& key,const QJsonObject& command){
+  const auto correlation=command.value("commandId").toString();
+  if(!m_service||key!=m_owner||!m_layoutDirectory||!m_process||m_process->state()!=QProcess::Running){if(m_service)m_service->layoutResult(key,correlation,false,{});return;}
+  const auto token=m_layoutToken;const auto path=m_layoutDirectory->path();const auto transaction=QUuid::createUuid().toString(QUuid::Id128);
+  auto request=command;request.insert("id",transaction);request.insert("token",token);
+  QSaveFile file(path+"/request.json");
+  if(!file.open(QIODevice::WriteOnly)||file.write(QJsonDocument(request).toJson(QJsonDocument::Compact))<0||!file.commit()){m_service->layoutResult(key,correlation,false,{});return;}
+  auto timer=new QTimer(this);timer->setInterval(40);auto elapsed=std::make_shared<int>(0);
+  connect(timer,&QTimer::timeout,this,[this,timer,elapsed,key,path,token,transaction,correlation]{
+    bool accepted=false,done=false;QJsonObject data;
+    if(!m_service||key!=m_owner||!m_layoutDirectory||path!=m_layoutDirectory->path()||!m_process||m_process->state()!=QProcess::Running)done=true;
+    else{QFile response(path+"/response.json");if(response.open(QIODevice::ReadOnly)&&response.size()<=65536){const auto object=QJsonDocument::fromJson(response.readAll()).object();if(object.value("token")==token&&object.value("id")==transaction){done=true;accepted=object.value("accepted").toBool();data=object.value("data").toObject();}}}
+    *elapsed+=40;if(*elapsed>=4500)done=true;if(!done)return;
+    timer->stop();timer->deleteLater();if(m_service)m_service->layoutResult(key,correlation,accepted,data);
+  });timer->start();
+}
+void MediaSupervisor::windowCommand(const Key& key,const QJsonObject& command){
+  const auto id=command.value("commandId").toString();
+  if(!m_service||!m_process||key!=m_owner||m_service->snapshot().value("localDisplayRole")!="receiver"){
+    if(m_service&&!id.isEmpty())m_service->receiverWindowResult(key,id,false,{});return;
+  }
+  auto socket=new QLocalSocket(this);auto buffer=std::make_shared<QByteArray>();auto done=std::make_shared<bool>(false);
+  auto finish=[this,socket,key,id,done](bool accepted,const QJsonObject& state){
+    if(*done)return;*done=true;if(m_service){if(id.isEmpty()){if(accepted)m_service->receiverWindowState(key,state);}else m_service->receiverWindowResult(key,id,accepted,state);}
+    socket->abort();socket->deleteLater();
+  };
+  connect(socket,&QLocalSocket::connected,this,[this,socket,command]{
+    auto request=command;request.insert("token",m_viewerToken);request.insert("action",command.value("operation")=="ShowWindow"?"show":"presentation");
+    socket->write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
+  });
+  connect(socket,&QLocalSocket::readyRead,this,[socket,buffer,finish,command]{
+    *buffer+=socket->readAll();if(buffer->size()>16384){finish(false,{});return;}
+    if(buffer->contains('\n')){auto reply=QJsonDocument::fromJson(buffer->left(buffer->indexOf('\n'))).object();const auto state=reply.value("state").toObject();bool accepted=reply.value("accepted").toBool();
+      if(command.value("operation")=="SetReceiverPresentation"){
+        accepted=accepted&&state.value("fullscreen").toBool()==(command.value("presentationMode")=="fullscreen");
+        if(command.contains("scaleMode"))accepted=accepted&&state.value("scaleMode")==command.value("scaleMode");
+        if(!command.value("receiverScreenId").toString().isEmpty())accepted=accepted&&state.value("receiverScreenId")==command.value("receiverScreenId");
+        accepted=accepted&&state.value("minimized").toBool()==(command.value("windowState")=="minimized");
+      }
+      finish(accepted,state);}
+  });
+  connect(socket,&QLocalSocket::errorOccurred,this,[finish](QLocalSocket::LocalSocketError){finish(false,{});});
+  QTimer::singleShot(2000,socket,[finish]{finish(false,{});});socket->connectToServer(m_viewerEndpoint);
 }
 void MediaSupervisor::finish(QProcess* process,const Key& owner,Role) {
   if(process!=m_process || owner!=m_owner)return;
@@ -127,7 +193,8 @@ void MediaSupervisor::finish(QProcess* process,const Key& owner,Role) {
 void MediaSupervisor::finishCleanup(const Key& key,bool verified) {
   if(!m_service)return;
   if(verified && m_journal.record())verified=m_journal.clearVerified(m_journal.record()->owner,true);
-  m_service->cleanupFinished(key,verified);
+  if(m_coordinatedCleanup){auto confirmation=identity(key);confirmation.insert("cleanupVerified",verified);Q_EMIT localCleanupFinished(confirmation);}
+  else m_service->cleanupFinished(key,verified);
 }
 void MediaSupervisor::cleanup(const Key& key) {
   if(!m_service || parseKey(m_service->snapshot())!=key)return;
@@ -141,9 +208,9 @@ void MediaSupervisor::cleanup(const Key& key) {
 void MediaSupervisor::verifyResidual(const Key& cleanupKey) {
   // A surviving output may have been reused by another application. This adapter
   // only verifies absence; it never deletes an output or kills a persisted PID.
-  if(!m_journal.record()){m_service->cleanupFinished(cleanupKey,m_journal.status()==ResourceJournal::Status::Empty);return;}
+  if(!m_journal.record()){finishCleanup(cleanupKey,m_journal.status()==ResourceJournal::Status::Empty);return;}
   const auto record=*m_journal.record();
-  if(record.displayId.isEmpty()){m_service->cleanupFinished(cleanupKey,false);return;}
+  if(record.displayId.isEmpty()){finishCleanup(cleanupKey,false);return;}
   auto process=new QProcess(this);QStringList args;
   if(m_runtime.source=="macos")process->setProgram(m_runtime.macosProbe);
   else {process->setProgram(m_runtime.python);args<<QFileInfo(m_runtime.sessionScript).dir().filePath("virtual_display_probe.py")<<"--query-topology";}
@@ -164,7 +231,7 @@ void MediaSupervisor::verifyResidual(const Key& cleanupKey) {
     process->deleteLater();
   });
   connect(process,&QProcess::errorOccurred,this,[this,process,cleanupKey](QProcess::ProcessError error){
-    if(error==QProcess::FailedToStart){if(m_service)m_service->cleanupFinished(cleanupKey,false);process->deleteLater();}
+    if(error==QProcess::FailedToStart){if(m_service)finishCleanup(cleanupKey,false);process->deleteLater();}
   });
   process->start();
 }

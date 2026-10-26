@@ -255,8 +255,15 @@ class Decoder:
                                         stderr=self.log, bufsize=0)
         if macos_viewer:
             try:
+                viewer_environment = os.environ.copy()
+                viewer_environment['DESKFLOW_VIEWER_PARENT_PID'] = str(os.getpid())
+                # XWayland exposes confirmed minimize/restore state. Native
+                # Wayland cannot promise that state through xdg-shell.
+                if sys.platform.startswith('linux') and viewer_environment.get('DISPLAY') and not viewer_environment.get('QT_QPA_PLATFORM'):
+                    viewer_environment['QT_QPA_PLATFORM'] = 'xcb'
                 self.viewer_process = subprocess.Popen([macos_viewer], stdin=self.process.stdout,
-                                                       stdout=subprocess.DEVNULL, stderr=self.log)
+                                                       stdout=subprocess.DEVNULL, stderr=self.log,
+                                                       env=viewer_environment)
             except Exception:
                 self.process.kill()
                 self.process.communicate(timeout=5)
@@ -305,6 +312,15 @@ class Decoder:
                 pass
 
     def close(self, abort=False):
+        # A product stop can coincide with the media STOP drain. Do not let
+        # SIGTERM interrupt cleanup after closed is set but before wait() ends.
+        previous = signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        try:
+            self._close(abort)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+
+    def _close(self, abort=False):
         if self.closed:
             return
         self.closed = True
@@ -430,12 +446,14 @@ def serve(args):
                               "format": "annexb-au", "captureTimestamps": False, "input": False})
         if require_fields(control.json(READY), ("ready",)) != {"ready": True}:
             raise TransportError("Receiver not ready")
+        if getattr(args, "product_events", False):
+            print(json.dumps({"event":"streamConfiguration","config":{"codec":"h264","width":1920,"height":1080,"fps":30,"input":False,"color":"SDR"}}), file=sys.stderr, flush=True)
         source = Source(args)
         first = True
         last_pong = time.monotonic()
         last_ping = 0
         pending_pings = set()
-        deadline = time.monotonic() + args.duration + 15
+        deadline = time.monotonic() + args.duration + 15 if args.duration else float("inf")
         while time.monotonic() < deadline:
             for event in source.events.poll():
                 if event.get("event") == "displayCreated" and getattr(args, "product_events", False):
@@ -596,6 +614,8 @@ def receive(args):
         if config != {"codec": "h264", "width": 1920, "height": 1080, "fps": 30,
                        "format": "annexb-au", "captureTimestamps": False, "input": False}:
             raise TransportError("Unsupported stream config")
+        if getattr(args, "product_events", False):
+            print(json.dumps({"event":"streamConfiguration","config":dict(config, color="SDR")}), file=sys.stderr, flush=True)
         decoder = Decoder(args.view, args.macos_viewer)
         if getattr(args, "product_events", False):
             print(json.dumps({"event": "receiverPrepared"}), file=sys.stderr, flush=True)
@@ -615,7 +635,7 @@ def receive(args):
                         control.send(PRESENT, {"presented": True, "path": "native"})
                         if getattr(args, "product_events", False):
                             print(json.dumps(event), file=sys.stderr, flush=True)
-                elif event.get("event") == "viewerClosed" and getattr(args, "product_events", False):
+                elif event.get("event") in ("viewerClosed", "receiverWindowState") and getattr(args, "product_events", False):
                     print(json.dumps(event), file=sys.stderr, flush=True)
             now = time.monotonic()
             if now - last_control > 4:
@@ -725,8 +745,8 @@ def main():
     if args.action != "init-identity" and not (1 <= args.port <= 65535 or
             (args.action == "serve" and args.port == 0 and args.bind in ("127.0.0.1", "::1"))):
         parser.error("Port out of range")
-    if args.action == "serve" and not 1 <= args.duration <= 3600:
-        parser.error("Duration must be 1..3600 seconds")
+    if args.action == "serve" and not (1 <= args.duration <= 3600 or (args.duration == 0 and args.product_events and args.parent_pid and args.source != "test")):
+        parser.error("Duration must be 1..3600 seconds, or 0 for a product-owned native source")
     def interrupted(_signal, _frame):
         raise KeyboardInterrupt()
     signal.signal(signal.SIGTERM, interrupted)

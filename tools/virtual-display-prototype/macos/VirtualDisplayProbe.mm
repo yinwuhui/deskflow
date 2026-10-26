@@ -22,10 +22,14 @@ static volatile sig_atomic_t interrupted = 0;
 static pid_t expectedParent = 0;
 static void onSignal(int value) { interrupted = value; }
 
+static CGDirectDisplayID layoutOwner = kCGNullDirectDisplay;
+static void processLayoutCommand();
+
 static bool pump(bool (^done)(void), double seconds, bool observeInterrupt = true) {
   NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:seconds];
   while (!done() && (!observeInterrupt || !interrupted) && deadline.timeIntervalSinceNow > 0) {
     if (expectedParent && getppid() != expectedParent) interrupted = SIGTERM;
+    if (!interrupted && layoutOwner) processLayoutCommand();
     [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
                            beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
   }
@@ -166,6 +170,82 @@ static void requireSelectors(Class type, NSArray<NSString *> *selectors) {
   }
 }
 
+// Runs on the native owner's loop, only while the retained CGVirtualDisplay is live.
+static NSDictionary *displayTopology(CGDirectDisplayID owned) {
+  NSMutableArray *items = [NSMutableArray array];
+  NSDictionary *target = nil;
+  CGRect primary = CGDisplayBounds(CGMainDisplayID());
+  for (NSNumber *number in activeDisplays()) {
+    CGDirectDisplayID identifier = number.unsignedIntValue;
+    CGRect bounds = CGDisplayBounds(identifier);
+    double scale = bounds.size.width > 0 ? CGDisplayPixelsWide(identifier) / bounds.size.width : 1;
+    NSDictionary *item = @{@"displayId":number.stringValue, @"x":@(bounds.origin.x-primary.origin.x),
+      @"y":@(bounds.origin.y-primary.origin.y), @"width":@(bounds.size.width), @"height":@(bounds.size.height),
+      @"pixelWidth":@(CGDisplayPixelsWide(identifier)), @"pixelHeight":@(CGDisplayPixelsHigh(identifier)),
+      @"scale":@(scale), @"primary":@(identifier==CGMainDisplayID()), @"owned":@(identifier==owned)};
+    [items addObject:item];
+    if(identifier==owned)target=item;
+  }
+  if(!target || CGDisplayIsInMirrorSet(owned) || owned==CGMainDisplayID())return nil;
+  return @{@"coordinateSpace":@"primary-relative-logical", @"layout":target, @"displays":items,
+           @"capabilities":@{@"position":@YES,@"scale":@NO}};
+}
+static void processLayoutCommand() {
+  static NSString *lastCommand = nil;
+  NSString *directory = NSProcessInfo.processInfo.environment[@"DESKFLOW_LAYOUT_DIRECTORY"];
+  NSString *token = NSProcessInfo.processInfo.environment[@"DESKFLOW_LAYOUT_TOKEN"];
+  if(!directory.length || !token.length)return;
+  NSString *path = [directory stringByAppendingPathComponent:@"request.json"];
+  NSDictionary *attributes = [NSFileManager.defaultManager attributesOfItemAtPath:path error:nil];
+  if(!attributes || [attributes fileSize]>4096)return;
+  NSData *bytes=[NSData dataWithContentsOfFile:path];
+  id object=[NSJSONSerialization JSONObjectWithData:bytes options:0 error:nil];
+  if(![object isKindOfClass:NSDictionary.class])return;
+  NSDictionary *request=object;
+  if(![request[@"token"] isEqual:token] || ![request[@"id"] isKindOfClass:NSString.class] || [request[@"id"] isEqual:lastCommand])return;
+  lastCommand=request[@"id"];
+  bool accepted=false;
+  NSDictionary *data=displayTopology(layoutOwner);
+  if([request[@"operation"] isEqual:@"QueryDisplayLayout"])accepted=data!=nil;
+  else if([request[@"operation"] isEqual:@"SetDisplayLayout"] && data){
+    id layout=request[@"layout"];
+    if([layout isKindOfClass:NSDictionary.class]){
+      id x=layout[@"x"],y=layout[@"y"],scale=layout[@"scale"];
+      bool valid=[x isKindOfClass:NSNumber.class]&&[y isKindOfClass:NSNumber.class]&&
+        std::isfinite([x doubleValue])&&std::isfinite([y doubleValue])&&
+        floor([x doubleValue])==[x doubleValue]&&floor([y doubleValue])==[y doubleValue]&&
+        fabs([x doubleValue])<=32768&&fabs([y doubleValue])<=32768&&
+        (!scale||[scale isEqual:data[@"layout"][@"scale"]]);
+      if(valid){
+        const CGRect previous=CGDisplayBounds(layoutOwner);
+        CGDisplayConfigRef configuration=nullptr;
+        if(CGBeginDisplayConfiguration(&configuration)==kCGErrorSuccess){
+          const CGRect primary=CGDisplayBounds(CGMainDisplayID());
+          if(CGConfigureDisplayOrigin(configuration,layoutOwner,[x intValue]+primary.origin.x,[y intValue]+primary.origin.y)==kCGErrorSuccess)
+            accepted=CGCompleteDisplayConfiguration(configuration,kCGConfigureForSession)==kCGErrorSuccess;
+          else CGCancelDisplayConfiguration(configuration);
+        }
+        data=displayTopology(layoutOwner);
+        const bool applied=accepted;
+        accepted=accepted&&data&&[data[@"layout"][@"x"] isEqual:x]&&[data[@"layout"][@"y"] isEqual:y];
+        if(applied&&!accepted&&data){
+          // The still-retained owner is the only object eligible for rollback.
+          CGDisplayConfigRef rollback=nullptr;
+          if(CGBeginDisplayConfiguration(&rollback)==kCGErrorSuccess){
+            if(CGConfigureDisplayOrigin(rollback,layoutOwner,previous.origin.x,previous.origin.y)==kCGErrorSuccess)
+              CGCompleteDisplayConfiguration(rollback,kCGConfigureForSession);
+            else CGCancelDisplayConfiguration(rollback);
+          }
+          data=displayTopology(layoutOwner);
+        }
+      }
+    }
+  }
+  NSDictionary *reply=@{@"token":token,@"id":lastCommand,@"accepted":@(accepted),@"data":data?:@{}};
+  [[NSJSONSerialization dataWithJSONObject:reply options:0 error:nil]
+    writeToFile:[directory stringByAppendingPathComponent:@"response.json"] atomically:YES];
+}
+
 int main(int argc, const char *argv[]) {
   @autoreleasepool {
     signal(SIGINT, onSignal);
@@ -193,8 +273,8 @@ int main(int argc, const char *argv[]) {
       else if ([arg isEqualToString:@"--duration"] && i+1 < argc) {
         char *end = nullptr;
         duration = strtod(argv[++i], &end);
-        if (!end || *end || !std::isfinite(duration) || duration < 1 || duration > 3600) {
-          fprintf(stderr, "Duration must be 1..3600 seconds\n"); return 2;
+        if (!end || *end || !std::isfinite(duration) || duration < 0 || duration > 3600) {
+          fprintf(stderr, "Duration must be 0..3600 seconds\n"); return 2;
         }
       }
       else { fprintf(stderr, "Usage: macos-display-probe [--exercise | --create-only] [--request-capture-permission] [--h264-output NEW_FILE]\n"); return 2; }
@@ -264,6 +344,7 @@ int main(int argc, const char *argv[]) {
         report[@"extended"] = @(ready && !CGDisplayIsInMirrorSet(identifier));
         report[@"displaysDuring"] = activeDisplays();
         if (!ready) @throw [NSException exceptionWithName:@"TopologyTimeout" reason:@"Virtual display did not become active" userInfo:nil];
+        layoutOwner=identifier;
         if (framed) {
           fprintf(stderr, "{\"event\":\"displayCreated\",\"virtualDisplayId\":\"%u\"}\n", identifier);
           fflush(stderr);
@@ -336,7 +417,11 @@ int main(int argc, const char *argv[]) {
           started = true;
           if (!pump(^bool{ return startDone; }, 10) || startError)
             @throw [NSException exceptionWithName:@"CaptureStartFailed" reason:startError ?: @"Capture start timeout" userInfo:nil];
-          if (duration > 0) pump(^bool{ return sink.streamError != nil || sink->encodeError.load() != 0; }, duration);
+          if (duration == 0 && framed && expectedParent) {
+            while (!interrupted && sink.streamError == nil && sink->encodeError.load() == 0)
+              pump(^bool{ return sink.streamError != nil || sink->encodeError.load() != 0; }, 1);
+          }
+          else if (duration > 0) pump(^bool{ return sink.streamError != nil || sink->encodeError.load() != 0; }, duration);
           else pump(^bool{ return sink->frames.load() >= 1 || sink.streamError != nil; }, 10);
           report[@"frames"] = @(sink->frames.load());
           report[@"droppedRawFrames"] = @(sink->droppedRawFrames.load());
@@ -347,9 +432,11 @@ int main(int argc, const char *argv[]) {
         }
       }
     } @catch (NSException *error) {
+      layoutOwner=kCGNullDirectDisplay;
       report[@"errorCode"] = error.name;
       report[@"error"] = error.reason ?: @"Unknown error";
     } @finally {
+      layoutOwner=kCGNullDirectDisplay;
       if (capture && started) {
         __block bool stopDone = false;
         __block NSString *stopError = nil;
@@ -375,6 +462,7 @@ int main(int argc, const char *argv[]) {
         report[@"encoderStatus"] = @(sink->encodeError.load());
       }
       display = nil;
+      layoutOwner=kCGNullDirectDisplay;
       bool cleaned = pump(^bool{ return [activeDisplays() isEqualToArray:before]; }, 5, false);
       report[@"cleanupVerified"] = @(cleaned);
       report[@"displaysAfter"] = activeDisplays();

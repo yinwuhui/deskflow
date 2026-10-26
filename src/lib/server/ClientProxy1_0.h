@@ -28,6 +28,8 @@ public:
   ClientProxy1_0 &operator=(ClientProxy1_0 const &) = delete;
   ClientProxy1_0 &operator=(ClientProxy1_0 &&) = delete;
 
+  void publishInputRouteState(uint8_t flags) override;
+  bool inputPermissionsConfirmed() const override { return m_inputPermissionsConfirmed; }
   uint32_t inputControlSequence() const override { return m_inputControlPending; }
   bool inputControlResponseReceived(uint32_t sequence) const override { return sequence!=0 && sequence==m_inputControlPending && m_inputControlResponded; }
   bool supportsInputControl() const override { return m_inputControlSupported; }
@@ -108,6 +110,10 @@ private:
   uint32_t m_inputControlPending = 0;
   uint8_t m_inputControlResult = 0;
   bool m_inputControlResponded = false;
+  bool m_inputPermissionsConfirmed = false;
+  uint32_t m_reverseSequence=0;
+  uint8_t m_lastRouteFlags=255;
+  uint8_t m_reverseMode=0,m_reverseResult=0;
   uint8_t m_inputControlMode = 0;
   bool requestInputControlMode(uint32_t sequence,uint8_t mode);
   ClientInfo m_info;

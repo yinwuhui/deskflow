@@ -21,7 +21,7 @@ private:
   PeerUsageModel *m_model;
   QString m_device;
   QWidget *m_segments, *m_selection;
-  QPushButton *m_input, *m_extended, *m_cancel, *m_stop;
+  QPushButton *m_input, *m_extended, *m_cancel, *m_stop, *m_retry;
   QLabel *m_status;
   QPropertyAnimation *m_animation;
   bool m_extendedSelected = false;

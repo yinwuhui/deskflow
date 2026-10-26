@@ -6,6 +6,7 @@
  */
 
 #include "net/TCPSocket.h"
+#include "common/LocalTransportIdentity.h"
 
 #include "arch/Arch.h"
 #include "arch/ArchException.h"
@@ -551,4 +552,14 @@ ISocketMultiplexerJob *TCPSocket::serviceConnected(ISocketMultiplexerJob *job, b
     return newJob();
 
   return job;
+}
+
+std::string TCPSocket::peerIdentity() const
+{
+  auto* self=const_cast<TCPSocket*>(this);Lock lock(&self->m_mutex);
+  if(!m_transportIdentity.empty())return m_transportIdentity;
+  uint16_t localPort=0,peerPort=0;
+  if(m_socket && ARCH->getLoopbackPorts(m_socket,localPort,peerPort))
+    m_transportIdentity=LocalTransportIdentity::lookup(localPort,peerPort);
+  return m_transportIdentity;
 }

@@ -49,6 +49,14 @@ public:
   //@{
 
   void onInfoChanged();
+  bool supportsInputControl() const { return m_inputControlNegotiated; }
+  bool requestReceiverInputControl(uint8_t mode);
+  bool receiverControlResponded() const { return m_receiverResponded; }
+  uint8_t receiverControlMode() const { return m_receiverMode; }
+  uint8_t receiverControlResult() const { return m_receiverResult; }
+  bool sourceInputReady() const { return m_sourceInputReady; }
+  bool sourceRouteActive() const { return m_sourceRouteKnown&&m_sourceRouteActive; }
+  bool sourceFocusLocal() const { return m_sourceFocusLocal; }
   bool onGrabClipboard(ClipboardID);
   void onClipboardChanged(ClipboardID, const IClipboard *);
 
@@ -122,6 +130,10 @@ private:
   uint32_t m_inputControlSequence = 0;
   uint8_t m_inputControlMode = 0;
   uint8_t m_inputControlResult = 0;
+  uint32_t m_receiverSequence=0;
+  uint8_t m_receiverMode=0,m_receiverResult=0;
+  bool m_sourceRouteKnown=false,m_sourceRouteActive=false,m_sourceFocusLocal=false;
+  bool m_receiverResponded=false,m_sourceInputReady=false;
 
   bool m_compressMouse = false;
   bool m_compressMouseRelative = false;

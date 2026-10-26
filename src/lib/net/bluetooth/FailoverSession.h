@@ -18,6 +18,7 @@ public:
     Bluetooth = 1
   };
   FailoverSession(bool server, QObject *parent = nullptr);
+  ~FailoverSession() override;
   QByteArray instanceId() const
   {
     return m_id;
@@ -67,6 +68,7 @@ private:
   std::array<QPointer<FailoverLink>, 2> m_links;
   QPointer<QTcpSocket> m_core;
   quint16 m_corePort = 0;
+  std::string m_identityOwner;
   quint64 m_epoch = 0, m_lastEpoch = 0;
   int m_selected = -1, m_preferred = Network;
   bool m_coreReported = false, m_automatic = true;

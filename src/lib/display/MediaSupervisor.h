@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QTemporaryDir>
 #include <memory>
 namespace deskflow::display {
 struct MediaRuntime {
@@ -33,16 +34,22 @@ public:
   MediaSupervisor(DisplayService* service, MediaRuntime runtime, const QString& resourceDirectory, QObject* parent = nullptr);
   ~MediaSupervisor() override;
   Outcome addTrustedEndpoint(TrustedMediaEndpoint endpoint);
+  void setCoordinatedCleanup(bool enabled){m_coordinatedCleanup=enabled;}
   ResourceJournal::Status journalStatus() const { return m_journal.status(); }
 Q_SIGNALS:
   void listening(const QJsonObject& endpoint); // Authenticated control adapter transmits this after consent.
   void adapterError(const QString& reasonCode);
+  void localCleanupFinished(const QJsonObject& confirmation);
 private:
   void command(const QJsonObject& command);
   void start(const Key& key, Role role);
   void consume(QProcess* process, const Key& owner);
   void finish(QProcess* process, const Key& owner, Role role);
   void cleanup(const Key& key);
+  void layoutCommand(const Key& key,const QJsonObject& command);
+  std::unique_ptr<QTemporaryDir> m_layoutDirectory;
+  QString m_layoutToken;
+  void windowCommand(const Key& key,const QJsonObject& command);
   void finishCleanup(const Key& key, bool verified);
   void verifyResidual(const Key& cleanupKey);
   QPointer<DisplayService> m_service;
@@ -52,8 +59,10 @@ private:
   QProcess* m_process = nullptr;
   Key m_owner;
   QByteArray m_stdout, m_stderr;
+  QString m_viewerEndpoint,m_viewerToken;
   bool m_cleanupVerified = false;
   bool m_exited = false;
+  bool m_coordinatedCleanup=false;
   QTimer m_forceTimer;
 };
 } // namespace deskflow::display

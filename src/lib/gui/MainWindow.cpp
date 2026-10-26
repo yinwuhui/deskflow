@@ -159,6 +159,7 @@ MainWindow::MainWindow()
       }
   );
 
+  connect(PeerUsageModel::applicationModel(),&PeerUsageModel::connectionsChanged,this,[this]{QTimer::singleShot(0,this,&MainWindow::updateDevicesPage);});
   setWindowIcon(applicationIcon());
   QGuiApplication::setWindowIcon(applicationIcon());
 
@@ -851,6 +852,23 @@ void MainWindow::updateDevicesPage()
     const auto key = DeviceListPage::normalizedAddress(targets.first(), Settings::value(Settings::Core::Port).toInt());
     if (servers.contains(key))
       servers[key].state = State::Connected;
+  }
+  if(!sharing&&started){
+    const auto authenticated=PeerUsageModel::applicationModel()->authenticatedConnections();bool hasReceiver=false;
+    for(const auto& value:authenticated)if(value.toObject().value("originalInputRole")=="receiver")hasReceiver=true;
+    if(hasReceiver){
+      for(auto it=servers.begin();it!=servers.end();++it)if(it->state==State::Connected)it->state=it->discovered?State::Discovered:State::Offline;
+      for(const auto& value:authenticated){const auto connection=value.toObject();if(connection.value("originalInputRole")!="receiver")continue;
+        bool indexed=false;
+        for(const auto& item:connection.value("deviceKeys").toArray()){
+          const auto key=item.toString();if(!key.startsWith("server:"))continue;const auto endpoint=key.mid(7);
+          if(servers.contains(endpoint)){servers[endpoint].state=State::Connected;indexed=true;}
+        }
+        if(!indexed){const auto id="peer:"+connection.value("peerId").toString();const auto name=connection.value("peerName").toString();
+          servers.insert(id,{id,name.isEmpty()?tr("Connected computer"):name,{},tr("Current connection"),Kind::Server,State::Connected});
+        }
+      }
+    }
   }
   for (const auto &d : receivers)
     devices.append(d);

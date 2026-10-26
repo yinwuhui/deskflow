@@ -16,7 +16,7 @@ InputRouteAdapter::InputRouteAdapter(PeerUsageService* usage,DisplayService* dis
 void InputRouteAdapter::send(const QString& peer,Pending& p,const QString& kind){
   p.kind=kind;p.requestId=QUuid::createUuid().toString(QUuid::WithoutBraces);
   Q_EMIT coreCommand(QJsonObject{{"id",p.requestId},{"kind",kind},{"peerId",peer},{"sequence",QString::number(p.sequence)},
-    {"operationId",hex(p.key.operation)},{"operationGeneration",QString::number(p.key.generation)},{"enabled",p.enabled}});
+    {"baseConnectionId",p.connectionId},{"baseConnectionGeneration",p.connectionGeneration},{"operationId",hex(p.key.operation)},{"operationGeneration",QString::number(p.key.generation)},{"enabled",p.enabled}});
 }
 void InputRouteAdapter::effect(const QJsonObject& command){
   const auto effect=command.value("operation").toString();
@@ -26,6 +26,7 @@ void InputRouteAdapter::effect(const QJsonObject& command){
   auto existing=m_pending.find(peer);
   if(existing!=m_pending.end()&&existing->second.key==key&&existing->second.effect=="RevokeInput"&&effect=="ReleaseInputs")return;
   Pending pending;pending.key=key;pending.effect=effect;pending.enabled=effect=="StartInput"||effect=="RestoreInput";
+  const auto binding=m_usage->snapshot(peer);pending.connectionId=binding.value("baseConnectionId").toString();pending.connectionGeneration=binding.value("baseConnectionGeneration").toString();
   pending.elapsed.start();
   if(effect=="StopInput"){
     auto released=m_released.find(peer);
@@ -46,7 +47,7 @@ void InputRouteAdapter::fail(const QString& peer,Reason reason){
 }
 void InputRouteAdapter::coreResult(const QJsonObject& result){
   auto peer=result.value("peerId").toString();auto it=m_pending.find(peer);if(it==m_pending.end())return;auto& p=it->second;
-  if(result.value("id")!=p.requestId||result.value("operationId")!=hex(p.key.operation)||
+  if(result.value("baseConnectionId")!=p.connectionId||result.value("baseConnectionGeneration")!=p.connectionGeneration||result.value("id")!=p.requestId||result.value("operationId")!=hex(p.key.operation)||
     result.value("operationGeneration")!=QString::number(p.key.generation)||result.value("sequence")!=QString::number(p.sequence)||
     result.value("kind")!=p.kind||result.value("enabled")!=p.enabled)return;
   if(!result.value("accepted").isBool()||!result.value("connected").isBool()||!result.value("supported").isBool())return;
@@ -62,6 +63,7 @@ void InputRouteAdapter::coreResult(const QJsonObject& result){
   const bool local=result.value("localFocus").toBool();auto key=p.key;auto effect=p.effect;
   if(effect=="PreflightInput"||effect=="PreflightDisplay"){
     const bool isolated=effect!="PreflightDisplay"||result.value("otherRoutesIsolated").toBool();
+    if(effect=="PreflightDisplay"&&isolated&&result.value("suspended").toBool())m_display->setInputRouting(Routing::Clear);
     m_pending.erase(it);m_usage->complete(peer,key,PeerUsageService::Completion::Preflight,isolated?Reason::None:Reason::InputIsolationUnsupported);return;
   }
   if(p.kind=="status" && p.sequence==0){
@@ -89,7 +91,7 @@ void InputRouteAdapter::coreResult(const QJsonObject& result){
     m_usage->complete(peer,key,effect=="StopInput"?PeerUsageService::Completion::InputStopped:effect=="RevokeInput"?
       (current.value("usageState")=="CleanupRequired"?PeerUsageService::Completion::InputCleaned:PeerUsageService::Completion::InputsReleased):PeerUsageService::Completion::InputsReleased,Reason::None,true);return;
   }
-  if(p.kind!="commitResume"){send(peer,p,"commitResume");return;}
+  if(!p.committing){p.committing=true;send(peer,p,"commitResume");return;}
   if(result.value("suspended").toBool()){fail(peer,Reason::InputReleaseFailed);return;}
   m_pending.erase(it);m_released.erase(peer);m_display->setInputRouting(Routing::ConflictingPeer);
   m_usage->complete(peer,key,PeerUsageService::Completion::InputStarted,Reason::None,true);
@@ -100,7 +102,7 @@ void InputRouteAdapter::tick(){
     if(it->second.elapsed.elapsed()>=4000){fail(peer,Reason::InputReleaseFailed);continue;}
     // Poll with a fresh request id; delayed replies from a previous poll are
     // ignored rather than being allowed to complete a newer operation.
-    if(it->second.kind!="commitResume")send(peer,it->second,"status");
+    send(peer,it->second,"status");
   }
 }
 void InputRouteAdapter::coreUnavailable(){std::vector<QString> peers;for(const auto& [peer,p]:m_pending)peers.push_back(peer);for(const auto& peer:peers)fail(peer,Reason::ConnectionLost);}

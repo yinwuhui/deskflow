@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "FailoverSession.h"
+#include "../../common/LocalTransportIdentity.h"
+#include <QUuid>
 
 FailoverSession::FailoverSession(bool server, QObject *parent) : QObject(parent), m_server(server)
 {
@@ -18,6 +20,8 @@ FailoverSession::FailoverSession(bool server, QObject *parent) : QObject(parent)
       m_links[lane]->stop("Activation timeout");
   });
 }
+
+FailoverSession::~FailoverSession(){LocalTransportIdentity::release(m_identityOwner);}
 
 bool FailoverSession::available(int lane) const
 {
@@ -92,13 +96,26 @@ void FailoverSession::acceptLocal(QTcpSocket *socket)
   m_selected = m_preferred = m_fixedLane = lane;
   ++m_epoch;
   attachCore(socket);
+  if(!m_core)return;
   m_activationDeadline.start();
   m_links[lane]->send(FailoverLink::Activate, m_epoch);
 }
 
 void FailoverSession::attachCore(QTcpSocket *socket)
 {
+  m_identityOwner=QUuid::createUuid().toString(QUuid::Id128).toStdString();
+  const auto owner=m_identityOwner;
+  auto bindIdentity=[this,socket,owner]{
+    if(m_core!=socket||!available(m_selected))return;
+    const auto fingerprint=m_links[m_selected]->peerFingerprint();
+    if(fingerprint.size()!=32 || !socket->localAddress().isLoopback() || !socket->peerAddress().isLoopback() ||
+      !LocalTransportIdentity::bind(socket->peerPort(),socket->localPort(),owner,fingerprint.toHex().toStdString())){
+      dropCore(true);return;
+    }
+  };
   m_core = socket;
+  connect(socket,&QTcpSocket::connected,this,bindIdentity);
+  if(socket->state()==QAbstractSocket::ConnectedState)bindIdentity();
   m_dataReady = false;
   m_coreReported = false;
   socket->setParent(this);
@@ -125,6 +142,7 @@ void FailoverSession::dropCore(bool tellPeer)
   if (available(m_selected))
     m_links[m_selected]->pauseRead(false);
   m_dataReady = false;
+  LocalTransportIdentity::release(m_identityOwner);m_identityOwner.clear();
   if (m_core) {
     auto *socket = m_core.data();
     m_core = nullptr;

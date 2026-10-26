@@ -58,6 +58,9 @@ public:
   Outcome begin(UsageMode mode, SessionId operation);
   Outcome cancel(const UsageKey& key);
   Outcome stop(SessionId operation);
+  Outcome retryCleanup(SessionId operation);
+  Outcome restoreDisplayCleanup(SessionId owner);
+  Outcome synchronizeInput(Permission permission, std::string focusOwner, bool active,SessionId owner={});
   bool preflight(const UsageKey& key, Reason result);
   bool permitted(const UsageKey& key, Reason result);
   bool inputsReleased(const UsageKey& key, bool verified);
@@ -69,7 +72,8 @@ public:
   bool displayStopped(const UsageKey& key, bool cleanupVerified);
   bool inputStarted(const UsageKey& key, bool verified);
   bool rollbackAuthorized(const UsageKey& key, bool valid);
-  void connectionLost();
+  void connectionLost(bool inputReleaseVerified=false);
+  void invalidateRollback(SessionId stopOperation);
   void inputStatus(Permission permission, std::string focusOwner);
   void tick(Coordinator::TimePoint now);
   std::vector<UsageEffect> takeEffects();

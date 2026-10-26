@@ -16,6 +16,8 @@ class ClientProxyTests : public QObject
 
 private Q_SLOTS:
   void initTestCase();
+  void receiverControlIsCorrelatedAndReplaySafe();
+  void boundedUsageControlOnAuthenticatedStream();
   void inputControlNegotiationAndExactAcknowledgement();
   void inputControlRejectsUnauthenticatedAndUnsolicitedCapability();
   void keyDown_data();

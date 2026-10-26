@@ -7,6 +7,10 @@
  */
 
 #pragma once
+#include <QJsonObject>
+#include <QSettings>
+#include <memory>
+#include "common/InputRouteStatus.h"
 
 #include "base/Event.h"
 #include "base/Stopwatch.h"
@@ -42,6 +46,8 @@ class Server
   using ServerConfig = deskflow::server::Config;
 
 public:
+  bool matchesUsageConnection(const QString& peer,const QString& connection) const;
+  bool sendUsageControl(const QString& peer,const QString& connection,const QJsonObject& body);
   //! Lock cursor to computer data
   class LockCursorToComputerInfo : public EventData
   {
@@ -169,20 +175,11 @@ public:
   The caller can also just destroy this object to force the disconnection.
   */
   void disconnect();
-  struct InputRouteStatus {
-    bool connected = false;
-    bool supported = false;
-    bool suspended = false;
-    bool localFocus = false;
-    bool acknowledged = false;
-    bool permissionsReady = false;
-    bool responseReceived = false;
-    bool otherRoutesIsolated = false;
-    uint32_t lastSequence = 0;
-  };
+  using InputRouteStatus = ::InputRouteStatus;
   InputRouteStatus inputRouteStatus(const std::string& peer, uint32_t sequence, bool enabled) const;
   bool requestInputRoute(const std::string& peer, uint32_t sequence, bool enabled);
   bool requestInputProbe(const std::string& peer, uint32_t sequence);
+  uint8_t remoteInputControl(BaseClientProxy* client,uint8_t mode);
   bool commitInputResume(const std::string& peer, uint32_t sequence);
 
   //! Store ClientListener pointer
@@ -395,6 +392,13 @@ private:
   bool inputRouteSuspended(const BaseClientProxy* client) const;
   std::set<std::string> m_suspendedInputPeers;
   std::set<std::string> m_managedInputPeers;
+  std::set<std::string> m_remotePreparedPeers;
+  void publishUsageConnections();
+  bool rememberInputSuspended(const std::string& peer,bool suspended);
+  std::unique_ptr<QSettings> m_usagePreferences;
+
+  EventQueueTimer* m_usageTimer=nullptr;
+  std::map<const BaseClientProxy*,std::string> m_usageConnections;
   bool inputKeyboardRouteEnabled(const BaseClientProxy* client) const;
   BaseClientProxy *m_active = nullptr;
 

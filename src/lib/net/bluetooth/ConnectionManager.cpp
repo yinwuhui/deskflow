@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "ConnectionManager.h"
+#include "../../common/PeerConnectionRegistry.h"
 #include <QBluetoothSocket>
 #include <QDateTime>
 #include <QJsonArray>
@@ -819,6 +820,19 @@ QJsonObject ConnectionManager::snapshot() const
 }
 void ConnectionManager::publish()
 {
+  if(!m_options.server)for(auto* peer:m_peers)if(peer->id.size()==64&&peer->offered){
+    QJsonArray keys{QString("peer:")+peer->id};
+    auto append=[&](QString host,int port){
+      if(host.isEmpty()||port<1||port>65535)return;if(host.contains(':')&&!host.startsWith('['))host='['+host+']';
+      const auto key="server:"+host.toLower()+":"+QString::number(port);if(!keys.contains(key))keys.append(key);
+    };
+    // Each alias is supplied by this authenticated peer's current control lane.
+    for(const auto& endpoint:peer->endpoints)append(endpoint.first,endpoint.second);
+    const auto targets=m_options.host.split(',',Qt::SkipEmptyParts);
+    if(peer->initial==0&&targets.size()==1){QUrl target("tcp://"+targets.first().trimmed());if(target.isValid())append(target.host(),target.port(m_options.port));}
+    const auto name=peer->name.isEmpty()?QString("Computer ")+peer->id.left(12):peer->name.left(80);
+    PeerConnectionRegistry::uiContext(peer->id,{{"peerName",name},{"deviceKeys",keys}});
+  }
   ++m_revision;
   Q_EMIT changed(snapshot());
 }
