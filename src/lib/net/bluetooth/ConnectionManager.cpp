@@ -393,6 +393,16 @@ void ConnectionManager::adopt(QIODevice *wire, int lane, const QString &expected
     if (!m_options.server)
       m_clientPeer = id;
     p->links[lane] = link;
+    p->remoteAddresses[lane].clear();
+    if(lane==0) {
+      if(auto *socket=qobject_cast<QTcpSocket *>(wire)) {
+        auto host=socket->peerAddress().toString();
+        if(host.contains(':'))host='['+host+']';
+        p->remoteAddresses[lane]=host+':'+QString::number(socket->peerPort());
+      }
+    } else if(auto *socket=qobject_cast<QBluetoothSocket *>(wire)) {
+      p->remoteAddresses[lane]=socket->peerAddress().toString();
+    }
     if (lane == 1) {
       if (auto *bluetooth = qobject_cast<QBluetoothSocket *>(wire))
         p->bt = bluetooth->peerAddress().toString();
@@ -770,7 +780,8 @@ QJsonObject ConnectionManager::snapshot() const
                           : p->pending[lane]           ? "connecting"
                           : p->retry[lane]->isActive() ? "retrying"
                                                        : "unavailable"},
-                {"retryInMs", p->retry[lane]->remainingTime()}
+                {"retryInMs", p->retry[lane]->remainingTime()},
+                {"remoteAddress", p->links[lane] && p->links[lane]->ready() ? p->remoteAddresses[lane] : QString()}
             }
         );
       peers.append(

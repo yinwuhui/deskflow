@@ -26,6 +26,11 @@ public:
   void retryCleanup(const QString &device);
   void receiveConnection(const QJsonObject& connection);
   QJsonArray authenticatedConnections() const;
+  void receiveTransportSnapshot(const QJsonObject &snapshot);
+  void receiveDisplaySnapshot(const QJsonObject &snapshot);
+  void clearTransportSnapshot();
+  QJsonObject transportForDevice(const QString &device) const;
+  QJsonObject displayForDevice(const QString &device) const;
   bool pending(const QString &device) const;
   bool displayLayoutBlocked() const;
   QString error(const QString &device) const;
@@ -41,4 +46,7 @@ private:
   QHash<QString, QString> m_bindings, m_pending, m_errors;
   QHash<QString, QJsonObject> m_snapshots;
   QHash<QString,QJsonObject> m_connections;
+  QHash<QString,QJsonObject> m_transports;
+  QJsonObject m_displaySnapshot;
+  double m_transportRevision = -1;
 };

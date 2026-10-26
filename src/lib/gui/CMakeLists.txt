@@ -52,6 +52,8 @@ add_library(${target} STATIC
   core/PeerUsageModel.h
   widgets/PeerUsageControl.cpp
   widgets/PeerUsageControl.h
+  widgets/DeviceConnectionInfo.cpp
+  widgets/DeviceConnectionInfo.h
   widgets/DisplayRequestPanel.cpp
   widgets/DisplayRequestPanel.h
   core/CoreProcess.cpp

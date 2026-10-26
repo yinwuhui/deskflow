@@ -176,6 +176,7 @@ private Q_SLOTS:
     local.write("still works");
     QTRY_COMPARE(remote->bytesAvailable(), 11);
     QCOMPARE(first(*client).value("channels").toArray()[0].toObject().value("state").toString(), QString("active"));
+    QVERIFY(first(*client).value("channels").toArray()[0].toObject().value("remoteAddress").toString().startsWith("127.0.0.1:"));
   }
   void bluetoothFirstLearnsNetworkWithoutPreconfiguredHost()
   {

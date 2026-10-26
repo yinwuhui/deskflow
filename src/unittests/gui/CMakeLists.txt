@@ -70,3 +70,11 @@ create_test(
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
 )
 set_tests_properties(PeerUsageControlTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+create_test(
+  NAME DeviceConnectionInfoTests
+  DEPENDS gui
+  SOURCE DeviceConnectionInfoTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
+)
+set_tests_properties(DeviceConnectionInfoTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

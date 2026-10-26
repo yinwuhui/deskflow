@@ -74,6 +74,7 @@ private:
     QTimer *retry[2] = {nullptr, nullptr};
     QPointer<QIODevice> pending[2];
     QString remoteSession;
+    QString remoteAddresses[2];
     bool connected = false;
   };
   Peer *peer(const QString &id);

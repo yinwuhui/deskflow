@@ -5,6 +5,7 @@
  */
 #include "DeviceListPage.h"
 #include "PeerUsageControl.h"
+#include "DeviceConnectionInfo.h"
 #include "gui/core/PeerUsageModel.h"
 #include "HomeIcons.h"
 #include "HomeCheckBox.h"
@@ -643,21 +644,21 @@ void DeviceListPage::rebuildDetail()
   state->setObjectName("deviceDetailState");
   layout->addWidget(state);
   layout->addSpacing(15);
-  addFact(layout, tr("Computer name"), d.name);
-  addFact(layout, tr("Local address"), d.address);
-  if (local)
+  if (local) {
+    addFact(layout, tr("Computer name"), d.name);
+    addFact(layout, tr("Local address"), d.address);
     addFact(
         layout, tr("Working mode"),
         m_sharing ? tr("Share this computer's keyboard and mouse") : tr("Use another computer's keyboard and mouse")
     );
-  else {
-    addFact(layout, tr("Device source"), d.source);
-    addFact(
-        layout, tr("Device purpose"),
-        server                     ? tr("Keyboard and mouse server")
-        : d.kind == Kind::Receiver ? tr("Receiving computer")
-                                   : tr("Connection history")
-    );
+  } else {
+    auto metadata = label((server ? tr("Keyboard and mouse server") : tr("Receiving computer")) + QStringLiteral(" · ") + d.source, "muted", m_details);
+    metadata->setToolTip(d.source);
+    layout->addWidget(metadata);
+    auto connections = new DeviceConnectionInfo(m_details);
+    connections->setDevice(d.id, d.address);
+    layout->addSpacing(8);
+    layout->addWidget(connections);
   }
   if (!local) {
     auto usage = new PeerUsageControl(m_details);

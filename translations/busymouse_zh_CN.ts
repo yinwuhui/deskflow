@@ -3668,4 +3668,127 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
         <translation>确认清理完成后，才能开始其他用途。</translation>
     </message>
 </context>
+<context>
+    <name>DeviceConnectionInfo</name>
+    <message>
+        <source>Current usage</source>
+        <translation>当前用途</translation>
+    </message>
+    <message>
+        <source>Keyboard &amp; mouse</source>
+        <translation>键鼠共享</translation>
+    </message>
+    <message>
+        <source>Extended display</source>
+        <translation>扩展屏幕</translation>
+    </message>
+    <message>
+        <source>Connections</source>
+        <translation>连接信息</translation>
+    </message>
+    <message>
+        <source>IP network</source>
+        <translation>IP 网络</translation>
+    </message>
+    <message>
+        <source>Bluetooth</source>
+        <translation>蓝牙</translation>
+    </message>
+    <message>
+        <source>%1 ms</source>
+        <translation>%1 ms</translation>
+    </message>
+    <message>
+        <source>%1 B/s</source>
+        <translation>%1 B/s</translation>
+    </message>
+    <message>
+        <source>%1 KB/s</source>
+        <translation>%1 KB/s</translation>
+    </message>
+    <message>
+        <source>%1 MB/s</source>
+        <translation>%1 MB/s</translation>
+    </message>
+    <message>
+        <source>Not active</source>
+        <translation>未启用</translation>
+    </message>
+    <message>
+        <source>Not enabled</source>
+        <translation>未启用</translation>
+    </message>
+    <message>
+        <source>Paused</source>
+        <translation>已暂停</translation>
+    </message>
+    <message>
+        <source>IP network · displaying</source>
+        <translation>IP 网络 · 显示中</translation>
+    </message>
+    <message>
+        <source>Waiting for display confirmation</source>
+        <translation>等待画面确认</translation>
+    </message>
+    <message>
+        <source>Channel not confirmed</source>
+        <translation>通道待确认</translation>
+    </message>
+    <message>
+        <source>%1 · in use</source>
+        <translation>%1 · 使用中</translation>
+    </message>
+    <message>
+        <source>Usage not confirmed</source>
+        <translation>用途待确认</translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation>未连接</translation>
+    </message>
+    <message>
+        <source>Switching · not active yet</source>
+        <translation>正在切换 · 尚未生效</translation>
+    </message>
+    <message>
+        <source>Not confirmed</source>
+        <translation>状态待确认</translation>
+    </message>
+    <message>
+        <source>Connected</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <source>Connecting…</source>
+        <translation>正在连接…</translation>
+    </message>
+    <message>
+        <source>Authenticating…</source>
+        <translation>正在认证…</translation>
+    </message>
+    <message>
+        <source>Reconnecting…</source>
+        <translation>正在重连…</translation>
+    </message>
+    <message>
+        <source>Latency %1</source>
+        <translation>延迟 %1</translation>
+    </message>
+    <message>
+        <source>↑ %1   ↓ %2</source>
+        <translation>↑ %1   ↓ %2</translation>
+    </message>
+    <message>
+        <source>Application send / receive rate; this is not maximum available bandwidth.</source>
+        <translation>应用发送 / 接收速率，不代表连接的最大可用带宽。</translation>
+    </message>
+    <message>
+        <source>Saved: %1</source>
+        <translation>保存地址：%1</translation>
+    </message>
+    <message>
+        <source>Address not reported</source>
+        <translation>地址尚未上报</translation>
+    </message>
+</context>
 </TS>

@@ -336,10 +336,13 @@ void MainWindow::setupHome()
   ui->contentLayout->insertWidget(ui->contentLayout->indexOf(ui->homeActionCard) + 1, backupPanel->detailsWidget());
   connect(backupPanel, &BackupConnectionPanel::command, &m_coreProcess, &CoreProcess::transportCommand);
   connect(&m_coreProcess, &CoreProcess::transportSnapshot, backupPanel, &BackupConnectionPanel::updateSnapshot);
+  connect(&m_coreProcess, &CoreProcess::transportSnapshot, PeerUsageModel::applicationModel(), &PeerUsageModel::receiveTransportSnapshot);
   connect(
       &m_coreProcess, &CoreProcess::transportOperationFinished, backupPanel, &BackupConnectionPanel::operationFinished
   );
   connect(&m_coreProcess, &CoreProcess::processStateChanged, this, [this, backupPanel](ProcessState state) {
+    if(state==ProcessState::Stopped || state==ProcessState::Starting)
+      PeerUsageModel::applicationModel()->clearTransportSnapshot();
     const bool running = state != ProcessState::Stopped;
     backupPanel->setRunning(running);
     // A connecting/running client may switch roles; only an in-flight transition locks the selector.

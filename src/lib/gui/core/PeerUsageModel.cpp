@@ -7,6 +7,7 @@
 #include <QUuid>
 #ifdef DESKFLOW_DISPLAY
 #include "display/PeerUsageService.h"
+#include "display/DisplayService.h"
 #endif
 
 PeerUsageModel::PeerUsageModel(QObject *parent) : QObject(parent)
@@ -25,6 +26,9 @@ PeerUsageModel *PeerUsageModel::applicationModel()
     connect(service,&deskflow::display::PeerUsageService::connectionChanged,model,&PeerUsageModel::receiveConnection);
     for(const auto& connection:service->connectedPeers())model->receiveConnection(connection.toObject());
     for(const auto& snapshot:service->retainedSnapshots())model->receiveSnapshot(snapshot.toObject());
+    auto display=deskflow::display::DisplayService::applicationService();
+    connect(display,&deskflow::display::DisplayService::snapshotChanged,model,&PeerUsageModel::receiveDisplaySnapshot);
+    model->receiveDisplaySnapshot(display->snapshot());
 #endif
   }
   return model;
@@ -44,6 +48,43 @@ void PeerUsageModel::setConnectedDevices(const QSet<QString> &devices)
   for(const auto& connection:connections)receiveConnection(connection);
   Q_EMIT changed();
 }
+void PeerUsageModel::clearTransportSnapshot()
+{
+  m_transports.clear();
+  m_transportRevision=-1;
+  Q_EMIT changed();
+}
+void PeerUsageModel::receiveTransportSnapshot(const QJsonObject &snapshot)
+{
+  if(snapshot.value("version")!=2||!snapshot.value("revision").isDouble()) return;
+  const auto revision=snapshot.value("revision").toDouble();
+  if(revision<=m_transportRevision) return;
+  m_transportRevision=revision;
+  m_transports.clear();
+  for(const auto &value:snapshot.value("peers").toArray()) {
+    auto peer=value.toObject();
+    const auto id=peer.value("peerId").toString();
+    if(id.size()==64) m_transports.insert(id,peer);
+  }
+  Q_EMIT changed();
+}
+void PeerUsageModel::receiveDisplaySnapshot(const QJsonObject &snapshot)
+{
+  // DisplayService owns one session; its revision is monotonic across sessions.
+  if(!m_displaySnapshot.isEmpty() && snapshot.value("revision").toString().toULongLong()<=m_displaySnapshot.value("revision").toString().toULongLong()) return;
+  m_displaySnapshot=snapshot;
+  Q_EMIT changed();
+}
+QJsonObject PeerUsageModel::transportForDevice(const QString &device)const
+{
+  if(!connected(device)) return {};
+  return m_transports.value(m_bindings.value(device));
+}
+QJsonObject PeerUsageModel::displayForDevice(const QString &device)const
+{
+  if(!connected(device)||m_bindings.value(device).isEmpty()||m_displaySnapshot.value("peerId")!=m_bindings.value(device)) return {};
+  return m_displaySnapshot;
+}
 bool PeerUsageModel::connected(const QString &device) const
 {
   return m_connected.contains(device);
@@ -62,6 +103,7 @@ void PeerUsageModel::receiveConnection(const QJsonObject& connection)
   m_connections.insert(peer,connection);
   const bool connectionsChangedValue=old!=connection;
   if(!connection.value("baseConnected").toBool()||changedConnection){
+    if(!old.isEmpty() || !connection.value("baseConnected").toBool()) m_transports.remove(peer);
     const auto devices=m_bindings.keys(peer);
     for(const auto& device:devices){m_bindings.remove(device);m_pending.remove(device);m_errors.remove(device);}
   }
