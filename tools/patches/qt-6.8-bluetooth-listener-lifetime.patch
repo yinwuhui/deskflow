@@ -1,0 +1,92 @@
+--- a/src/bluetooth/darwin/btsocketlistener_p.h
++++ b/src/bluetooth/darwin/btsocketlistener_p.h
+@@ -39,6 +39,7 @@
+ 
+ - (id)initWithListener:(QT_PREPEND_NAMESPACE(DarwinBluetooth::SocketListener) *)aDelegate;
+ - (void)dealloc;
++- (void)stopListening;
+ 
+ - (bool)listenRFCOMMConnectionsWithChannelID:(BluetoothRFCOMMChannelID)channelID;
+ - (bool)listenL2CAPConnectionsWithPSM:(BluetoothL2CAPPSM)psm;
+--- a/src/bluetooth/darwin/btsocketlistener.mm
++++ b/src/bluetooth/darwin/btsocketlistener.mm
+@@ -6,6 +6,7 @@
+ #include "btutility_p.h"
+ 
+ #include <QtCore/qdebug.h>
++#include <dispatch/dispatch.h>
+ 
+ QT_USE_NAMESPACE
+ 
+@@ -34,6 +35,21 @@
+     [connectionNotification release];
+ 
+     [super dealloc];
++}
++
++- (void)stopListening
++{
++    if (!delegate)
++        return;
++    // IOBluetooth may already have queued a callback on the main queue.
++    // Invalidate its C++ target before unregistering, and keep this receiver
++    // alive until those callbacks have drained (Apple FB13705522).
++    delegate = nullptr;
++    [connectionNotification unregister];
++    [connectionNotification release];
++    connectionNotification = nil;
++    [self retain];
++    dispatch_async(dispatch_get_main_queue(), ^{ [self release]; });
+ }
+ 
+ - (bool)listenRFCOMMConnectionsWithChannelID:(BluetoothRFCOMMChannelID)channelID
+@@ -69,18 +85,16 @@
+ - (void)rfcommOpenNotification:(IOBluetoothUserNotification *)notification
+         channel:(IOBluetoothRFCOMMChannel *)newChannel
+ {
+-    Q_UNUSED(notification);
+-
+-    Q_ASSERT_X(delegate, Q_FUNC_INFO, "invalid delegate (null)");
++    if (!delegate || notification != connectionNotification)
++        return;
+     delegate->openNotifyRFCOMM(newChannel);
+ }
+ 
+ - (void)l2capOpenNotification:(IOBluetoothUserNotification *)notification
+         channel:(IOBluetoothL2CAPChannel *)newChannel
+ {
+-    Q_UNUSED(notification);
+-
+-    Q_ASSERT_X(delegate, Q_FUNC_INFO, "invalid delegate (null)");
++    if (!delegate || notification != connectionNotification)
++        return;
+     delegate->openNotifyL2CAP(newChannel);
+ }
+ 
+--- a/src/bluetooth/qbluetoothserver_macos.mm
++++ b/src/bluetooth/qbluetoothserver_macos.mm
+@@ -61,6 +61,7 @@
+ 
+ QBluetoothServerPrivate::~QBluetoothServerPrivate()
+ {
++    stopListener();
+     const QMutexLocker lock(&channelMapMutex());
+     unregisterServer(this);
+ }
+@@ -102,6 +103,7 @@
+ 
+ void QBluetoothServerPrivate::stopListener()
+ {
++    [listener.getAs<DarwinBTSocketListener>() stopListening];
+     listener.reset();
+ }
+ 
+@@ -236,7 +238,7 @@
+ 
+ void QBluetoothServer::close()
+ {
+-    d_ptr->listener.reset();
++    d_ptr->stopListener();
+ 
+     // Needs a lock :(
+     const QMutexLocker lock(&d_ptr->channelMapMutex());

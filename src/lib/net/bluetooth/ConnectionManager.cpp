@@ -670,18 +670,22 @@ void ConnectionManager::listenBluetooth()
 {
   if (m_stopped || !m_btEnabled)
     return;
+  // Unregister while Qt can still resolve the old listener by its port.
+  m_service.unregisterService();
   if (m_btServer) {
+    m_btServer->disconnect(this);
     m_btServer->close();
     m_btServer->deleteLater();
   }
-  m_service.unregisterService();
   m_btServer = new QBluetoothServer(QBluetoothServiceInfo::RfcommProtocol, this);
 #ifndef Q_OS_MACOS
   m_btServer->setSecurityFlags(QBluetooth::Security::Encryption | QBluetooth::Security::Authentication);
 #endif
-  connect(m_btServer, &QBluetoothServer::newConnection, this, [this] {
-    while (m_btServer->hasPendingConnections())
-      adopt(m_btServer->nextPendingConnection(), 1);
+  auto *server = m_btServer;
+  connect(server, &QBluetoothServer::newConnection, this, [this, server] {
+    while (server->hasPendingConnections())
+      if (auto *wire = server->nextPendingConnection())
+        adopt(wire, 1);
   });
   m_service = m_btServer->listen(ManagedService, "BMouse:" + QString::fromLatin1(m_instance.toHex()));
   if (!m_service.isRegistered())

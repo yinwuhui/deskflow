@@ -58,3 +58,58 @@ cmake --build /path/to/qtconnectivity-build --target Bluetooth --parallel 4
 `dist/qt-bluetooth-6.8.3-rfcomm-fix/`。更新后的预览 ZIP 包含本次运行库修复。
 
 用户离开设备后暂停实体交互验收；上述待验项目尚无通过结论，后续从实体跨屏测试继续。
+
+## 2026-10-26：监听器撤销后的入站回调崩溃
+
+本次 Mac 使用 macOS 27.0.1（26A434）、Qt 6.8.3，Ubuntu Qt 为 6.10.2。
+Linux 客户端选择蓝牙首连，Mac 同时开启网络与蓝牙共享。
+
+### 现场证据
+
+- 两机 Paired/Bonded/Trusted 均正常；应用管理层最初没有已认证 Peer。
+- Linux 抓包显示链路 AES-CCM 加密成功，随后向 RFCOMM 通道 1 发送 SABM，业务连接未完成。
+- Mac bluetoothd 收到入站请求，却记录 `No sessions found`；重新注册时出现
+  `RFCOMM_Accept failed with status 916`。这定位到系统入站连接交付，尚不能单凭该日志归因 Qt。
+- 停止 Mac 核心后，远端仍能查询 11 条同 UUID 的历史服务记录；Mac 蓝牙关闭再打开后只剩 1 条。
+  原生临时服务的 removeServiceRecord 在调用端返回成功，但系统日志出现移除失败状态。
+  残留记录与系统监听状态有关，其最初形成原因尚未完全确认。
+- 恢复蓝牙后，Mac 确实接受连接并收到数据，随后核心 SIGSEGV。
+  `busymouse-core-2026-10-26-145748.ips` 的故障帧为
+  `-[DarwinBTSocketListener rfcommOpenNotification:channel:]+12`，由 IOBluetooth 主队列回调触发。
+  此问题与上面的空计时器崩溃不同。
+
+### 本次修复
+
+`tools/patches/qt-6.8-bluetooth-listener-lifetime.patch` 修复 Qt 私有监听器生命周期：
+显式停止时先清除 C++ delegate，再注销通知；保留 Objective-C 接收对象到主队列已排队的回调排空。
+RFCOMM/L2CAP 回调均校验 delegate 与当前通知对象，忽略旧通知。
+服务端关闭及析构均执行该停止逻辑。
+该策略参考 Chromium 对 Apple FB13705522 的公开规避实现：
+https://github.com/chromium/chromium/blob/main/device/bluetooth/bluetooth_socket_mac.mm
+这不是 Qt 官方补丁，仍需持续实机回归；单次主队列延迟不能替代长期稳定性验证。
+
+业务层 ConnectionManager 在旧端口仍可查找时先注销服务，随后断开旧 server 信号并关闭；
+入站处理绑定具体 server，并处理 nextPendingConnection 返回空指针的情况。
+
+继续使用 Qt 6.8.3 时须同时应用空计时器与生命周期两个补丁，然后重新编译 QtBluetooth。
+打包时显式传入更新后的框架，不能仅使用原 SDK 或只含计时器修复的旧备份。
+本次 arm64 运行库及两个补丁同步保存到 `dist/qt-bluetooth-6.8.3-rfcomm-fix/`；
+Intel Mac 未验证。本次运行库是 arm64，不能据此宣称通用二进制已覆盖。
+
+### 验证与边界
+
+- Ubuntu 编译应用及 ConnectionManagerTests 成功；ConnectionManagerTests、TransportIpcTests、
+  TransportNotificationsTests 三个相关 CTest 套件通过。
+- Mac 编译、原开发证书签名、严格签名验证及预览 ZIP 校验成功。
+- 修复版 Mac 与 Linux 建立蓝牙 TLS 会话：Linux 出现 `connected to secure socket` 并交换键盘布局；
+  Mac IPC 显示蓝牙通道 active，应用界面显示“已连接 / 当前使用蓝牙”。
+- 对已连接的修复版再关闭并开启 Mac 蓝牙，核心未复现该崩溃，随后蓝牙会话恢复。
+  期间有连接重试及一次只读 SDP 查询，未测精确恢复耗时；不能据此承诺快速、完全自主恢复。
+- 默认构建触发全套 131 项测试，其中 126 项通过；MainWindowHomeTests 与 4 项
+  FixedWindowScale 测试异常退出，离屏模式复核仍失败，尚未归因，不能宣称全套通过。
+- 启动时蓝牙关闭后的自动启用、Mac 本机蓝牙名称暂不可获取、引导连接失败未暴露到界面的问题
+  仍需后续处理。本次未修改引导连接的状态协议。
+- 本次没有验收实体跨屏、点击、键盘、剪贴板、视频或端到端延迟。
+
+抓包保留在 Ubuntu `/tmp/bmouse-bluetooth-debug.btsnoop`，包含蓝牙链路信息，
+未提交到仓库。两端时钟不同，不能直接用绝对时间相减计算延迟。
