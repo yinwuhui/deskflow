@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "DisplayService.h"
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPointer>
@@ -107,7 +108,10 @@ QJsonObject DisplayService::snapshot() const {
   result.insert("permissions", QJsonObject{{"capture", permission[static_cast<unsigned>(source.permission)]}, {"receiverInput", "disabled"}});
   result.insert("confirmedLayout",source.state!=State::Idle&&source.key==m_layoutOwner&&!m_layoutState.isEmpty()?QJsonValue(m_layoutState):QJsonValue(QJsonValue::Null));
   result.insert("receiverWindow",source.state!=State::Idle&&!m_windowState.isEmpty()&&source.key==m_windowOwner?QJsonValue(m_windowState):QJsonValue(QJsonValue::Null));
-  result.insert("statistics", QJsonValue::Null); // No invented fps/latency.
+  const auto sampleAt = m_statistics.value("sampledAtMs").toString().toLongLong();
+  const auto sampleAge = QDateTime::currentMSecsSinceEpoch() - sampleAt;
+  result.insert("statistics", source.state==State::Streaming && source.key==m_statisticsOwner && !m_statistics.isEmpty() && sampleAge>=0 && sampleAge<=5000
+      ? QJsonValue(m_statistics) : QJsonValue(QJsonValue::Null));
   result.insert("streamConfig",source.state!=State::Idle&&source.key==m_streamOwner&&!m_streamConfig.isEmpty()?QJsonValue(m_streamConfig):QJsonValue(QJsonValue::Null));
   QJsonArray actions; for (auto action : source.actions) actions.append(actionName(action)); result.insert("availableActions", actions);
   return result;
@@ -259,6 +263,27 @@ void DisplayService::receiverWindowResult(const Key& key,const QString& commandI
     !state.value("receiverScreenId").toString().isEmpty()&&state.value("fullscreen").isBool()&&state.value("visible").isBool()&&state.value("minimized").isBool();
   if(accepted)receiverWindowState(key,state);
   Q_EMIT commandFinished({{"id",correlation},{"accepted",accepted},{"reasonCode",accepted?"None":"PresentationFailed"},{"data",state},{"snapshot",snapshot()}});
+}
+void DisplayService::streamStatistics(const Key& key,const QJsonObject& statistics)
+{
+  ownerThread();
+  if(currentKey()!=key || !statistics.value("metricsFresh").isBool() || !statistics.value("metricsFresh").toBool())return;
+  for(const auto field : {"txBytesPerSecond", "rxBytesPerSecond"}) {
+    const auto value=statistics.value(field);
+    if(!value.isDouble() || !std::isfinite(value.toDouble()) || value.toDouble()<0)return;
+  }
+  const auto rtt=statistics.value("rttMs");
+  if(!rtt.isNull() && (!rtt.isDouble() || !std::isfinite(rtt.toDouble()) || rtt.toDouble()<0))return;
+  const auto source=statistics.value("rttSource").toString();
+  if(source!="heartbeat" && source!="tcp")return;
+  bool valid=false;const auto stamp=statistics.value("sampledAtMs").toString().toLongLong(&valid);
+  const auto age=QDateTime::currentMSecsSinceEpoch()-stamp;
+  if(!valid || age<0 || age>5000 || !m_coordinator.adapterStateChanged(key))return;
+  m_statisticsOwner=key;
+  m_statistics={{"metricsFresh",true},{"sampledAtMs",QString::number(stamp)},
+    {"txBytesPerSecond",statistics.value("txBytesPerSecond")},{"rxBytesPerSecond",statistics.value("rxBytesPerSecond")},
+    {"rttMs",rtt},{"rttSource",source}};
+  publish();
 }
 void DisplayService::streamConfiguration(const Key& key,const QJsonObject& config){
   ownerThread();if(currentKey()!=key)return;

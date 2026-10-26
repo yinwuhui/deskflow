@@ -12,10 +12,41 @@ import unittest
 
 from display_transport import (BIND, HELLO, PING, VIDEO, BindingTokens, Frame, Reader,
                                TransportError, authenticate, decode_json, fingerprint,
-                               init_identity, require_fields, tls_context)
+                               init_identity, require_fields, tls_context, TransferMetrics, tcp_rtt_ms)
 from h264_access_units import AccessUnitSplitter, MAX_AU, nal_types
 from display_session import BoundedUnits
 
+
+class MetricTests(unittest.TestCase):
+    def test_passive_kernel_rtt_units_and_incomplete_results(self):
+        class Wire:
+            def __init__(self, data): self.data=data
+            def getsockopt(self, *args): return self.data
+        linux=struct.pack('=8B16I',1,*([0]*7),*([0]*15),12500)
+        mac=struct.pack('=4B11I',4,0,0,0,*([0]*10),12)
+        self.assertEqual(tcp_rtt_ms(Wire(linux),'linux'),12.5)
+        self.assertEqual(tcp_rtt_ms(Wire(mac),'darwin'),12)
+        self.assertIsNone(tcp_rtt_ms(Wire(b'bad'),'linux'))
+        self.assertIsNone(tcp_rtt_ms(Wire(linux),'unsupported'))
+
+    def test_rates_use_elapsed_time_and_real_local_byte_counts(self):
+        class Wire:
+            def getsockopt(self,*args): raise OSError('unavailable')
+        class Channel:
+            tx_bytes=0; rx_bytes=0; wire=Wire()
+        c=Channel();clock=[0.0]
+        metrics=TransferMetrics([c],clock=lambda:clock[0],wall_clock=lambda:1000+clock[0])
+        self.assertIsNone(metrics.sample())
+        c.tx_bytes=4096;c.rx_bytes=1024;clock[0]=2
+        metrics.record_rtt(7.5);result=metrics.sample()
+        self.assertEqual(result['txBytesPerSecond'],2048)
+        self.assertEqual(result['rxBytesPerSecond'],512)
+        self.assertEqual(result['rttMs'],7.5)
+        clock[0]=8;result=metrics.sample()
+        self.assertEqual(result['txBytesPerSecond'],0)
+        self.assertEqual(result['rxBytesPerSecond'],0)
+        self.assertIsNone(result['rttMs'])
+        metrics.record_rtt(float('nan'));self.assertIsNone(metrics.sample())
 
 class QueueTests(unittest.TestCase):
     def test_burst_backpressure(self):

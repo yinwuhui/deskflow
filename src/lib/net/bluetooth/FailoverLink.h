@@ -2,6 +2,7 @@
 #pragma once
 #include "TlsChannel.h"
 #include <QElapsedTimer>
+#include <QJsonObject>
 #include <QTimer>
 
 class FailoverLink : public QObject
@@ -24,6 +25,7 @@ public:
       TlsChannel *channel, bool server, const QByteArray &instanceId, QObject *parent, int heartbeatMs = 1000,
       int timeoutMs = 6000
   );
+  QJsonObject statistics() const;
   void start();
   void pauseRead(bool paused);
   void stop(const QString &reason);
@@ -51,11 +53,13 @@ public:
 Q_SIGNALS:
   void established();
   void healthConfirmed();
+  void statisticsChanged();
   void message(quint8 type, quint64 epoch, const QByteArray &data);
   void writable();
   void disconnected(const QString &reason);
 
 private:
+  void sampleRates();
   void receive();
   void flush();
   TlsChannel *m_channel;
@@ -66,4 +70,8 @@ private:
   qint64 m_pingAt = 0;
   quint64 m_ping = 0, m_nextPing = 0;
   int m_timeout;
+  quint64 m_txBytes = 0, m_rxBytes = 0, m_previousTx = 0, m_previousRx = 0;
+  qint64 m_sampleNs = 0, m_sampleAtMs = -1, m_pingNs = 0, m_rttAtMs = -1;
+  QString m_sampleTimestamp;
+  double m_txRate = 0, m_rxRate = 0, m_rttMs = 0;
 };

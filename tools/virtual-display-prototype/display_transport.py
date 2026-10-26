@@ -17,6 +17,7 @@ import secrets
 import select
 import socket
 import ssl
+import sys
 import struct
 import subprocess
 import time
@@ -203,6 +204,7 @@ class FramedSocket:
         self.session = session
         self.epoch = epoch
         self.sequence = 0
+        self.tx_bytes = self.rx_bytes = 0
 
     def bind(self, session, epoch):
         if len(session) != 16 or session == ZERO or type(epoch) is not int or epoch < 1:
@@ -221,7 +223,9 @@ class FramedSocket:
             if remaining <= 0:
                 raise TimeoutError("Frame send deadline exceeded")
             self.wire.settimeout(remaining)
-            self.wire.sendall(encoded[offset:offset + 16384])
+            chunk = encoded[offset:offset + 16384]
+            self.wire.sendall(chunk)
+            self.tx_bytes += len(chunk)
 
     def readable(self):
         return bool(self.pending or self.wire.pending() or select.select([self.wire], [], [], 0)[0])
@@ -237,6 +241,7 @@ class FramedSocket:
             if not data:
                 self.reader.finish()
                 raise EOFError("Peer disconnected")
+            self.rx_bytes += len(data)
             self.pending.extend(self.reader.feed(data))
         frame = self.pending.popleft()
         # Validate at delivery too, including frames coalesced before binding.
@@ -295,3 +300,59 @@ def init_identity(directory):
         return fingerprint(directory / "cert.pem").hex()
     finally:
         config.unlink(missing_ok=True)
+
+
+def tcp_rtt_ms(wire, system=None):
+    """Passive TCP smoothed RTT. Linux uses usec; Darwin uses integer msec.
+
+    Prefix layouts follow linux/tcp.h::tcp_info and netinet/tcp.h::tcp_connection_info.
+    This is transport RTT, not capture-to-display latency. Never sends probe traffic.
+    """
+    system = sys.platform if system is None else system
+    try:
+        if system.startswith('linux'):
+            fields = struct.Struct('=8B16I')
+            data = wire.getsockopt(socket.IPPROTO_TCP, socket.TCP_INFO, 256)
+            if len(data) < fields.size or data[0] != 1: return None
+            return fields.unpack_from(data)[-1] / 1000.0
+        if system == 'darwin':
+            fields = struct.Struct('=4B11I')
+            data = wire.getsockopt(socket.IPPROTO_TCP, 0x106, 256)  # TCP_CONNECTION_INFO
+            if len(data) < fields.size or data[0] != 4: return None
+            return float(fields.unpack_from(data)[-1])
+    except (OSError, AttributeError, ValueError, struct.error):
+        pass
+    return None
+
+
+class TransferMetrics:
+    """Local framed application-byte rates; no OS-wide counters or active speed test."""
+    def __init__(self, channels, clock=time.monotonic, wall_clock=time.time):
+        self.channels, self.clock, self.wall_clock = channels, clock, wall_clock
+        self.previous = self.totals()
+        self.last_sample = clock()
+        self.rtt = None
+        self.rtt_at = None
+
+    def totals(self):
+        return (sum(c.tx_bytes for c in self.channels), sum(c.rx_bytes for c in self.channels))
+
+    def record_rtt(self, milliseconds):
+        if type(milliseconds) in (int, float) and math.isfinite(milliseconds) and milliseconds >= 0:
+            self.rtt, self.rtt_at = float(milliseconds), self.clock()
+
+    def sample(self):
+        now = self.clock()
+        interval = now - self.last_sample
+        if interval < 1: return None
+        totals = self.totals()
+        result = dict(metricsFresh=True, sampledAtMs=str(int(self.wall_clock() * 1000)),
+                      txBytesPerSecond=(totals[0]-self.previous[0])/interval,
+                      rxBytesPerSecond=(totals[1]-self.previous[1])/interval,
+                      rttMs=None, rttSource='tcp')
+        if self.rtt_at is not None and 0 <= now-self.rtt_at <= 5:
+            result.update(rttMs=self.rtt, rttSource='heartbeat')
+        elif self.channels:
+            result['rttMs'] = tcp_rtt_ms(self.channels[0].wire)
+        self.last_sample, self.previous = now, totals
+        return result

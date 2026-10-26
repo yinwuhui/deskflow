@@ -22,14 +22,19 @@
 
 `PeerUsageService` 提供 effectiveMode 等用途状态；`DisplayService` 提供 peerId/state/firstFramePresented，均已接入视图。更新只修改控件内容，不重建设备详情列表或重置滚动位置。
 
-当前产品通道快照没有完整 RTT、吞吐测量；本次不会主动测速，也不会把系统链路标称速率、视频目标帧率或历史日志当作测量。
+2026-10-27 已接入真实采样：键鼠 IP / 蓝牙链路复用现有 Ping/Pong，以单调时钟测量应用 RTT；每约一秒按 TLS 接受/读出的 DFF2 帧字节计算本机发送与接收速率，含心跳和控制帧、不含 TLS/TCP/RFCOMM 头。连接重建后独立计数，断线不继续返回旧指标。
 
-为启用指标，通道生产者需提供以下可选字段：
+视频统计独立的控制、视频及空输入连接的 DFVD 帧字节率。发送端复用现有心跳测应用 RTT；接收端被动读取操作系统 TCP 平滑 RTT，不增加协议消息。rttSource 区分 heartbeat 与 tcp，均不代表采集到呈现的端到端视频延迟。吞吐仅使用本机计数，不采信对方上报流量。未知 RTT 保持 null；真实空闲速率可为 0。显示服务校验会话、代次和 epoch，拒绝负数、非法时间及停止后的迟到统计。
+
+不做主动带宽测速，也不把系统链路标称速率、视频目标帧率或历史日志当作测量。
+
+通道生产者现提供以下测量字段：
 
 | 字段 | 含义 |
 | --- | --- |
 | remoteAddress | 实际对端网络端点或蓝牙地址 |
-| rttMs | 有限非负数，应用通道 RTT，毫秒 |
+| rttMs | 有限非负数，RTT 毫秒；未知为 null |
+| rttSource | heartbeat 为应用心跳 RTT；tcp 为媒体 TCP 平滑 RTT |
 | txBytesPerSecond / rxBytesPerSecond | 有限非负数，当前采样窗口的发送/接收字节速率 |
 | sampledAtMs | 核心本机 Unix 毫秒时间，十进制字符串 |
 | metricsFresh | 此样本有效；GUI 仍独立检查 5 秒过期 |

@@ -20,7 +20,7 @@ import time
 
 from display_transport import (ACCEPT, BIND, CAPS, CONFIG, HELLO, PING, PONG, PRESENT, READY,
                                RELEASE, START, STATS, STOP, STOPPED, VIDEO, ZERO,
-                               BindingTokens, FramedSocket, TransportError,
+                               BindingTokens, FramedSocket, TransferMetrics, TransportError,
                                authenticate, decode_json, fingerprint, init_identity,
                                require_fields, tls_context)
 from h264_access_units import AccessUnitSplitter, MAX_AU, nal_types
@@ -452,9 +452,13 @@ def serve(args):
         first = True
         last_pong = time.monotonic()
         last_ping = 0
-        pending_pings = set()
+        pending_pings = {}
+        metrics = TransferMetrics(channels)
         deadline = time.monotonic() + args.duration + 15 if args.duration else float("inf")
         while time.monotonic() < deadline:
+            measured = metrics.sample()
+            if measured is not None and getattr(args, "product_events", False):
+                print(json.dumps({"event":"streamStatistics","statistics":measured}, allow_nan=False), file=sys.stderr, flush=True)
             for event in source.events.poll():
                 if event.get("event") == "displayCreated" and getattr(args, "product_events", False):
                     print(json.dumps(event), file=sys.stderr, flush=True)
@@ -465,7 +469,7 @@ def serve(args):
                 raise TransportError("Control heartbeat lost")
             if now - last_ping >= 1:
                 nonce = secrets.token_hex(8)
-                pending_pings.add(nonce)
+                pending_pings[nonce] = now
                 control.send(PING, {"nonce": nonce})
                 last_ping = now
             try:
@@ -498,7 +502,7 @@ def serve(args):
                     require_fields(value, ("nonce",))
                     if value["nonce"] not in pending_pings:
                         raise TransportError("Unexpected heartbeat response")
-                    pending_pings.remove(value["nonce"])
+                    metrics.record_rtt((time.monotonic() - pending_pings.pop(value["nonce"])) * 1000)
                     last_pong = time.monotonic()
                 elif frame.kind == PRESENT:
                     require_fields(value, ("presented", "path"))
@@ -622,12 +626,16 @@ def receive(args):
         control.send(READY, {"ready": True})
         last_control = time.monotonic()
         last_stats = 0
+        metrics = TransferMetrics(channels)
         last_sequence = 1  # Bind acknowledgment.
         expected_last = None
         stopped_at = None
         first = True
         report["firstFramePresented"] = False
         while True:
+            measured = metrics.sample()
+            if measured is not None and getattr(args, "product_events", False):
+                print(json.dumps({"event":"streamStatistics","statistics":measured}, allow_nan=False), file=sys.stderr, flush=True)
             for event in decoder.events.poll():
                 if event.get("event") == "firstFramePresented" and event.get("path") in ("QWidget.paintEvent", "NSView.drawRect"):
                     if not report["firstFramePresented"]:

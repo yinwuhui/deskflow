@@ -43,6 +43,7 @@ public:
   void receiverWindowResult(const Key& key,const QString& commandId,bool accepted,const QJsonObject& state);
   void layoutResult(const Key& key,const QString& commandId,bool accepted,const QJsonObject& data);
   void streamConfiguration(const Key& key,const QJsonObject& config);
+  void streamStatistics(const Key& key,const QJsonObject& statistics);
   bool restorePendingResource(Peer peer, const Key& owner, Role role, const QString& displayId);
 Q_SIGNALS:
   void snapshotChanged(const QJsonObject& snapshot);
@@ -60,6 +61,8 @@ private:
   QHash<QString,WindowPending> m_layoutCommands;
   QJsonObject m_layoutState,m_streamConfig;
   Key m_layoutOwner,m_streamOwner;
+  QJsonObject m_statistics;
+  Key m_statisticsOwner;
   QJsonObject m_windowState;
   Key m_windowOwner;
   Routing m_routing = Routing::Unknown;

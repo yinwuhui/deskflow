@@ -420,6 +420,7 @@ void ConnectionManager::adopt(QIODevice *wire, int lane, const QString &expected
       p->reason.clear();
     }
     connect(link, &FailoverLink::healthConfirmed, this, [this] { publish(); });
+    connect(link, &FailoverLink::statisticsChanged, this, [this] { publish(); });
     p->failures[lane] = 0;
     p->session->setInitialLane(FailoverSession::Lane(p->initial));
     p->session->setAutomatic(effective(p));
@@ -775,9 +776,8 @@ QJsonObject ConnectionManager::snapshot() const
   for (auto *p : m_peers)
     if (!p->id.isEmpty() || (m_clientPeer.isEmpty() && !p->action.isEmpty())) {
       QJsonArray lanes;
-      for (int lane = 0; lane < 2; ++lane)
-        lanes.append(
-            QJsonObject{
+      for (int lane = 0; lane < 2; ++lane) {
+        QJsonObject channel{
                 {"type", lane == 0 ? "network" : "bluetooth"},
                 {"state", p->links[lane] && p->links[lane]->ready()
                               ? (p->session->selectedLane() == lane && p->connected ? "active"
@@ -788,8 +788,13 @@ QJsonObject ConnectionManager::snapshot() const
                                                        : "unavailable"},
                 {"retryInMs", p->retry[lane]->remainingTime()},
                 {"remoteAddress", p->links[lane] && p->links[lane]->ready() ? p->remoteAddresses[lane] : QString()}
-            }
-        );
+        };
+        if (p->links[lane]) {
+          const auto metrics = p->links[lane]->statistics();
+          for (auto it = metrics.begin(); it != metrics.end(); ++it) channel.insert(it.key(), it.value());
+        }
+        lanes.append(channel);
+      }
       peers.append(
           QJsonObject{
               {"peerId", p->id.isEmpty() ? QString("bootstrap") : p->id},

@@ -279,6 +279,28 @@ private Q_SLOTS:
     QVERIFY(!coreServer.hasPendingConnections());
   }
 
+  void laneStatisticsAreMeasuredAndRetiredOnDisconnect()
+  {
+    addLane(0);
+    addLane(1);
+    QTcpSocket local;
+    QTcpSocket *remote = nullptr;
+    connectCore(local, remote);
+    QTRY_VERIFY(clientLinks[0]->statistics().value("metricsFresh").toBool());
+    QTRY_VERIFY(clientLinks[1]->statistics().value("rttMs").isDouble());
+    QVERIFY(clientLinks[0]->statistics().value("rttMs").toDouble() >= 0);
+    QVERIFY(!clientLinks[0]->statistics().value("sampledAtMs").toString().isEmpty());
+    QByteArray payload(256 * 1024, 'm');
+    local.write(payload);
+    QTRY_COMPARE(remote->bytesAvailable(), qint64(payload.size()));
+    QCOMPARE(remote->readAll(), payload);
+    QTRY_VERIFY(clientLinks[0]->statistics().value("txBytesPerSecond").toDouble() > 1000);
+    QTRY_VERIFY(serverLinks[0]->statistics().value("rxBytesPerSecond").toDouble() > 1000);
+    const auto standbyRate=clientLinks[1]->statistics().value("txBytesPerSecond").toDouble();
+    QVERIFY(standbyRate < 1000); // Heartbeat/control traffic is not fabricated data throughput.
+    clientLinks[1]->stop("metrics-disconnect");
+    QVERIFY(clientLinks[1]->statistics().isEmpty());
+  }
   void networkPreferredAndBidirectionalBinary()
   {
     addLane(1);

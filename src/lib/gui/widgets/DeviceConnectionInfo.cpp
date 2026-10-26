@@ -192,6 +192,9 @@ void DeviceConnectionInfo::refresh()
     const bool metrics =
         established && measurements.value("metricsFresh").toBool() && timestampValid && age >= 0 && age <= 5000;
     m_latency[lane]->setText(tr("Latency %1").arg(metric(metrics ? measurements.value("rttMs") : QJsonValue{}, false)));
+    m_latency[lane]->setToolTip(measurements.value("rttSource")=="tcp"
+        ? tr("TCP smoothed round-trip estimate; excludes video capture, decoding and display time.")
+        : tr("Application heartbeat round-trip time, including application scheduling and queues."));
     m_rates[lane]->setText(tr("↑ %1   ↓ %2")
                                .arg(
                                    metric(metrics ? measurements.value("txBytesPerSecond") : QJsonValue{}, true),

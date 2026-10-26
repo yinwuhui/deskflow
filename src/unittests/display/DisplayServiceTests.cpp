@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QDir>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QJsonArray>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -138,6 +139,24 @@ int main(int argc,char** argv) {
       service.stopManagedSession(current);drain();service.layoutResult(current,effect.value("commandId").toString(),true,data);
       check(!reply(replies).value("accepted").toBool(),"late layout revived stopping session");
       service.cleanupFinished(service.currentKey(),true);check(service.snapshot().value("confirmedLayout").isNull()&&service.snapshot().value("receiverWindow").isNull()&&service.snapshot().value("streamConfig").isNull(),"idle retained active presentation state");
+    } else if(name=="MeasuredStatisticsOwnership") {
+      service.authenticatedPeer(peer());service.setInputRouting(Routing::Clear);
+      SessionId request{};request[0]=17;check(service.requestManagedSession(QString(64,'a'),request).accepted,"session start");
+      const auto current=service.currentKey();service.peerResponse(current,true,Reason::None);service.permissionResult(current,Permission::Granted);
+      check(service.resumeManagedSession(current).accepted,"preparation barrier");service.backendPrepared(current,"screen-metrics");service.peerReady(current);service.firstFramePresented(current);
+      check(service.snapshot().value("state")=="Streaming","not streaming");
+      QJsonObject data{{"metricsFresh",true},{"sampledAtMs",QString::number(QDateTime::currentMSecsSinceEpoch())},
+        {"txBytesPerSecond",2048.5},{"rxBytesPerSecond",0},{"rttMs",8.4},{"rttSource","heartbeat"}};
+      auto stale=current;stale.generation++;
+      service.streamStatistics(stale,data);check(service.snapshot().value("statistics").isNull(),"stale statistics accepted");
+      auto invalid=data;invalid.insert("txBytesPerSecond",-1);service.streamStatistics(current,invalid);
+      check(service.snapshot().value("statistics").isNull(),"negative rate accepted");
+      service.streamStatistics(current,data);
+      check(service.snapshot().value("statistics").toObject().value("txBytesPerSecond").toDouble()==2048.5,"measurement not published");
+      data.insert("rttMs",QJsonValue(QJsonValue::Null));service.streamStatistics(current,data);
+      check(service.snapshot().value("statistics").toObject().value("rttMs").isNull(),"unknown RTT replaced with zero");
+      service.stopManagedSession(current);check(service.snapshot().value("statistics").isNull(),"stopping retained telemetry");
+      service.streamStatistics(current,data);check(service.snapshot().value("statistics").isNull(),"late telemetry revived stopping session");
     } else if(name=="ApplicationSingleton") {
       auto a=DisplayService::applicationService(); auto b=DisplayService::applicationService(); check(a==b,"multiple product services");
       check(a->localCapabilities().value("send")=="unknown","unprobed product capability advertised");

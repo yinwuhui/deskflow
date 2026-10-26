@@ -3791,5 +3791,13 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
         <source>Address not reported</source>
         <translation>地址尚未上报</translation>
     </message>
+    <message>
+        <source>TCP smoothed round-trip estimate; excludes video capture, decoding and display time.</source>
+        <translation>TCP 平滑往返延迟估计，不包含视频采集、解码和显示耗时。</translation>
+    </message>
+    <message>
+        <source>Application heartbeat round-trip time, including application scheduling and queues.</source>
+        <translation>应用心跳往返延迟，包含应用调度和排队耗时。</translation>
+    </message>
 </context>
 </TS>

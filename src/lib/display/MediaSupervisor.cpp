@@ -129,6 +129,7 @@ void MediaSupervisor::consume(QProcess* process,const Key& owner) {
       m_service->firstFramePresented(owner);
       if(m_service->snapshot().value("localDisplayRole")=="host")layoutCommand(owner,{{"operation","QueryDisplayLayout"}});
     }
+    else if(name=="streamStatistics")m_service->streamStatistics(owner,event.value("statistics").toObject());
     else if(name=="streamConfiguration")m_service->streamConfiguration(owner,event.value("config").toObject());
     else if(name=="receiverWindowState")m_service->receiverWindowState(owner,event);
     else if(name=="viewerClosed")m_service->execute({{"id","viewer-close"},{"operation","stopDisplaySession"},{"args",identity(parseKey(m_service->snapshot()))}});

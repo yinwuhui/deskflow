@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "FailoverLink.h"
 #include <QtEndian>
+#include <QDateTime>
 
 FailoverLink::FailoverLink(
     TlsChannel *channel, bool server, const QByteArray &id, QObject *parent, int heartbeatMs, int timeoutMs
@@ -23,6 +24,7 @@ FailoverLink::FailoverLink(
   });
   connect(channel, &TlsChannel::disconnected, this, [this](const QString &reason) { stop(reason); });
   connect(&m_tick, &QTimer::timeout, this, [this] {
+    sampleRates();
     if ((!m_ready && m_clock.elapsed() >= m_timeout) || (m_ping && m_clock.elapsed() - m_pingAt >= m_timeout)) {
       stop("Channel heartbeat timeout");
       return;
@@ -30,11 +32,38 @@ FailoverLink::FailoverLink(
     if (m_ready && !m_ping) {
       m_ping = ++m_nextPing;
       m_pingAt = m_clock.elapsed();
+      m_pingNs = m_clock.nsecsElapsed();
       send(Ping, m_ping);
     }
   });
 }
 
+QJsonObject FailoverLink::statistics() const
+{
+  if (!ready() || !m_clock.isValid()) return {};
+  const auto now = m_clock.elapsed();
+  const bool fresh = m_sampleAtMs >= 0 && now - m_sampleAtMs <= 5000;
+  const bool rttFresh = m_rttAtMs >= 0 && now - m_rttAtMs <= 5000;
+  return {{"metricsFresh", fresh}, {"sampledAtMs", m_sampleTimestamp},
+          {"txBytesPerSecond", fresh ? QJsonValue(m_txRate) : QJsonValue(QJsonValue::Null)},
+          {"rxBytesPerSecond", fresh ? QJsonValue(m_rxRate) : QJsonValue(QJsonValue::Null)},
+          {"rttMs", rttFresh ? QJsonValue(m_rttMs) : QJsonValue(QJsonValue::Null)},
+          {"rttSource", "heartbeat"}};
+}
+void FailoverLink::sampleRates()
+{
+  if (!ready()) return;
+  const auto now = m_clock.nsecsElapsed();
+  const auto interval = now - m_sampleNs;
+  if (interval < 250000000) return;
+  const double seconds = double(interval) / 1000000000.0;
+  m_txRate = double(m_txBytes - m_previousTx) / seconds;
+  m_rxRate = double(m_rxBytes - m_previousRx) / seconds;
+  m_previousTx = m_txBytes; m_previousRx = m_rxBytes;
+  m_sampleNs = now; m_sampleAtMs = m_clock.elapsed();
+  m_sampleTimestamp = QString::number(QDateTime::currentMSecsSinceEpoch());
+  Q_EMIT statisticsChanged();
+}
 void FailoverLink::start()
 {
   m_clock.start();
@@ -80,6 +109,7 @@ void FailoverLink::flush()
     }
     if (!n)
       break;
+    m_txBytes += quint64(n);
     m_output.remove(0, n);
   }
 }
@@ -91,6 +121,7 @@ void FailoverLink::receive()
     const auto part = m_channel->read(target - m_input.size());
     if (part.isEmpty())
       return;
+    m_rxBytes += quint64(part.size());
     m_input += part;
     if (m_input.size() < 13)
       return;
@@ -116,7 +147,10 @@ void FailoverLink::receive()
     } else if (type == Ping && epoch && data.isEmpty()) {
       send(Pong, epoch);
     } else if (type == Pong && m_ping && epoch == m_ping && data.isEmpty()) {
+      m_rttMs = double(m_clock.nsecsElapsed() - m_pingNs) / 1000000.0;
+      m_rttAtMs = m_clock.elapsed();
       m_ping = 0;
+      Q_EMIT statisticsChanged();
       if (!m_healthy) {
         m_healthy = true;
         Q_EMIT healthConfirmed();

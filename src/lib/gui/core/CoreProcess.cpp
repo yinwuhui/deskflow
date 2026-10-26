@@ -500,8 +500,16 @@ void CoreProcess::start(std::optional<ProcessMode> processModeOption)
           connect(m_coreIpcClient, &ipc::CoreIpcClient::connected, this, [] {
             qDebug("connected to core ipc server");
           });
-          connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this, [] {
-            qWarning("failed to establish core ipc connection");
+          connect(m_coreIpcClient, &ipc::CoreIpcClient::connectionFailed, this,
+                  [this, client = QPointer<ipc::CoreIpcClient>(m_coreIpcClient)] {
+            qWarning("failed to establish core ipc connection; retrying while core is running");
+            // Core initialization (for example Wayland portals) can outlast the initial delay.
+            // Retry only the current core's status connection, without restarting its input session.
+            QTimer::singleShot(kRetryDelay, this, [this, client] {
+              if (client && m_coreIpcClient == client && m_processState == ProcessState::Started &&
+                  !client->isConnected())
+                client->connectToServer();
+            });
           });
           connect(m_coreIpcClient, &ipc::CoreIpcClient::serverShutdown, this, [this, client = m_coreIpcClient] {
             qDebug("core ipc server shut down cleanly");
