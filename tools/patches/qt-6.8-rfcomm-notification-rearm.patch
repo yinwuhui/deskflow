@@ -1,0 +1,97 @@
+--- a/src/bluetooth/darwin/btsocketlistener.mm
++++ b/src/bluetooth/darwin/btsocketlistener.mm
+@@ -13,6 +13,8 @@
+ @implementation DarwinBTSocketListener
+ {
+     IOBluetoothUserNotification *connectionNotification;
++    NSTimer *notificationRetry;
++    NSMutableArray *acceptedChannels;
+     QT_PREPEND_NAMESPACE(DarwinBluetooth::SocketListener) *delegate;
+     quint16 port;
+ }
+@@ -22,6 +24,8 @@
+     Q_ASSERT_X(aDelegate, Q_FUNC_INFO, "invalid delegate (null)");
+     if (self = [super init]) {
+         connectionNotification = nil;
++        notificationRetry = nil;
++        acceptedChannels = [[NSMutableArray alloc] init];
+         delegate = aDelegate;
+         port = 0;
+     }
+@@ -31,6 +35,9 @@
+ 
+ - (void)dealloc
+ {
++    [notificationRetry invalidate];
++    [notificationRetry release];
++    [acceptedChannels release];
+     [connectionNotification unregister];
+     [connectionNotification release];
+ 
+@@ -45,6 +52,10 @@
+     // Invalidate its C++ target before unregistering, and keep this receiver
+     // alive until those callbacks have drained (Apple FB13705522).
+     delegate = nullptr;
++    [acceptedChannels removeAllObjects];
++    [notificationRetry invalidate];
++    [notificationRetry release];
++    notificationRetry = nil;
+     [connectionNotification unregister];
+     [connectionNotification release];
+     connectionNotification = nil;
+@@ -61,10 +72,43 @@
+                                                         withChannelID:channelID
+                                                         direction:kIOBluetoothUserNotificationChannelDirectionIncoming];
+     connectionNotification = [connectionNotification retain];
+-    if (connectionNotification)
++    if (connectionNotification) {
+         port = channelID;
++        // macOS 27 can consume notification readiness on an already-expired
++        // incoming channel while still returning a valid notification object.
++        // Rearm only the notification, without republishing the SDP service,
++        // while there are no active incoming channels.
++        if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 27) {
++            notificationRetry = [[NSTimer scheduledTimerWithTimeInterval:2.0
++                target:self selector:@selector(rearmRFCOMMNotification:)
++                userInfo:nil repeats:YES] retain];
++        }
++    }
+ 
+     return connectionNotification;
++}
++
++- (void)rearmRFCOMMNotification:(NSTimer *)timer
++{
++    Q_UNUSED(timer);
++    if (!delegate || !port
++        || [IOBluetoothHostController defaultController].powerState != kBluetoothHCIPowerStateON)
++        return;
++    // Keep established channels undisturbed; resume readiness recovery after
++    // Qt has closed the last channel. Retaining a closed channel for up to
++    // one timer interval does not keep its underlying connection open.
++    for (NSInteger i = [acceptedChannels count]; i > 0; --i) {
++        if (![[acceptedChannels objectAtIndex:i - 1] isOpen])
++            [acceptedChannels removeObjectAtIndex:i - 1];
++    }
++    if ([acceptedChannels count])
++        return;
++    [connectionNotification unregister];
++    [connectionNotification release];
++    connectionNotification = nil;
++    connectionNotification = [[IOBluetoothRFCOMMChannel registerForChannelOpenNotifications:self
++        selector:@selector(rfcommOpenNotification:channel:) withChannelID:port
++        direction:kIOBluetoothUserNotificationChannelDirectionIncoming] retain];
+ }
+ 
+ - (bool)listenL2CAPConnectionsWithPSM:(BluetoothL2CAPPSM)psm
+@@ -87,6 +131,10 @@
+ {
+     if (!delegate || notification != connectionNotification)
+         return;
++    if (!newChannel)
++        return;
++    if (notificationRetry && ![acceptedChannels containsObject:newChannel])
++        [acceptedChannels addObject:newChannel];
+     delegate->openNotifyRFCOMM(newChannel);
+ }
+ 

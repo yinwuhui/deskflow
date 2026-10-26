@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkInterface>
+#include <QNetworkProxy>
 #include <QScopeGuard>
 #include <QSysInfo>
 #include <QTcpSocket>
@@ -24,6 +25,10 @@ ConnectionManager::ConnectionManager(Options options, QObject *parent)
       m_options(std::move(options)),
       m_backupPeer(m_options.backupPeer)
 {
+  // Authenticated device links and the local core bridge use direct sockets.
+  // Application/system HTTP or SOCKS proxy settings must not redirect them.
+  m_server.setProxy(QNetworkProxy::NoProxy);
+  m_local.setProxy(QNetworkProxy::NoProxy);
   m_explicitTarget = !m_backupPeer.isEmpty();
   m_bootstrapRetry.setSingleShot(true);
   connect(&m_bootstrapRetry, &QTimer::timeout, this, [this] {
@@ -528,6 +533,7 @@ void ConnectionManager::dial(Peer *p, int lane)
   connect(timer, &QTimer::timeout, this, failed);
   timer->start(10000);
   if (auto *tcp = qobject_cast<QTcpSocket *>(wire)) {
+    tcp->setProxy(QNetworkProxy::NoProxy);
     connect(tcp, &QTcpSocket::connected, this, connected);
     connect(tcp, &QTcpSocket::errorOccurred, this, failed);
     tcp->connectToHost(host, port);

@@ -68,3 +68,31 @@ macOS 蓝牙开关/可发现性仍受系统限制，软件不能替用户自动�
 仍需实机验收：两种平台组合交换角色；真实 SDP 发现、双方授权与配对、Linux BlueZ 系统代理、X11/Wayland 输入权限、无线距离/丢包/休眠、延迟与持续运行。无法扫描定位时提供地址选择兜底，不能把名称相同视为同一身份。当前开发环境没有完成上述无线矩阵，不提供已验证的延迟或恢复成功率。
 
 未编译蓝牙的构建不提供本次统一连接功能；本次交付与验证以启用蓝牙的 Mac 开发包为准。Linux 服务代理缺失的精确错误分类和系统交互仍需实际环境核查，不据 Qt 的通用 PairingError 声称已识别其具体原因。
+
+## 2026-10-26：网络备用持续 preparing 的代理干扰
+
+现场蓝牙通道 active，两端自动备用策略 effective=true，Mac 网络监听已开启；
+Ubuntu 缓存中包含正确的 `10.20.1.18:24800`。
+从 Ubuntu 直接 TCP 探测该地址端口成功，但管理通道始终重试并报告 addressUnreachable。
+增加短期拨号诊断后，Qt 对同一个 IPv4 地址明确返回：
+`The proxy type is invalid for this operation`。
+因此 IP 可达与应用能建立备用连接并不等价；本次失败发生在原始 TCP 套接字使用了不适用的代理配置。
+没有据此归因到某个具体代理软件，也没有修改系统代理设置。
+
+ConnectionManager 对设备网络监听、局部核心桥接监听及主动 TCP 拨号显式设置
+`QNetworkProxy::NoProxy`，让已认证设备的地址直接连接；TLS、证书固定及通道会话校验仍照常执行。
+定位用的额外逐次拨号日志已移除，未混入最终实现。
+
+新增 `bluetoothNetworkStandbyBypassesApplicationProxy` 回归：先用模拟的蓝牙可靠字节流建立
+已认证管理会话，再设置应用 HTTP 缓存代理，验证学习到的网络端点仍能建立真实 TCP/TLS 备用通道。
+修复前该用例失败，实际状态 preparing；修复后通过，网络通道 ready。
+ConnectionManagerTests、TransportIpcTests、TransportNotificationsTests 三个相关套件全部通过。
+Mac 应用编译、开发证书签名与预览 ZIP 校验通过，更新时保留已验证的 QtBluetooth 三补丁运行库。
+
+Ubuntu 更新后的实机快照为：蓝牙 active、网络 ready，地址 `10.20.1.18:24800`，
+backup=ready、reason 为空；Mac 同样观察到网络 ready 与蓝牙 active。
+这验证了网络备用链路已认证并完成健康检查，没有将“端口能连接”当作备用 ready 的充分证据。
+本次不以此声称所有断网、休眠或长时间自动切换场景均已验收。
+
+Mac 同步更新并重新启动后，最终两端均为网络 active、蓝牙 ready、backup=ready；
+网络端点为 `10.20.1.18:24800`，表明当前已使用 IP 网络，蓝牙作为就绪备用。

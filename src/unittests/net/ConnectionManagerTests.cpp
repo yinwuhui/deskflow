@@ -4,6 +4,8 @@
 #include "../../lib/common/PeerConnectionRegistry.h"
 #include <QFile>
 #include <QJsonArray>
+#include <QNetworkProxy>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -242,6 +244,19 @@ private Q_SLOTS:
     QTest::qWait(1200);
     QCOMPARE(first(*client).value("channels").toArray()[0].toObject().value("retryInMs").toInt(), -1);
     QCOMPARE(local.state(), QAbstractSocket::UnconnectedState);
+  }
+  void bluetoothNetworkStandbyBypassesApplicationProxy()
+  {
+    setup(1);
+    const auto previousProxy = QNetworkProxy::applicationProxy();
+    const auto restoreProxy = qScopeGuard([previousProxy] { QNetworkProxy::setApplicationProxy(previousProxy); });
+    // HTTP caching proxies cannot carry a raw authenticated peer TCP stream.
+    QNetworkProxy::setApplicationProxy(QNetworkProxy(QNetworkProxy::HttpCachingProxy, "127.0.0.1", 9));
+    QTcpSocket local;
+    QTcpSocket *remote;
+    online(local, remote);
+    QTRY_COMPARE(first(*client).value("backup").toString(), QString("ready"));
+    QCOMPARE(first(*client).value("channels").toArray()[0].toObject().value("state").toString(), QString("ready"));
   }
   void bluetoothFailureRecoversViaLearnedNetwork()
   {
