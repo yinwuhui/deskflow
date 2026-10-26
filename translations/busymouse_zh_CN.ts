@@ -3508,6 +3508,7 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
 </context>
 <context>
     <name>PeerUsageModel</name>
+    <message><source>Both computers need an active, unlocked desktop for extended display.</source><translation>拓展屏幕需要双方电脑均处于已解锁的可用桌面。</translation></message>
     <message><source>Bluetooth-only mode cannot use extended display. Enable a network connection first.</source><translation>仅蓝牙模式无法使用扩展屏幕，请先启用网络连接。</translation></message>
     <message>
         <source>The other computer declined the request.</source>

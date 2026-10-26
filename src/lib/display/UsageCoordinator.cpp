@@ -39,6 +39,7 @@ Outcome UsageCoordinator::check(UsageMode mode)const{
   }else if(mode==UsageMode::Extended){
     if(m_capabilities.displayPolicyReason!=Reason::None)return {false,m_capabilities.displayPolicyReason};
     if(!m_capabilities.networkAvailable)return {false,Reason::NetworkUnavailable};
+    if(m_capabilities.displayReadinessReason!=Reason::None)return {false,m_capabilities.displayReadinessReason};
     if(auto r=support(m_capabilities.extended,Reason::UnsupportedPlatform);r!=Reason::None)return {false,r};
     if(auto r=support(m_capabilities.displayRouting,Reason::InputIsolationUnsupported);r!=Reason::None)return {false,r};
   }else return {false,Reason::InvalidRequest};

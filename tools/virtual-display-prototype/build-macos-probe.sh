@@ -22,7 +22,7 @@ cat > "$contents/Info.plist" <<'PLIST'
 PLIST
 xcrun clang++ -std=c++20 -fobjc-arc -fblocks -Wall -Wextra -Werror \
   -Wno-unused-parameter -mmacosx-version-min=14.0 \
-  -framework Foundation -framework AppKit -framework CoreGraphics \
+  -framework IOKit -framework Foundation -framework AppKit -framework CoreGraphics \
   -framework CoreMedia -framework CoreVideo -framework ScreenCaptureKit -framework VideoToolbox \
   "$source_dir/macos/VirtualDisplayProbe.mm" -o "$contents/MacOS/macos-display-probe"
 codesign --force --sign - "$output_dir/VirtualDisplayProbe.app"

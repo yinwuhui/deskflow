@@ -53,6 +53,7 @@ const QSet<QString> keyFields{"sessionId", "requestId", "generation", "displayEp
 QJsonObject capabilityJson(const Capabilities& capability) {
   return {{"send", availabilityName(capability.send)}, {"receive", availabilityName(capability.receive)},
     {"layout", capability.layout}, {"fullscreen", capability.fullscreen},{"minimize",capability.minimize}, {"sessionAvailable", capability.sessionAvailable},
+    {"sessionReason",reasonName(capability.sessionReason)}, {"sendReason",reasonName(capability.sendReason)}, {"receiveReason",reasonName(capability.receiveReason)},
     {"protocolVersion", static_cast<int>(capability.protocol)}, {"receiverInput", false}, {"reconnect", false},
     {"dynamicResolution", false}, {"initialMode", QJsonObject{{"width",1920},{"height",1080},{"targetFps",30},{"codec","h264"},{"color","SDR"}}}};
 }

@@ -245,6 +245,8 @@ QString PeerUsageModel::reasonText(const QString &reason)
     return tr("The other computer declined the request.");
   if (reason == "PermissionDenied" || reason == "InputPermissionDenied")
     return tr("System permission is required.");
+  if (reason == "SessionUnavailable")
+    return tr("Both computers need an active, unlocked desktop for extended display.");
   if (reason == "PeerBusy")
     return tr("Another display session is in use.");
   if (reason == "NetworkUnavailable")

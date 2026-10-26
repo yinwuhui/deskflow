@@ -92,8 +92,11 @@ void CoreInputChannel::observe(const QJsonObject& record){
   // Display readiness is supplied by the authenticated display capability probe.
   auto existing=m_usage->snapshot(peer).value("inputCapabilities").toObject();
   if(existing.value("extended")=="supported")caps.extended=Availability::Supported;
+  else if(existing.value("extended")=="unsupported")caps.extended=Availability::Unsupported;
   caps.networkAvailable=existing.value("networkAvailable").toBool();
-  const auto previous=existing.value("displayUnavailableReason");
+  const auto previous=existing.value("displayPolicyReason");
+  const auto readiness=existing.value("displayReadinessReason");
+  caps.displayReadinessReason=readiness=="None"?Reason::None:readiness=="SessionUnavailable"?Reason::SessionUnavailable:readiness=="UnsupportedPlatform"?Reason::UnsupportedPlatform:Reason::CapabilityCheckRequired;
   caps.displayPolicyReason=previous=="BluetoothOnlyMode"?Reason::BluetoothOnlyMode:previous=="None"?Reason::None:Reason::CapabilityCheckRequired;
   Peer known{peer.toStdString(),record.value("peerName").toString().toStdString(),{}};
   auto outcome=m_usage->syncConnectedPeer(std::move(known),caps,std::move(connection));

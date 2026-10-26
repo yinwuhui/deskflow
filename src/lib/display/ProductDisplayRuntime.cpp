@@ -44,7 +44,7 @@ SessionId session(const QJsonValue& value){
   const auto bytes=QByteArray::fromHex(text.toLatin1());if(bytes.size()==16&&bytes.toHex()==text.toLatin1())std::copy(bytes.begin(),bytes.end(),result.begin());return result;
 }
 Reason reason(const QJsonValue& value){
-  for(auto r:{Reason::PeerRejected,Reason::PeerBusy,Reason::Cancelled,Reason::ConnectionLost,Reason::PermissionDenied,Reason::UserStopped,Reason::ApplicationExit,Reason::CleanupFailed,Reason::InputReleaseFailed,Reason::CapabilityCheckRequired,Reason::UnsupportedPlatform,Reason::BluetoothOnlyMode})
+  for(auto r:{Reason::PeerRejected,Reason::PeerBusy,Reason::Cancelled,Reason::ConnectionLost,Reason::PermissionDenied,Reason::UserStopped,Reason::ApplicationExit,Reason::CleanupFailed,Reason::InputReleaseFailed,Reason::CapabilityCheckRequired,Reason::SessionUnavailable,Reason::NetworkUnavailable,Reason::UnsupportedPlatform,Reason::BluetoothOnlyMode})
     if(value==reasonName(r))return r;
   return Reason::SwitchFailed;
 }
@@ -116,6 +116,18 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
   m_probeTimer.setInterval(5000);connect(&m_probeTimer,&QTimer::timeout,this,[this]{probe();});m_probeTimer.start();
   QTimer::singleShot(0,this,[this]{probe();});
 }
+ProductDisplayRuntime::~ProductDisplayRuntime(){
+  m_probeTimer.stop();
+  if(m_probe){m_probe->disconnect(this);m_probe->kill();m_probe->waitForFinished(1000);}
+}
+namespace {
+Reason probeReason(const QJsonValue& value) {
+  if(value=="None")return Reason::None;
+  if(value=="SessionUnavailable")return Reason::SessionUnavailable;
+  if(value=="UnsupportedPlatform")return Reason::UnsupportedPlatform;
+  return Reason::CapabilityCheckRequired;
+}
+}
 void ProductDisplayRuntime::probe(bool permission){
   if(m_probe){if(permission)QTimer::singleShot(250,this,[this]{
     if(m_permissionPending&&m_display->snapshot().value("state")=="Authorizing"&&m_display->snapshot().value("permissions").toObject().value("capture")=="required")probe(true);
@@ -127,12 +139,16 @@ void ProductDisplayRuntime::probe(bool permission){
   process->setProgram(m_runtime.python);process->setArguments(arguments);process->setProcessEnvironment(m_runtime.environment);
   auto output=std::make_shared<QByteArray>();
   connect(process,&QProcess::readyReadStandardOutput,this,[process,output]{*output+=process->readAllStandardOutput();if(output->size()>65536)process->kill();});
-  auto timer=new QTimer(process);timer->setSingleShot(true);connect(timer,&QTimer::timeout,process,&QProcess::kill);timer->start(permission?50000:8000);
+  auto timer=new QTimer(process);timer->setSingleShot(true);connect(timer,&QTimer::timeout,process,&QProcess::kill);timer->start(permission?60000:25000);
   auto done=[this,process,output,permission,permissionOwner](bool success){
     if(m_probe!=process)return;*output+=process->readAllStandardOutput();const auto doc=QJsonDocument::fromJson(*output);const auto report=doc.object();
-    m_local={};m_local.send=success?availability(report.value("send")):Availability::Unsupported;
-    m_local.receive=success?availability(report.value("receive")):Availability::Unsupported;
+    m_local={};m_local.send=success?availability(report.value("send")):Availability::Unknown;
+    m_local.receive=success?availability(report.value("receive")):Availability::Unknown;
     m_local.sessionAvailable=success&&report.value("sessionAvailable").toBool()&&!m_publicCertificate.isEmpty();
+    m_local.sessionReason=success?probeReason(report.value("sessionReason")):Reason::CapabilityCheckRequired;
+    m_local.sendReason=success?probeReason(report.value("sendReason")):Reason::CapabilityCheckRequired;
+    m_local.receiveReason=success?probeReason(report.value("receiveReason")):Reason::CapabilityCheckRequired;
+    if(m_publicCertificate.isEmpty())m_local.sessionReason=Reason::CapabilityCheckRequired;
     m_local.fullscreen=m_local.receive==Availability::Supported&&m_local.sessionAvailable&&report.value("fullscreen").toBool();
     m_local.layout=m_local.send==Availability::Supported&&m_local.sessionAvailable;
     m_local.minimize=m_local.fullscreen&&report.value("minimize").toBool();
@@ -173,7 +189,16 @@ void ProductDisplayRuntime::capabilities(const QString& peer){
   const auto combine=[&](Availability local,const QJsonValue& value){const auto other=availability(value);
     if(local==Availability::Unsupported||other==Availability::Unsupported)return Availability::Unsupported;
     if(local!=Availability::Supported||other!=Availability::Supported)return Availability::Unknown;return Availability::Supported;};
-  m_usage->updateDisplayCapabilities(peer,combine(m_local.send,caps.value("receive")),combine(m_local.receive,caps.value("send")),network&&m_local.sessionAvailable&&caps.value("sessionAvailable").toBool(),policyReason);
+  const auto readiness=[&](bool outgoing){
+    if(!m_local.sessionAvailable)return m_local.sessionReason;
+    if(!caps.value("sessionAvailable").toBool())return probeReason(caps.value("sessionReason"));
+    const auto local=outgoing?m_local.send:m_local.receive;
+    const auto other=availability(caps.value(outgoing?"receive":"send"));
+    if(local!=Availability::Supported)return outgoing?m_local.sendReason:m_local.receiveReason;
+    if(other!=Availability::Supported)return probeReason(caps.value(outgoing?"receiveReason":"sendReason"));
+    return Reason::None;
+  };
+  m_usage->updateDisplayCapabilities(peer,combine(m_local.send,caps.value("receive")),combine(m_local.receive,caps.value("send")),network,policyReason,readiness(true),readiness(false));
   m_display->setPeerNetworkPolicy(peer,policyReason==Reason::None);
 }
 QJsonObject ProductDisplayRuntime::wire(const QString& type)const{auto result=m_wire;result.insert("type",type);return result;}
@@ -199,6 +224,7 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
     if(save(path,certs.first().toPem())){
       Peer known{peer.toStdString(),connection.value("peerName").toString().toStdString(),{}};
       known.capabilities.send=availability(caps.value("send"));known.capabilities.receive=availability(caps.value("receive"));known.capabilities.sessionAvailable=caps.value("sessionAvailable").toBool();
+      known.capabilities.sessionReason=probeReason(caps.value("sessionReason"));known.capabilities.sendReason=probeReason(caps.value("sendReason"));known.capabilities.receiveReason=probeReason(caps.value("receiveReason"));
       const auto host=address(body.value("addresses").toArray());
       if(!host.isEmpty()&&body.value("displayNetworkPolicy")=="networkAllowed"&&connection.value("displayNetworkPolicy")=="networkAllowed")m_media->addTrustedEndpoint({known,path,host,24810});
     }
@@ -212,6 +238,7 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
     const auto caps=m_remote.value(peer).value("capabilities").toObject();
     Peer known{peer.toStdString(),connection.value("peerName").toString().toStdString(),{}};
     known.capabilities.send=availability(caps.value("send"));known.capabilities.receive=availability(caps.value("receive"));known.capabilities.sessionAvailable=caps.value("sessionAvailable").toBool();
+      known.capabilities.sessionReason=probeReason(caps.value("sessionReason"));known.capabilities.sendReason=probeReason(caps.value("sendReason"));known.capabilities.receiveReason=probeReason(caps.value("receiveReason"));
     if(connection.value("displayNetworkPolicy")!="networkAllowed"||m_remote.value(peer).value("displayNetworkPolicy")!="networkAllowed"){
       auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode","BluetoothOnlyMode");send(peer,reply);return;
     }

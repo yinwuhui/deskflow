@@ -126,7 +126,7 @@ void PeerUsageControl::refresh()
   m_extended->setChecked(selected);
   const bool enabled = !waiting && !switching && (actions.contains("start") || actions.contains("switch"));
   m_input->setEnabled(enabled && caps.value("input") == "supported");
-  m_extended->setEnabled(enabled && caps.value("extended") == "supported" && caps.value("displayNetworkAllowed").toBool());
+  m_extended->setEnabled(enabled && caps.value("extended") == "supported" && caps.value("displayNetworkAllowed").toBool() && caps.value("displayUnavailableReason")=="None");
   m_selection->setVisible(!s.isEmpty());
   m_retry->setVisible(actions.contains("retryCleanup"));m_retry->setEnabled(!waiting);
   m_cancel->setVisible(actions.contains("cancel"));
@@ -165,12 +165,15 @@ void PeerUsageControl::refresh()
   m_status->setText(text);
   m_status->setToolTip(text);
   m_input->setToolTip(tr("Share both keyboard and mouse; preserve the existing control direction."));
-  const bool bluetoothOnly=caps.value("displayUnavailableReason")=="BluetoothOnlyMode";
-  if(bluetoothOnly&&!switching&&state!="CleanupRequired"){text=PeerUsageModel::reasonText("BluetoothOnlyMode");m_status->setText(text);m_status->setToolTip(text);}
-  m_extended->setToolTip(bluetoothOnly?PeerUsageModel::reasonText("BluetoothOnlyMode"):
+  const auto blocker=caps.value("displayUnavailableReason").toString();
+  const bool blocked=!blocker.isEmpty()&&blocker!="None";
+  const auto explanation=blocked?PeerUsageModel::reasonText(blocker):QString{};
+  if(blocked&&!switching&&state!="CleanupRequired"&&effective!="extended"){
+    m_status->setText(explanation);m_status->setToolTip(explanation);
+  }
+  m_extended->setToolTip(blocked?explanation:
       caps.value("extended") == "supported"
           ? tr("Use this computer's screen to extend the local desktop. Requires permission on the other computer.")
-          : tr("Extended display support and network availability have not been confirmed.")
-  );
+          : tr("Extended display support and network availability have not been confirmed."));
   positionSelection(changed);
 }

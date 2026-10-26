@@ -83,3 +83,15 @@ Ubuntu 远端：`/home/ywh/code/github/deskflow`。完整构建使用 `cmake --b
 验证包括：LAN 已可用仍拒绝蓝牙模式、直接 API 和下层 API 无法绕过、源端/接收端连接策略发布、未知托管策略禁止提前开放、迟到允许不能复活、重复撤销清理幂等、前端禁用与提示、重新允许网络后重新探测。完整回归 131 项通过。
 
 Ubuntu 双端隔离媒体联调另验证了策略传播、恢复许可后仍可运行真实媒体、扩展期间撤销许可后双端回到 Idle 且清理 verified。输入 ACK 仍使用模拟适配器；没有新增物理蓝牙或 Mac ↔ Linux 双机验收结论。LAN 实际连通性/TLS 的前置探测仍是独立待完善项。
+
+
+## 收发能力与桌面状态修复（2026-10-26）
+
+本节是新增验证，前文较早的 macOS 环境限制不代表当前构建状态。
+
+- Ubuntu 构建 GUI、核心及相关测试成功；72 项定向 CTest 全部通过，含 8 个探测单测、按方向的能力/权限检查、锁屏期间拒绝/终止、用途服务双向准入、前端具体原因提示。PeerUsageControlTests 的 9 个 Qt 测试用例均通过。
+- Mac 已编译完整 GUI、核心、原生探测和接收窗口，并更新原有签名的应用包；继续保留三项蓝牙 Qt 修补。
+- 本机只读实测：macOS 27.0.1，Quartz 锁屏字段缺失时从 IOConsoleLocked 得到明确 false；sessionOnConsole=true、screenLockKnown=true、sessionAvailable=true，send/receive 均 supported，现有采集授权 granted。探测前后物理显示列表均为 [3]，没有创建虚拟屏。
+- 实际 Mac ↔ Ubuntu 连接已恢复，认证 hello 中双方网络策略允许、收发 supported、桌面可用；Mac 设备详情的拓展屏幕按钮恢复可用。
+- 用户本次不方便手动锁屏，因此未完成新回退信号在真实锁屏/解锁过程中的验证。锁屏分支由自动化测试覆盖，实机状态切换仍待验收。
+- 此次不新增媒体首帧、实际延迟、长时间稳定性或 Windows 验收结论；网络候选地址可用也不能替代真实媒体/TLS 预检。

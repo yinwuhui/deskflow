@@ -30,6 +30,9 @@ struct Capabilities {
   bool sessionAvailable = false;
   unsigned protocol = 1;
   bool minimize = false;
+  Reason sessionReason = Reason::SessionUnavailable;
+  Reason sendReason = Reason::CapabilityCheckRequired;
+  Reason receiveReason = Reason::CapabilityCheckRequired;
   // P0 deliberately has no remote input, automatic recovery or dynamic modes.
 };
 struct Peer {

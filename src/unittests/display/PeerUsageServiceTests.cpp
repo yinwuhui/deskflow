@@ -31,7 +31,22 @@ int main(int argc,char** argv){
   connection.deviceKeys={"computer:Ubuntu"};
   s.syncConnectedPeer({identity.toStdString(),"Ubuntu",{}},caps(),connection);QSignalSpy replies(&s,&PeerUsageService::commandFinished),effects(&s,&PeerUsageService::backendCommand);
   auto start=[&](QString mode){s.execute(command("startPeerUsage",{{"peerId",identity},{"mode",mode},{"operationId",operation}}));drain();};
-  if(name=="BluetoothOnlyBlocksExtended"){
+  if(name=="DirectionalReadiness"){
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true,Reason::None,Reason::SessionUnavailable,Reason::None);
+   auto snapshot=s.snapshot(identity).value("inputCapabilities").toObject();
+   check(snapshot.value("networkAvailable").toBool(),"desktop blocker changed network readiness");
+   check(snapshot.value("displayNetworkAllowed").toBool(),"desktop blocker changed network policy");
+   check(snapshot.value("displayUnavailableReason")=="SessionUnavailable","desktop blocker not exposed");
+   start("extended");check(last(replies).value("reasonCode")=="SessionUnavailable","desktop blocker bypassed outgoing preflight");
+   check(effects.isEmpty(),"blocked start scheduled resources");
+   SessionId incoming{};incoming[0]=9;
+   check(s.beginIncomingDisplay(identity,incoming).accepted,"outgoing readiness incorrectly blocked incoming");
+  }else if(name=="ReceiverReadinessBlocked"){
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true,Reason::None,Reason::None,Reason::SessionUnavailable);
+   SessionId incoming{};incoming[0]=9;
+   check(s.beginIncomingDisplay(identity,incoming).reason==Reason::SessionUnavailable,"incoming readiness bypassed");
+   start("extended");check(last(replies).value("accepted").toBool(),"incoming blocker incorrectly blocked outgoing");
+  }else if(name=="BluetoothOnlyBlocksExtended"){
    connection.inputActive=true;connection.displayNetworkPolicy="bluetoothOnly";
    s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);effects.clear();
    s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true);

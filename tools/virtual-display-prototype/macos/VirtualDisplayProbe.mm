@@ -3,6 +3,7 @@
 // Independent platform experiment. Private API declarations are separately attributed.
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <IOKit/IOKitLib.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
@@ -298,12 +299,18 @@ int main(int argc, const char *argv[]) {
       Class displayClass = NSClassFromString(@"CGVirtualDisplay");
       Class settingsClass = NSClassFromString(@"CGVirtualDisplaySettings");
       Class modeClass = NSClassFromString(@"CGVirtualDisplayMode");
-      requireSelectors(descriptorClass, @[@"setDispatchQueue:", @"setName:", @"setMaxPixelsWide:",
-        @"setMaxPixelsHigh:", @"setSizeInMillimeters:", @"setVendorID:", @"setProductID:", @"setSerialNum:"]);
-      requireSelectors(displayClass, @[@"initWithDescriptor:", @"applySettings:", @"displayID"]);
-      requireSelectors(settingsClass, @[@"setModes:", @"setHiDPI:"]);
-      requireSelectors(modeClass, @[@"initWithWidth:height:refreshRate:"]);
-      report[@"privateApiAvailable"] = @YES;
+      // Creation support is independent of the receiver's desktop readiness.
+      report[@"privateApiAvailable"] = @NO;
+      @try {
+        requireSelectors(descriptorClass, @[@"setDispatchQueue:", @"setName:", @"setMaxPixelsWide:",
+          @"setMaxPixelsHigh:", @"setSizeInMillimeters:", @"setVendorID:", @"setProductID:", @"setSerialNum:"]);
+        requireSelectors(displayClass, @[@"initWithDescriptor:", @"applySettings:", @"displayID"]);
+        requireSelectors(settingsClass, @[@"setModes:", @"setHiDPI:"]);
+        requireSelectors(modeClass, @[@"initWithWidth:height:refreshRate:"]);
+        report[@"privateApiAvailable"] = @YES;
+      } @catch (NSException *error) {
+        if (exercise || createOnly) @throw error;
+      }
       bool permission = CGPreflightScreenCaptureAccess();
       if (request && !permission) permission = CGRequestScreenCaptureAccess();
       report[@"capturePermission"] = @(permission);
@@ -313,12 +320,25 @@ int main(int argc, const char *argv[]) {
       const bool onConsole = [desktopSession[(__bridge NSString *)kCGSessionOnConsoleKey] boolValue];
       // Optional WindowServer field; absence is not proof that the session is unlocked.
       NSNumber *locked = desktopSession[@"CGSSessionScreenIsLocked"];
+      // macOS 27 may omit the Quartz lock field. IOConsoleLocked remains a
+      // typed system lock signal. Any positive lock signal wins; absence of
+      // both signals remains unknown and must never authorize streaming.
+      io_registry_entry_t registry = IORegistryGetRootEntry(kIOMainPortDefault);
+      CFTypeRef consoleLocked = registry ? IORegistryEntryCreateCFProperty(
+          registry, CFSTR("IOConsoleLocked"), kCFAllocatorDefault, 0) : nullptr;
+      const bool registryKnown = consoleLocked && CFGetTypeID(consoleLocked) == CFBooleanGetTypeID();
+      if (registryKnown) {
+        locked = @([locked boolValue] || CFBooleanGetValue((CFBooleanRef)consoleLocked));
+      }
+      if (consoleLocked) CFRelease(consoleLocked);
+      if (registry) IOObjectRelease(registry);
+      report[@"screenLockSource"] = registryKnown ? @"IOConsoleLocked" : locked ? @"QuartzSession" : @"unknown";
       report[@"sessionOnConsole"] = @(onConsole);
       report[@"screenLockKnown"] = @(locked != nil);
       if (locked) report[@"screenLocked"] = locked;
       if (expectedParent && getppid() != expectedParent)
         @throw [NSException exceptionWithName:@"SessionUnavailable" reason:@"Parent session already exited" userInfo:nil];
-      if ((exercise || createOnly) && (!onConsole || [locked boolValue] || before.count == 0))
+      if ((exercise || createOnly) && (!onConsole || !locked || [locked boolValue] || before.count == 0))
         @throw [NSException exceptionWithName:@"SessionUnavailable" reason:@"An active, unlocked console desktop with a display is required for this probe" userInfo:nil];
       if (exercise || createOnly) {
         CGVirtualDisplayDescriptor *descriptor = [[descriptorClass alloc] init];

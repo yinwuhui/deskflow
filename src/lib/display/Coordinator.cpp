@@ -73,7 +73,8 @@ Reason Coordinator::preflight(const Peer& peer, Role role) const {
   if (!identity(peer.id) || !name(peer.name)) return Reason::InvalidRequest;
   if (m_state.state() != State::Idle) return Reason::PeerBusy;
   if (m_local.protocol != 1 || peer.capabilities.protocol != 1) return Reason::UnsupportedPeerVersion;
-  if (!m_local.sessionAvailable || !peer.capabilities.sessionAvailable) return Reason::SessionUnavailable;
+  if (!m_local.sessionAvailable) return m_local.sessionReason==Reason::None?Reason::SessionUnavailable:m_local.sessionReason;
+  if (!peer.capabilities.sessionAvailable) return peer.capabilities.sessionReason==Reason::None?Reason::SessionUnavailable:peer.capabilities.sessionReason;
   auto local = role == Role::Host ? m_local.send : m_local.receive;
   auto remote = role == Role::Host ? peer.capabilities.receive : peer.capabilities.send;
   if (local == Availability::Unknown || local == Availability::Checking ||

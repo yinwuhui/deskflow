@@ -24,6 +24,7 @@ struct UsageCapabilities {
   Availability displayRouting = Availability::Unknown;
   bool networkAvailable = false;
   Reason displayPolicyReason = Reason::None;
+  Reason displayReadinessReason = Reason::None;
   bool operator==(const UsageCapabilities&) const = default;
 };
 struct UsageSnapshot {

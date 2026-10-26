@@ -35,7 +35,7 @@ if(APPLE AND TARGET Qt6::Core)
   add_executable(busymouse-display-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/macos/VirtualDisplayProbe.mm")
   set_target_properties(busymouse-display-probe PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED ON)
   target_compile_options(busymouse-display-probe PRIVATE -fobjc-arc)
-  target_link_libraries(busymouse-display-probe PRIVATE "-framework Cocoa" "-framework CoreGraphics" "-framework CoreMedia" "-framework CoreVideo" "-framework ScreenCaptureKit" "-framework VideoToolbox")
+  target_link_libraries(busymouse-display-probe PRIVATE "-framework IOKit" "-framework Cocoa" "-framework CoreGraphics" "-framework CoreMedia" "-framework CoreVideo" "-framework ScreenCaptureKit" "-framework VideoToolbox")
   install(TARGETS busymouse-display-probe RUNTIME DESTINATION bin)
 endif()
 

@@ -18,6 +18,9 @@ if(Python3_Interpreter_FOUND AND DISPLAY_OPENSSL_EXECUTABLE)
     WORKING_DIRECTORY "${DISPLAY_PROTOTYPE_DIR}"
     ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1" TIMEOUT 30)
 
+  add_test(NAME Display.CapabilityProbe COMMAND "${Python3_EXECUTABLE}" -m unittest -v test_product_probe)
+  set_tests_properties(Display.CapabilityProbe PROPERTIES WORKING_DIRECTORY "${DISPLAY_PROTOTYPE_DIR}" ENVIRONMENT "PYTHONDONTWRITEBYTECODE=1" TIMEOUT 30)
+
   option(DISPLAY_LIVE_TESTS "Run loopback TLS/FFmpeg display fixtures (opens sockets)" OFF)
   if(DISPLAY_LIVE_TESTS)
     find_program(DISPLAY_FFMPEG_EXECUTABLE ffmpeg REQUIRED)
@@ -33,7 +36,7 @@ endif()
 add_executable(DisplayCoordinatorTests CoordinatorTests.cpp)
 target_link_libraries(DisplayCoordinatorTests PRIVATE deskflow-display)
 foreach(case ConsentBeforeResources ExpiryAndLateConsent PermissionWaitPaused ReceiverPermissionBarrier PresentationGate PresentationRace
-             CancelGeneration CleanupRequired BusyAndPreference InputConflict IdentityAndCapability LockDuringSession NoInputOrTelemetry)
+             CancelGeneration CleanupRequired BusyAndPreference InputConflict IdentityAndCapability LockDuringSession NoInputOrTelemetry DirectionalCapabilities)
   add_test(NAME Display.Product.${case} COMMAND DisplayCoordinatorTests ${case})
 endforeach()
 set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayCoordinatorTests)
@@ -61,7 +64,7 @@ set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests UsageCoordinator
 if(TARGET deskflow-display-service AND TARGET Qt6::Test)
   add_executable(PeerUsageServiceTests PeerUsageServiceTests.cpp)
   target_link_libraries(PeerUsageServiceTests PRIVATE deskflow-display-service Qt6::Test)
-  foreach(case BluetoothOnlyBlocksExtended BluetoothPolicyRevokedDuringConsent BluetoothPolicyRevokedDuringDisplay SelectionAndStatus RejectSplitInput NoForgedCompletion SingleDisplayReservation CancelQueuedStart StalePermission DisplayTransactionBridge PeerRefusalPreservesInput InputRouteAdapterAcknowledgements InputRouteAdapterStaleResult ExistingConnectionSnapshot RejectStaleConnectionCommand UnifiedInputCleanup IncomingDisplayRetainsOriginalDirection RecoveryUsesUnifiedCleanup NormalDisconnectRetiresImportedInput PendingReconnectRetiresOnlyMatchingConnection SelectionPreferenceDoesNotStartUse UnavailableSessionDisablesRollback PeerCancelPreservesUnreleasedInput)
+  foreach(case DirectionalReadiness ReceiverReadinessBlocked BluetoothOnlyBlocksExtended BluetoothPolicyRevokedDuringConsent BluetoothPolicyRevokedDuringDisplay SelectionAndStatus RejectSplitInput NoForgedCompletion SingleDisplayReservation CancelQueuedStart StalePermission DisplayTransactionBridge PeerRefusalPreservesInput InputRouteAdapterAcknowledgements InputRouteAdapterStaleResult ExistingConnectionSnapshot RejectStaleConnectionCommand UnifiedInputCleanup IncomingDisplayRetainsOriginalDirection RecoveryUsesUnifiedCleanup NormalDisconnectRetiresImportedInput PendingReconnectRetiresOnlyMatchingConnection SelectionPreferenceDoesNotStartUse UnavailableSessionDisablesRollback PeerCancelPreservesUnreleasedInput)
     add_test(NAME Display.UsageService.${case} COMMAND PeerUsageServiceTests ${case})
   endforeach()
   set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests PeerUsageServiceTests)

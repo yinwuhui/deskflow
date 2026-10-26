@@ -37,7 +37,7 @@ public:
   void authenticatedPeer(Peer peer, UsageCapabilities capabilities);
   void disconnected(const QString& peerId,bool inputReleaseVerified=false);
   Outcome beginIncomingDisplay(const QString& peerId,SessionId request);
-  void updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable,Reason policyReason=Reason::None);
+  void updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable,Reason policyReason=Reason::None,Reason outgoingReason=Reason::None,Reason incomingReason=Reason::None);
   Outcome syncConnectedPeer(Peer peer,UsageCapabilities capabilities,BaseConnection connection);
   bool connectionClosed(const QString& peerId,const QString& connectionId,uint64_t generation,bool inputReleaseVerified=false);
   QJsonArray connectedPeers() const;
@@ -65,6 +65,7 @@ private:
     std::optional<BaseConnection> pendingConnection;
     UsageCapabilities pendingCapabilities;
     Peer pendingPeer;
+    Reason incomingDisplayReason=Reason::None;
   };
   void ownerThread() const;
   void run(const QJsonObject& command);

@@ -85,6 +85,21 @@ private Q_SLOTS:
     QVERIFY(!control.findChild<QPushButton*>("usageExtended")->isEnabled());QVERIFY(control.findChild<QPushButton*>("usageInput")->isEnabled());
     QVERIFY(control.findChild<QPushButton*>("usageExtended")->toolTip().contains("Bluetooth"));
   }
+  void displayBlockersExplainTheActualGate()
+  {
+    PeerUsageModel model;QSignalSpy commands(&model,&PeerUsageModel::commandRequested);bind(model,commands);
+    PeerUsageControl control(nullptr,&model);control.setDevice("computer:work");
+    int revision=2;
+    for(const auto reason:{"SessionUnavailable","NetworkUnavailable","CapabilityCheckRequired"}){
+      auto snapshot=state(revision++);auto caps=snapshot.value("inputCapabilities").toObject();
+      caps.insert("displayUnavailableReason",reason);snapshot.insert("inputCapabilities",caps);model.receiveSnapshot(snapshot);
+      auto button=control.findChild<QPushButton*>("usageExtended");QVERIFY(!button->isEnabled());
+      QCOMPARE(button->toolTip(),PeerUsageModel::reasonText(reason));
+      QVERIFY(control.findChild<QPushButton*>("usageInput")->isEnabled());
+    }
+    model.receiveSnapshot(state(revision));
+    QVERIFY(control.findChild<QPushButton*>("usageExtended")->isEnabled());
+  }
   void unavailableDevicesCannotIssueCommands()
   {
     PeerUsageModel model;

@@ -75,7 +75,7 @@ void UsageDisplayBridge::displayChanged(){
   auto peer=m_peer;auto usageKey=m_usageKey;const bool verified=state=="Idle"&&display.value("cleanupStatus")=="verified";
   Reason reason=Reason::SwitchFailed;
   auto reasonText=display.value("terminalReasonCode").toString();
-  for(auto r:{Reason::BluetoothOnlyMode,Reason::PeerRejected,Reason::RequestExpired,Reason::Cancelled,Reason::PermissionDenied,Reason::ConnectionLost,Reason::UserStopped,Reason::CleanupFailed,Reason::PresentationFailed})
+  for(auto r:{Reason::BluetoothOnlyMode,Reason::PeerRejected,Reason::RequestExpired,Reason::Cancelled,Reason::PermissionDenied,Reason::SessionUnavailable,Reason::CapabilityCheckRequired,Reason::UnsupportedPlatform,Reason::NetworkUnavailable,Reason::ConnectionLost,Reason::UserStopped,Reason::CleanupFailed,Reason::PresentationFailed})
     if(reasonText==reasonName(r))reason=r;
   // Clear ownership before callbacks: a callback can schedule the next intent.
   if(verified)m_active=false;

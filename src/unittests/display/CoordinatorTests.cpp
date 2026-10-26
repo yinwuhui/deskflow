@@ -119,6 +119,20 @@ void test(const std::string& name) {
     check(c.snapshot().state == State::CleanupRequired, "abnormal absolute cleanup deadline");
     c.cleaned(c.snapshot().key, true); c.setCapabilities(capabilities(), now + 16s);
     check(c.snapshot().state == State::Idle, "unlock restarted session");
+  } else if (name == "DirectionalCapabilities") {
+    auto sender=capabilities();sender.receive=Availability::Unsupported;
+    auto receiver=peer();receiver.capabilities.send=Availability::Unsupported;
+    Coordinator host(sender);
+    check(host.request(receiver,id(1),id(2),Routing::Clear,now).accepted,"receiver dependencies blocked sender");
+    auto key=host.snapshot().key;host.peerResponse(key,true,Reason::None,now);
+    check(host.snapshot().permission!=Permission::Granted,"capture permission was assumed");
+    check(!has(host.takeEffects(),EffectKind::PrepareHost),"capture before permission");
+    auto receiveOnly=capabilities();receiveOnly.send=Availability::Unsupported;
+    Coordinator sink(receiveOnly);auto source=peer();source.capabilities.receive=Availability::Unsupported;
+    check(sink.incoming(source,id(3),id(4),now).accepted,"sender dependencies blocked receiver");
+    auto unknown=capabilities();unknown.sessionAvailable=false;unknown.sessionReason=Reason::CapabilityCheckRequired;
+    Coordinator uncertain(unknown);
+    check(uncertain.request(peer(),id(5),id(6),Routing::Clear,now).reason==Reason::CapabilityCheckRequired,"unknown desktop treated as unsupported");
   } else if (name == "NoInputOrTelemetry") {
     auto key = preparing(c); c.prepared(key, "display-owned", now); c.presented(key, now);
     check(!c.snapshot().inputEnabled && !c.snapshot().inputRoutingSuspended, "invented input support");

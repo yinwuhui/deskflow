@@ -16,6 +16,7 @@ class ProductDisplayRuntime final : public QObject {
   Q_OBJECT
 public:
   ProductDisplayRuntime(PeerUsageService*,DisplayService*,UsageDisplayBridge*,CoreInputChannel*,QObject* parent=nullptr,const ProductDisplayConfiguration* configuration=nullptr);
+  ~ProductDisplayRuntime() override;
 Q_SIGNALS:
   void outboundControl(const QString& peer,const QString& connection,const QJsonObject& body);
 private:

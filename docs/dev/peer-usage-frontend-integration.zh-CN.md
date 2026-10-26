@@ -100,7 +100,10 @@
 
 - 连接快照 `displayNetworkPolicy`：`networkAllowed` / `bluetoothOnly`；内部未知策略保持不可用。
 - `inputCapabilities.displayNetworkAllowed`：双方是否已明确允许网络媒体，与实际 `networkAvailable` 分开。
-- `inputCapabilities.displayUnavailableReason`：策略禁止时为 `BluetoothOnlyMode`，策略未就绪时为 `CapabilityCheckRequired`。
+- `inputCapabilities.displayPolicyReason`：网络策略准入结果，`None` / `BluetoothOnlyMode` / `CapabilityCheckRequired`。
+- `inputCapabilities.displayReadinessReason`：本机发送＋对端接收方向的能力及桌面状态结果；可为 `None`、`CapabilityCheckRequired`、`SessionUnavailable`、`UnsupportedPlatform`。
+- `inputCapabilities.displayUnavailableReason`：供前端展示的综合阻塞原因，依次优先网络策略、网络地址可用性、该方向的桌面/组件能力；不能仅凭 `extended=supported` 启用按钮。
+- `networkAvailable` 只表示存在可用的同网段媒体候选地址，不再混入锁屏状态，也不代表已经通过媒体 TLS 握手。
 - 禁止时 `startPeerUsage`、`switchPeerUsageMode`、内部既存连接上的接收请求及下层显示服务都拒绝；拒绝发生在授权和输入释放前，不影响既存键鼠。
 - 前端禁用扩展按钮，并显示“仅蓝牙模式无法使用扩展屏幕，请先启用网络连接”。直接调用 API 同样不能绕过。
 - 策略在等待授权阶段被撤销时，取消请求并保留原输入；已进入资源准备/扩展时执行停止与清理，禁止自动恢复输入。重新启用网络仅重新探测能力，不自动开始扩展。
@@ -108,3 +111,21 @@
 策略来自认证核心观察和对端认证 hello，不接受 GUI 在开始命令中覆盖。hello 在仅蓝牙时不发布视频网络地址，媒体不会借用键鼠备用切换策略自动降级为蓝牙。
 
 本次修改解决连接策略准入。原有 LAN 地址匹配尚不能替代真实媒体端点/TLS 连通性预检，该独立限制没有因本次策略校验而消失。
+
+
+## 收发角色及权限检查（2026-10-26）
+
+显示角色独立于原键鼠的 source/sink 角色。发起拓展时检查本机 send、对端 receive；收到请求时检查本机 receive、对端 send。发送探测失败不能连带把接收能力判为 unsupported，反之亦然。
+
+| 检查 | 发送角色 | 接收角色 |
+| --- | --- | --- |
+| 可信身份、网络策略、可用且已解锁的桌面 | 必需 | 必需 |
+| 虚拟屏创建、画面采集、编码 | 必需 | 不作为门槛 |
+| H.264 解码及接收窗口 | 不作为门槛 | 必需 |
+| macOS 屏幕录制授权 | 对端同意后由发送端申请 | 不要求 |
+| 辅助功能、输入监听、远程输入注入 | 不作为纯显示能力门槛 | 不作为纯显示能力门槛 |
+| 当前已有键鼠会话的输入释放与路由隔离 | 按既存会话检查 | 按既存会话检查 |
+
+`permission=required` 仍可具备 send 能力，用户可发起请求，再按顺序完成对端同意与本机采集授权。未知探测状态返回 unknown/CapabilityCheckRequired，不伪装成硬件不支持；确认锁屏或无活动桌面返回 SessionUnavailable。解锁后只刷新能力，不自动重新开始会话。
+
+认证显示 hello 的 capabilities 增加 `sessionReason`、`sendReason`、`receiveReason`，便于按当前方向传播真实阻塞原因。macOS 在 Quartz 会话缺少锁屏字段时补读 IOKit 的布尔属性 IOConsoleLocked；任一锁屏信号为真则阻止启动，两种信号都未知时仍拒绝启动。
