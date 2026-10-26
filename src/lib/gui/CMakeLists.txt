@@ -120,6 +120,7 @@ add_library(${target} STATIC
   widgets/HomeComboBox.h
   widgets/BrandIcons.h
   widgets/HomeModeButton.h
+  widgets/MacWindowControls.h
   widgets/HomeDeviceList.h
   widgets/FingerprintPreview.cpp
   widgets/FingerprintPreview.h

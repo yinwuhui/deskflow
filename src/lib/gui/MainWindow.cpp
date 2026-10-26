@@ -19,6 +19,9 @@
 #include "dialogs/HelpDialog.h"
 #include "widgets/BrandIcons.h"
 #include "widgets/DeviceListPage.h"
+#ifdef Q_OS_MACOS
+#include "widgets/MacWindowControls.h"
+#endif
 #include "core/PeerUsageModel.h"
 #include "widgets/DisplayRequestPanel.h"
 #include "widgets/ScreenLayoutPage.h"
@@ -944,7 +947,9 @@ void MainWindow::setupWindowChrome()
   ui->btnWindowZoom->setEnabled(false);
   ui->btnWindowClose->setToolTip(ui->btnWindowClose->accessibleName());
   ui->btnWindowMinimize->setToolTip(ui->btnWindowMinimize->accessibleName());
-#ifndef Q_OS_MACOS
+#ifdef Q_OS_MACOS
+  new MacWindowControls(ui->sideTitleBar, ui->btnWindowClose, ui->btnWindowMinimize, ui->btnWindowZoom);
+#else
   ui->btnWindowZoom->hide();
   ui->sideTitleLayout->removeWidget(ui->btnWindowClose);
   ui->sideTitleLayout->removeWidget(ui->btnWindowMinimize);

@@ -20,6 +20,7 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
+#include <QHoverEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -875,6 +876,36 @@ private Q_SLOTS:
     QCOMPARE(close->parentWidget()->objectName(), QString("sideTitleBar"));
     QVERIFY(close->mapTo(&window, QPoint()).x() < minimize->mapTo(&window, QPoint()).x());
     QVERIFY(close->icon().isNull());
+    auto *group = close->parentWidget();
+    const auto closeRect = close->geometry(), minimizeRect = minimize->geometry();
+    const auto hoverAt = [&](QPoint point) {
+      QHoverEvent hover(QEvent::HoverMove, point, group->mapToGlobal(point), QPointF(-1, -1));
+      QCoreApplication::sendEvent(group, &hover);
+    };
+    const auto idleButton = close->grab().toImage();
+    QEnterEvent enter(close->rect().center(), close->geometry().center(), close->mapToGlobal(close->rect().center()));
+    QCoreApplication::sendEvent(close, &enter);
+    QVERIFY(!close->icon().isNull());
+    QVERIFY(!minimize->icon().isNull());
+    QVERIFY(close->grab().toImage() != idleButton); // The symbol must actually be painted.
+    hoverAt(close->geometry().center());
+    QVERIFY(!close->icon().isNull());
+    QVERIFY(!minimize->icon().isNull());
+    QVERIFY(zoom->icon().isNull());
+    QVERIFY(!zoom->isEnabled());
+    hoverAt(QPoint((closeRect.right() + minimizeRect.left()) / 2, closeRect.center().y()));
+    QVERIFY(!close->icon().isNull()); // Crossing a gap keeps the group symbols visible.
+    hoverAt(zoom->geometry().center());
+    QVERIFY(!minimize->icon().isNull());
+    hoverAt(QPoint(group->width() - 2, group->height() / 2));
+    QVERIFY(close->icon().isNull()); // The version label is not part of the hover group.
+    hoverAt(minimizeRect.center());
+    QEvent leave(QEvent::HoverLeave);
+    QCoreApplication::sendEvent(group, &leave);
+    QVERIFY(close->icon().isNull());
+    QVERIFY(minimize->icon().isNull());
+    QCOMPARE(close->geometry(), closeRect);
+    QCOMPARE(minimize->geometry(), minimizeRect);
 #else
     QVERIFY(zoom->isHidden());
     QCOMPARE(close->parentWidget()->objectName(), QString("windowCaptionControls"));
