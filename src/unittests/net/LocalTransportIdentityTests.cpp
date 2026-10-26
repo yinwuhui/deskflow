@@ -32,6 +32,17 @@ private Q_SLOTS:
     route.matches=true;QVERIFY(execute().value("accepted").toBool());QCOMPARE(route.changes,1);
     request.remove("baseConnectionId");QVERIFY(!execute().value("accepted").toBool());QCOMPARE(route.changes,1);
   }
+  void managedTransportWithoutPolicyFailsClosed()
+  {
+    const QString peer(64,'d'),id(32,'d');
+    QVERIFY(LocalTransportIdentity::bind(2222,3333,"policy-pending",peer.toStdString()));
+    PeerConnectionRegistry::update({{"peerId",peer},{"baseConnectionId",id}});
+    auto policy=[&]{for(const auto& item:PeerConnectionRegistry::snapshot().value("connections").toArray())if(item.toObject().value("baseConnectionId")==id)return item.toObject().value("displayNetworkPolicy").toString();return QString();};
+    QCOMPARE(policy(),QString("unknown"));
+    PeerConnectionRegistry::uiContext(peer,{{"displayNetworkPolicy","bluetoothOnly"}});
+    QCOMPARE(policy(),QString("bluetoothOnly"));
+    LocalTransportIdentity::release("policy-pending");PeerConnectionRegistry::remove(id);
+  }
   void cannotClaimAnotherLiveSocket()
   {
     const std::string first(64,'a'),second(64,'b');

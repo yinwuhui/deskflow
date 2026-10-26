@@ -23,6 +23,8 @@ struct UsageCapabilities {
   Availability inputRelease = Availability::Unknown;
   Availability displayRouting = Availability::Unknown;
   bool networkAvailable = false;
+  Reason displayPolicyReason = Reason::None;
+  bool operator==(const UsageCapabilities&) const = default;
 };
 struct UsageSnapshot {
   std::string peerId;
@@ -53,7 +55,7 @@ class UsageCoordinator {
 public:
   UsageCoordinator(std::string peerId, UsageCapabilities capabilities);
   const UsageSnapshot& snapshot() const { return m_snapshot; }
-  void setCapabilities(UsageCapabilities capabilities) { m_capabilities=capabilities; }
+  void setCapabilities(UsageCapabilities capabilities) { if(m_capabilities!=capabilities){m_capabilities=capabilities;changed();} }
   Outcome select(UsageMode mode);
   Outcome begin(UsageMode mode, SessionId operation);
   Outcome cancel(const UsageKey& key);
@@ -73,6 +75,7 @@ public:
   bool inputStarted(const UsageKey& key, bool verified);
   bool rollbackAuthorized(const UsageKey& key, bool valid);
   void connectionLost(bool inputReleaseVerified=false);
+  void restrictDisplay(Reason reason,SessionId stopOperation);
   void invalidateRollback(SessionId stopOperation);
   void inputStatus(Permission permission, std::string focusOwner);
   void tick(Coordinator::TimePoint now);

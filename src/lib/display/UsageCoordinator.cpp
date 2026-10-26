@@ -37,6 +37,7 @@ Outcome UsageCoordinator::check(UsageMode mode)const{
     if(auto r=support(m_capabilities.focusSync,Reason::InputCapabilityIncomplete);r!=Reason::None)return {false,r};
     if(auto r=support(m_capabilities.keyboard,Reason::InputCapabilityIncomplete);r!=Reason::None)return {false,r};
   }else if(mode==UsageMode::Extended){
+    if(m_capabilities.displayPolicyReason!=Reason::None)return {false,m_capabilities.displayPolicyReason};
     if(!m_capabilities.networkAvailable)return {false,Reason::NetworkUnavailable};
     if(auto r=support(m_capabilities.extended,Reason::UnsupportedPlatform);r!=Reason::None)return {false,r};
     if(auto r=support(m_capabilities.displayRouting,Reason::InputIsolationUnsupported);r!=Reason::None)return {false,r};
@@ -237,6 +238,15 @@ Outcome UsageCoordinator::stop(SessionId operation){
     m_snapshot.state=UsageState::Switching;m_snapshot.stage=SwitchStage::CleaningDisplay;effect(UsageEffectKind::StopDisplay);changed();
   }else complete(UsageMode::None,Reason::UserStopped);
   return {true,Reason::None};
+}
+void UsageCoordinator::restrictDisplay(Reason reason,SessionId stopOperation){
+  if(m_snapshot.effectiveMode!=UsageMode::Extended&&m_snapshot.targetMode!=UsageMode::Extended&&
+     !(m_snapshot.state==UsageState::Switching&&m_original==UsageMode::Extended))return;
+  m_allowRollback=false;
+  if(m_snapshot.state==UsageState::CleanupRequired||(m_stopAll&&m_snapshot.targetMode==UsageMode::None))return;
+  if(m_snapshot.state==UsageState::Switching&&(m_snapshot.stage==SwitchStage::Preflight||m_snapshot.stage==SwitchStage::AwaitingPermission))cancel(m_snapshot.key);
+  else stop(stopOperation);
+  m_snapshot.reason=reason;changed();
 }
 void UsageCoordinator::invalidateRollback(SessionId stopOperation){
   m_allowRollback=false;

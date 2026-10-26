@@ -197,6 +197,8 @@ void PeerUsageModel::retryCleanup(const QString& device)
 }
 QString PeerUsageModel::reasonText(const QString &reason)
 {
+  if (reason == "BluetoothOnlyMode")
+    return tr("Bluetooth-only mode cannot use extended display. Enable a network connection first.");
   if (reason == "PeerRejected")
     return tr("The other computer declined the request.");
   if (reason == "PermissionDenied" || reason == "InputPermissionDenied")

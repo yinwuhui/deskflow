@@ -41,7 +41,7 @@ set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayCoordinat
 if(TARGET deskflow-display-service AND TARGET Qt6::Test)
   add_executable(DisplayServiceTests DisplayServiceTests.cpp)
   target_link_libraries(DisplayServiceTests PRIVATE deskflow-display-service Qt6::Test)
-  foreach(case AsyncAndSnapshot PeerAndRouteGates NoForgedCallbacks CancelQueuedPreparation PreferencePersistence JournalOwnership CorruptJournal ApplicationSingleton LayoutOwnership)
+  foreach(case AsyncAndSnapshot PeerAndRouteGates NoForgedCallbacks CancelQueuedPreparation PreferencePersistence JournalOwnership CorruptJournal ApplicationSingleton LayoutOwnership BluetoothPolicyGatesLowerService)
     add_test(NAME Display.Service.${case} COMMAND DisplayServiceTests ${case})
     set_tests_properties(Display.Service.${case} PROPERTIES ENVIRONMENT
       "XDG_CONFIG_HOME=${CMAKE_BINARY_DIR}/test-profiles/DisplayServiceTests/config;XDG_STATE_HOME=${CMAKE_BINARY_DIR}/test-profiles/DisplayServiceTests/state")
@@ -61,7 +61,7 @@ set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests UsageCoordinator
 if(TARGET deskflow-display-service AND TARGET Qt6::Test)
   add_executable(PeerUsageServiceTests PeerUsageServiceTests.cpp)
   target_link_libraries(PeerUsageServiceTests PRIVATE deskflow-display-service Qt6::Test)
-  foreach(case SelectionAndStatus RejectSplitInput NoForgedCompletion SingleDisplayReservation CancelQueuedStart StalePermission DisplayTransactionBridge PeerRefusalPreservesInput InputRouteAdapterAcknowledgements InputRouteAdapterStaleResult ExistingConnectionSnapshot RejectStaleConnectionCommand UnifiedInputCleanup IncomingDisplayRetainsOriginalDirection RecoveryUsesUnifiedCleanup NormalDisconnectRetiresImportedInput PendingReconnectRetiresOnlyMatchingConnection SelectionPreferenceDoesNotStartUse UnavailableSessionDisablesRollback PeerCancelPreservesUnreleasedInput)
+  foreach(case BluetoothOnlyBlocksExtended BluetoothPolicyRevokedDuringConsent BluetoothPolicyRevokedDuringDisplay SelectionAndStatus RejectSplitInput NoForgedCompletion SingleDisplayReservation CancelQueuedStart StalePermission DisplayTransactionBridge PeerRefusalPreservesInput InputRouteAdapterAcknowledgements InputRouteAdapterStaleResult ExistingConnectionSnapshot RejectStaleConnectionCommand UnifiedInputCleanup IncomingDisplayRetainsOriginalDirection RecoveryUsesUnifiedCleanup NormalDisconnectRetiresImportedInput PendingReconnectRetiresOnlyMatchingConnection SelectionPreferenceDoesNotStartUse UnavailableSessionDisablesRollback PeerCancelPreservesUnreleasedInput)
     add_test(NAME Display.UsageService.${case} COMMAND PeerUsageServiceTests ${case})
   endforeach()
   set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests PeerUsageServiceTests)

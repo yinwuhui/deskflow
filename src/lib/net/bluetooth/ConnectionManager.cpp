@@ -820,7 +820,7 @@ QJsonObject ConnectionManager::snapshot() const
 }
 void ConnectionManager::publish()
 {
-  if(!m_options.server)for(auto* peer:m_peers)if(peer->id.size()==64&&peer->offered){
+  for(auto* peer:m_peers)if(peer->id.size()==64&&peer->offered){
     QJsonArray keys{QString("peer:")+peer->id};
     auto append=[&](QString host,int port){
       if(host.isEmpty()||port<1||port>65535)return;if(host.contains(':')&&!host.startsWith('['))host='['+host+']';
@@ -831,7 +831,10 @@ void ConnectionManager::publish()
     const auto targets=m_options.host.split(',',Qt::SkipEmptyParts);
     if(peer->initial==0&&targets.size()==1){QUrl target("tcp://"+targets.first().trimmed());if(target.isValid())append(target.host(),target.port(m_options.port));}
     const auto name=peer->name.isEmpty()?QString("Computer ")+peer->id.left(12):peer->name.left(80);
-    PeerConnectionRegistry::uiContext(peer->id,{{"peerName",name},{"deviceKeys",keys}});
+    // Initial Bluetooth plus an enabled network backup is not Bluetooth-only.
+    const bool networkAllowed=m_options.server?(m_options.serverTransports&1)!=0:(peer->initial==0||peer->requested);
+    PeerConnectionRegistry::uiContext(peer->id,{{"peerName",name},{"deviceKeys",keys},
+      {"displayNetworkPolicy",networkAllowed?"networkAllowed":"bluetoothOnly"}});
   }
   ++m_revision;
   Q_EMIT changed(snapshot());

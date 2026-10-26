@@ -305,7 +305,7 @@ const char* reasonName(Reason reason) {
     ENTRY(None); ENTRY(CapabilityCheckRequired); ENTRY(UnsupportedPlatform); ENTRY(UnsupportedPeerVersion); ENTRY(PeerBusy); ENTRY(PeerRejected);
     ENTRY(RequestExpired); ENTRY(Cancelled); ENTRY(PermissionRequired); ENTRY(PermissionDenied); ENTRY(SessionUnavailable);
     ENTRY(NetworkUnavailable); ENTRY(IdentityChanged); ENTRY(InputConflict); ENTRY(DisplayCreationFailed);
-    ENTRY(LayoutRejected); ENTRY(DecodeFailed); ENTRY(PresentationFailed); ENTRY(Congestion); ENTRY(ConnectionLost);
+    ENTRY(BluetoothOnlyMode); ENTRY(LayoutRejected); ENTRY(DecodeFailed); ENTRY(PresentationFailed); ENTRY(Congestion); ENTRY(ConnectionLost);
     ENTRY(UserStopped); ENTRY(ApplicationExit); ENTRY(CleanupFailed); ENTRY(InvalidRequest);
     ENTRY(InputCapabilityIncomplete); ENTRY(InputIsolationUnsupported); ENTRY(InputReleaseFailed);
     ENTRY(InputPermissionDenied); ENTRY(ModeConflict); ENTRY(SwitchFailed); ENTRY(RollbackFailed);

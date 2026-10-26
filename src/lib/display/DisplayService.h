@@ -28,6 +28,7 @@ public:
   Outcome retryManagedCleanup(const Key& key);
   Outcome stopManagedSession(const Key& key, Reason reason=Reason::Cancelled);
   void authenticatedPeer(Peer peer);
+  void setPeerNetworkPolicy(const QString& peerId,bool allowed);
   void forgetPeer(const QString& identity);
   Outcome incomingAuthenticated(Peer peer, SessionId session, SessionId request);
   void peerResponse(const Key& key, bool allowed, Reason reason);
@@ -53,6 +54,7 @@ private:
   void ownerThread() const;
   Coordinator m_coordinator;
   QHash<QString, Peer> m_peers;
+  QHash<QString,bool> m_networkPolicies;
   struct WindowPending { Key key;QString id; };
   QHash<QString,WindowPending> m_windowCommands;
   QHash<QString,WindowPending> m_layoutCommands;

@@ -81,6 +81,7 @@ void CoreInputChannel::observe(const QJsonObject& record){
   if(!m_generations.contains(id))m_generations[id]=++m_nextGeneration;
   PeerUsageService::BaseConnection connection;connection.id=id.toStdString();connection.generation=m_generations.value(id);
   connection.connected=record.value("baseConnected").toBool();
+  connection.displayNetworkPolicy=record.value("displayNetworkPolicy").toString("unknown").toStdString();
   auto role=record.value("originalInputRole").toString();connection.role=role=="source"?PeerUsageService::InputRole::Source:role=="receiver"?PeerUsageService::InputRole::Receiver:PeerUsageService::InputRole::Unknown;
   connection.permission=record.value("inputPermissionsReady").toBool()?Permission::Granted:Permission::Unknown;
   connection.inputActive=record.value("inputActive").toBool();connection.focusOwner=record.value("inputFocusOwner").toString().toStdString();
@@ -92,6 +93,8 @@ void CoreInputChannel::observe(const QJsonObject& record){
   auto existing=m_usage->snapshot(peer).value("inputCapabilities").toObject();
   if(existing.value("extended")=="supported")caps.extended=Availability::Supported;
   caps.networkAvailable=existing.value("networkAvailable").toBool();
+  const auto previous=existing.value("displayUnavailableReason");
+  caps.displayPolicyReason=previous=="BluetoothOnlyMode"?Reason::BluetoothOnlyMode:previous=="None"?Reason::None:Reason::CapabilityCheckRequired;
   Peer known{peer.toStdString(),record.value("peerName").toString().toStdString(),{}};
   auto outcome=m_usage->syncConnectedPeer(std::move(known),caps,std::move(connection));
   if(outcome.accepted||outcome.reason==Reason::CleanupFailed){m_records[id]=record;Q_EMIT authenticatedConnectionObserved(record);}

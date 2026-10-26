@@ -126,6 +126,9 @@ void DisplayService::publish() {
       effect.kind == EffectKind::SendAccepted || effect.kind == EffectKind::ShowWindow;
     if (startsWork && (current.key != effect.key || current.state == State::Idle ||
         current.state == State::Stopping || current.state == State::CleanupRequired)) return;
+    if(startsWork&&!m_networkPolicies.value(QString::fromStdString(current.peer.id),true)){
+      m_coordinator.fail(current.key,Reason::BluetoothOnlyMode,Coordinator::Clock::now());publish();return;
+    }
     auto object = keyJson(effect.key); object.insert("operation", effectName(effect.kind));
     object.insert("ownerGeneration", QString::number(effect.ownerGeneration));
     object.insert("reasonCode", reasonName(effect.reason)); Q_EMIT backendCommand(object);
@@ -159,7 +162,8 @@ void DisplayService::runCommand(const QJsonObject& command) {
     } else if (op == "respondToDisplayRequest") {
       auto required = keyFields; required.insert("allow"); fields(args, required);
       if (!args.value("allow").isBool()) throw std::invalid_argument("allow");
-      outcome = m_coordinator.respond(keyFrom(args), args.value("allow").toBool(), now);
+      if(args.value("allow").toBool()&&!m_networkPolicies.value(QString::fromStdString(m_coordinator.snapshot().peer.id),true))outcome={false,Reason::BluetoothOnlyMode};
+      else outcome = m_coordinator.respond(keyFrom(args), args.value("allow").toBool(), now);
     } else if (op == "cancelDisplayRequest" || op == "stopDisplaySession") {
       fields(args, keyFields); outcome = m_coordinator.stop(keyFrom(args), op == "cancelDisplayRequest" ? Reason::Cancelled : Reason::UserStopped, now);
     } else if (op == "retryDisplayCleanup") { fields(args, keyFields); outcome = m_coordinator.retryCleanup(keyFrom(args), now); }
@@ -212,7 +216,7 @@ void DisplayService::runCommand(const QJsonObject& command) {
     {"data", data},{"snapshot",snapshot()}});
 }
 Outcome DisplayService::requestManagedSession(const QString& peerId,SessionId request){
-  ownerThread();auto it=m_peers.constFind(peerId);
+  ownerThread();if(!m_networkPolicies.value(peerId,true))return {false,Reason::BluetoothOnlyMode};auto it=m_peers.constFind(peerId);
   auto outcome=it==m_peers.cend()?Outcome{false,Reason::NetworkUnavailable}:
     m_coordinator.request(*it,randomId(),request,m_routing,Coordinator::Clock::now(),true);
   publish();return outcome;
@@ -223,9 +227,15 @@ Outcome DisplayService::stopManagedSession(const Key& key,Reason reason){ownerTh
     m_coordinator.stop(key,reason,Coordinator::Clock::now()):Outcome{m_coordinator.fail(key,reason,Coordinator::Clock::now()),reason};publish();return result;}
 void DisplayService::updateCapabilities(Capabilities local) { ownerThread(); m_coordinator.setCapabilities(local, Coordinator::Clock::now()); publish(); }
 void DisplayService::authenticatedPeer(Peer peer) { ownerThread(); const auto identity = QString::fromStdString(peer.id); m_peers.insert(identity, std::move(peer)); }
+void DisplayService::setPeerNetworkPolicy(const QString& peerId,bool allowed){
+  ownerThread();m_networkPolicies.insert(peerId,allowed);
+  const auto state=m_coordinator.snapshot();
+  if(!allowed&&QString::fromStdString(state.peer.id)==peerId&&state.state!=State::Idle&&state.state!=State::Stopping&&state.state!=State::CleanupRequired)
+    stopManagedSession(state.key,Reason::BluetoothOnlyMode);
+}
 void DisplayService::forgetPeer(const QString& identity) { ownerThread(); m_peers.remove(identity); }
 Outcome DisplayService::incomingAuthenticated(Peer peer, SessionId session, SessionId request) {
-  ownerThread(); auto result = m_coordinator.incoming(std::move(peer), session, request, Coordinator::Clock::now()); publish(); return result;
+  ownerThread();if(!m_networkPolicies.value(QString::fromStdString(peer.id),true))return {false,Reason::BluetoothOnlyMode}; auto result = m_coordinator.incoming(std::move(peer), session, request, Coordinator::Clock::now()); publish(); return result;
 }
 void DisplayService::peerResponse(const Key& key, bool allowed, Reason reason) { ownerThread(); m_coordinator.peerResponse(key,allowed,reason,Coordinator::Clock::now()); publish(); }
 void DisplayService::peerReady(const Key& key) { ownerThread(); m_coordinator.peerReady(key,Coordinator::Clock::now()); publish(); }

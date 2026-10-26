@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "LocalTransportIdentity.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -37,6 +38,11 @@ public:
     std::lock_guard lock(m_mutex);QJsonArray peers,events;
     for(const auto& [id,connection]:m_connections){
       auto record=connection;
+      // Direct native TLS connections use the network. Managed tunnels override
+      // this from their explicit policy, regardless of the currently active lane.
+      auto policy=m_context.find(record.value("peerId").toString());
+      const bool managed=LocalTransportIdentity::containsPeer(record.value("peerId").toString().toStdString());
+      record.insert("displayNetworkPolicy",policy==m_context.end()?QJsonValue(managed?"unknown":"networkAllowed"):policy->second.value("displayNetworkPolicy"));
       if(record.value("originalInputRole")=="receiver"){
         auto context=m_context.find(record.value("peerId").toString());
         if(context!=m_context.end()){record.insert("peerName",context->second.value("peerName"));record.insert("deviceKeys",context->second.value("deviceKeys"));}

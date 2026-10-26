@@ -28,6 +28,7 @@ public:
     Permission permission=Permission::Unknown;
     std::string focusOwner;
     std::vector<std::string> deviceKeys;
+    std::string displayNetworkPolicy="networkAllowed";
   };
   explicit PeerUsageService(QObject* parent=nullptr,const QString& preferencesFile={});
   static PeerUsageService* applicationService();
@@ -36,7 +37,7 @@ public:
   void authenticatedPeer(Peer peer, UsageCapabilities capabilities);
   void disconnected(const QString& peerId,bool inputReleaseVerified=false);
   Outcome beginIncomingDisplay(const QString& peerId,SessionId request);
-  void updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable);
+  void updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable,Reason policyReason=Reason::None);
   Outcome syncConnectedPeer(Peer peer,UsageCapabilities capabilities,BaseConnection connection);
   bool connectionClosed(const QString& peerId,const QString& connectionId,uint64_t generation,bool inputReleaseVerified=false);
   QJsonArray connectedPeers() const;

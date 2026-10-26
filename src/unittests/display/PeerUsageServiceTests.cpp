@@ -31,7 +31,45 @@ int main(int argc,char** argv){
   connection.deviceKeys={"computer:Ubuntu"};
   s.syncConnectedPeer({identity.toStdString(),"Ubuntu",{}},caps(),connection);QSignalSpy replies(&s,&PeerUsageService::commandFinished),effects(&s,&PeerUsageService::backendCommand);
   auto start=[&](QString mode){s.execute(command("startPeerUsage",{{"peerId",identity},{"mode",mode},{"operationId",operation}}));drain();};
-  if(name=="UnavailableSessionDisablesRollback"){
+  if(name=="BluetoothOnlyBlocksExtended"){
+   connection.inputActive=true;connection.displayNetworkPolicy="bluetoothOnly";
+   s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);effects.clear();
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true);
+   s.execute(command("switchPeerUsageMode",{{"peerId",identity},{"targetMode","extended"},{"operationId",operation}}));drain();
+   check(last(replies).value("reasonCode")=="BluetoothOnlyMode","LAN bypassed Bluetooth-only policy");
+   check(s.snapshot(identity).value("effectiveMode")=="input","rejected switch stopped existing input");
+   check(!s.snapshot(identity).value("inputCapabilities").toObject().value("displayNetworkAllowed").toBool(),"policy not exposed");
+   SessionId incoming{};incoming[0]=3;check(s.beginIncomingDisplay(identity,incoming).reason==Reason::BluetoothOnlyMode,"incoming request bypassed policy");
+   check(effects.isEmpty(),"forbidden request scheduled backend work");
+   connection.inputActive=false;s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);effects.clear();start("extended");
+   check(last(replies).value("reasonCode")=="BluetoothOnlyMode","direct start bypassed policy");check(effects.isEmpty(),"forbidden start scheduled work");
+   connection.displayNetworkPolicy="networkAllowed";s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);
+   auto revision=s.snapshot(identity).value("revision").toString().toULongLong();
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true,Reason::BluetoothOnlyMode);
+   check(s.snapshot(identity).value("revision").toString().toULongLong()>revision,"policy-only update did not advance revision");
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true);start("extended");
+   check(last(replies).value("accepted").toBool(),"network re-enable did not restore capability");
+  }else if(name=="BluetoothPolicyRevokedDuringConsent"){
+   connection.inputActive=true;s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);
+   s.execute(command("switchPeerUsageMode",{{"peerId",identity},{"targetMode","extended"},{"operationId",operation}}));drain();auto k=key(s.snapshot(identity));
+   s.complete(identity,k,PeerUsageService::Completion::Preflight);drain();effects.clear();
+   connection.displayNetworkPolicy="bluetoothOnly";s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection);drain();
+   check(s.snapshot(identity).value("effectiveMode")=="input","policy revocation during consent stopped input");
+   check(s.snapshot(identity).value("reasonCode")=="BluetoothOnlyMode","missing policy reason");
+   s.complete(identity,k,PeerUsageService::Completion::Permission);drain();
+   for(const auto& e:effects){auto op=e.at(0).toJsonObject().value("operation");check(op!="ReleaseInputs"&&op!="StartDisplay"&&op!="RestoreInput","late consent bypassed policy");}
+  }else if(name=="BluetoothPolicyRevokedDuringDisplay"){
+   start("extended");auto k=key(s.snapshot(identity));s.complete(identity,k,PeerUsageService::Completion::Preflight);s.complete(identity,k,PeerUsageService::Completion::Permission);
+   s.complete(identity,k,PeerUsageService::Completion::DisplayPresented);drain();effects.clear();
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true,Reason::BluetoothOnlyMode);drain();
+   check(s.snapshot(identity).value("effectiveMode")=="extended","display vanished before verified cleanup");
+   bool stopped=false;for(const auto& e:effects)stopped|=e.at(0).toJsonObject().value("operation")=="StopDisplay";check(stopped,"policy revocation did not stop display");
+   auto generation=s.snapshot(identity).value("operationGeneration");
+   s.updateDisplayCapabilities(identity,Availability::Supported,Availability::Supported,true,Reason::BluetoothOnlyMode);
+   check(s.snapshot(identity).value("operationGeneration")==generation,"repeated policy revoked pending cleanup generation");
+   s.complete(identity,key(s.snapshot(identity)),PeerUsageService::Completion::DisplayStopped,Reason::None,true);drain();
+   check(s.snapshot(identity).value("effectiveMode")=="none","policy cleanup restored input");
+  }else if(name=="UnavailableSessionDisablesRollback"){
    connection.inputActive=true;check(s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection).accepted,"input import failed");
    s.execute(command("switchPeerUsageMode",{{"peerId",identity},{"targetMode","extended"},{"operationId",operation}}));drain();auto k=key(s.snapshot(identity));
    s.complete(identity,k,PeerUsageService::Completion::Preflight);s.complete(identity,k,PeerUsageService::Completion::Permission);

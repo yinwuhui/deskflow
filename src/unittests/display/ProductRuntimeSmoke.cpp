@@ -58,7 +58,7 @@ struct Side {
       }
     });
   }
-  void observe(){channel.authenticatedConnectionObserved({{"peerId",peer},{"peerName","runtime-smoke"},{"baseConnectionId",id},{"baseConnected",true}});}
+  void observe(const QString& policy="networkAllowed"){channel.authenticatedConnectionObserved({{"peerId",peer},{"peerName","runtime-smoke"},{"baseConnectionId",id},{"baseConnected",true},{"displayNetworkPolicy",policy}});}
 };
 QString certificateId(const QString& path){QFile file(path);require(file.open(QIODevice::ReadOnly),"certificate missing");const auto certificates=QSslCertificate::fromData(file.readAll());require(certificates.size()==1,"invalid certificate");return certificates.first().digest(QCryptographicHash::Sha256).toHex();}
 }
@@ -76,6 +76,11 @@ int main(int argc,char** argv){
     target->channel.peerControlReceived({{"peerId",target->peer},{"baseConnectionId",target->id},{"body",body}});
   },Qt::QueuedConnection);};relay(a,b);relay(b,a);a.observe();b.observe();
   wait([&]{return a.usage.snapshot(a.peer).value("inputCapabilities").toObject().value("extended")=="supported"&&b.usage.snapshot(b.peer).value("inputCapabilities").toObject().value("extended")=="supported";},15000,"capabilities not ready");
+  a.observe("bluetoothOnly");
+  wait([&]{return b.usage.snapshot(b.peer).value("inputCapabilities").toObject().value("displayUnavailableReason")=="BluetoothOnlyMode";},5000,"remote policy not propagated");
+  require(!a.usage.snapshot(a.peer).value("inputCapabilities").toObject().value("displayNetworkAllowed").toBool(),"local policy ignored");
+  SessionId blocked{};blocked[0]=9;require(b.display.requestManagedSession(b.peer,blocked).reason==Reason::BluetoothOnlyMode,"remote policy bypassed lower API");
+  a.observe();wait([&]{return a.usage.snapshot(a.peer).value("inputCapabilities").toObject().value("displayNetworkAllowed").toBool()&&b.usage.snapshot(b.peer).value("inputCapabilities").toObject().value("displayNetworkAllowed").toBool();},5000,"network policy not restored");
   for(auto* host:{&a,&b}){
     a.consent=b.consent=false;
     host->usage.execute({{"id","smoke-start"},{"operation",host->usage.snapshot(host->peer).value("effectiveMode")=="none"?"startPeerUsage":"switchPeerUsageMode"},{"args",QJsonObject{{"peerId",host->peer},{host->usage.snapshot(host->peer).value("effectiveMode")=="none"?"mode":"targetMode","extended"},{"operationId",QUuid::createUuid().toString(QUuid::Id128)},{"baseConnectionId",host->id},{"baseConnectionGeneration","1"}}}});
@@ -125,7 +130,8 @@ int main(int argc,char** argv){
       holdProof=false;for(const auto& body:delayedProofs)a.channel.peerControlReceived({{"peerId",a.peer},{"baseConnectionId",a.id},{"body",body}});delayedProofs.clear();
       wait([&]{return host->usage.snapshot(host->peer).value("effectiveMode")=="input";},6000,"input did not resume after both cleanup proofs");
     }
-    host->usage.execute({{"id","smoke-stop"},{"operation","stopPeerUsage"},{"args",QJsonObject{{"peerId",host->peer},{"baseConnectionId",host->id},{"baseConnectionGeneration","1"}}}});
+    if(host==&b)host->observe("bluetoothOnly");
+    else host->usage.execute({{"id","smoke-stop"},{"operation","stopPeerUsage"},{"args",QJsonObject{{"peerId",host->peer},{"baseConnectionId",host->id},{"baseConnectionGeneration","1"}}}});
     wait([&]{return a.display.snapshot().value("state")=="Idle"&&b.display.snapshot().value("state")=="Idle"&&a.usage.snapshot(a.peer).value("effectiveMode")=="none"&&b.usage.snapshot(b.peer).value("effectiveMode")=="none";},20000,"cleanup not verified");
     // Native routes remain suspended, so the next opposite-direction session has a verified clear gate.
   }

@@ -44,7 +44,7 @@ SessionId session(const QJsonValue& value){
   const auto bytes=QByteArray::fromHex(text.toLatin1());if(bytes.size()==16&&bytes.toHex()==text.toLatin1())std::copy(bytes.begin(),bytes.end(),result.begin());return result;
 }
 Reason reason(const QJsonValue& value){
-  for(auto r:{Reason::PeerRejected,Reason::PeerBusy,Reason::Cancelled,Reason::ConnectionLost,Reason::PermissionDenied,Reason::UserStopped,Reason::ApplicationExit,Reason::CleanupFailed,Reason::InputReleaseFailed,Reason::CapabilityCheckRequired,Reason::UnsupportedPlatform})
+  for(auto r:{Reason::PeerRejected,Reason::PeerBusy,Reason::Cancelled,Reason::ConnectionLost,Reason::PermissionDenied,Reason::UserStopped,Reason::ApplicationExit,Reason::CleanupFailed,Reason::InputReleaseFailed,Reason::CapabilityCheckRequired,Reason::UnsupportedPlatform,Reason::BluetoothOnlyMode})
     if(value==reasonName(r))return r;
   return Reason::SwitchFailed;
 }
@@ -150,12 +150,14 @@ void ProductDisplayRuntime::probe(bool permission){
 void ProductDisplayRuntime::observed(const QJsonObject& connection){
   const auto peer=connection.value("peerId").toString();const auto old=m_connections.value(peer);
   m_connections[peer]=connection;
-  if(old.value("baseConnectionId")!=connection.value("baseConnectionId")){m_remote.remove(peer);hello(peer);}
-  capabilities(peer);
+  if(old.value("baseConnectionId")!=connection.value("baseConnectionId")){m_remote.remove(peer);}
+  hello(peer);capabilities(peer);
 }
 void ProductDisplayRuntime::hello(const QString& peer){
   if(m_publicCertificate.isEmpty())return;
-  send(peer,{{"type","hello"},{"capabilities",m_display->localCapabilities()},{"certificate",m_publicCertificate},{"addresses",addresses()}});
+  const auto policy=m_connections.value(peer).value("displayNetworkPolicy").toString("unknown");
+  send(peer,{{"type","hello"},{"displayNetworkPolicy",policy},{"capabilities",m_display->localCapabilities()},
+    {"certificate",m_publicCertificate},{"addresses",policy=="networkAllowed"?addresses():QJsonArray{}}});
 }
 void ProductDisplayRuntime::send(const QString& peer,QJsonObject body){
   const auto connection=m_connections.value(peer).value("baseConnectionId").toString();if(connection.isEmpty())return;
@@ -163,11 +165,16 @@ void ProductDisplayRuntime::send(const QString& peer,QJsonObject body){
 }
 void ProductDisplayRuntime::capabilities(const QString& peer){
   const auto remote=m_remote.value(peer);const auto caps=remote.value("capabilities").toObject();
+  const auto localPolicy=m_connections.value(peer).value("displayNetworkPolicy").toString("unknown");
+  const auto remotePolicy=remote.value("displayNetworkPolicy").toString("unknown");
+  const auto policyReason=(localPolicy=="bluetoothOnly"||remotePolicy=="bluetoothOnly")?Reason::BluetoothOnlyMode:
+    (localPolicy=="networkAllowed"&&remotePolicy=="networkAllowed")?Reason::None:Reason::CapabilityCheckRequired;
   const bool network=!address(remote.value("addresses").toArray()).isEmpty();
   const auto combine=[&](Availability local,const QJsonValue& value){const auto other=availability(value);
     if(local==Availability::Unsupported||other==Availability::Unsupported)return Availability::Unsupported;
     if(local!=Availability::Supported||other!=Availability::Supported)return Availability::Unknown;return Availability::Supported;};
-  m_usage->updateDisplayCapabilities(peer,combine(m_local.send,caps.value("receive")),combine(m_local.receive,caps.value("send")),network&&m_local.sessionAvailable&&caps.value("sessionAvailable").toBool());
+  m_usage->updateDisplayCapabilities(peer,combine(m_local.send,caps.value("receive")),combine(m_local.receive,caps.value("send")),network&&m_local.sessionAvailable&&caps.value("sessionAvailable").toBool(),policyReason);
+  m_display->setPeerNetworkPolicy(peer,policyReason==Reason::None);
 }
 QJsonObject ProductDisplayRuntime::wire(const QString& type)const{auto result=m_wire;result.insert("type",type);return result;}
 bool ProductDisplayRuntime::current(const QString& peer,const QJsonObject& body)const{
@@ -185,6 +192,7 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
     const auto certs=QSslCertificate::fromData(body.value("certificate").toString().toLatin1());
     if(certs.size()!=1||certs.first().digest(QCryptographicHash::Sha256).toHex()!=peer.toLatin1()||body.value("addresses").toArray().size()>32)return;
     const auto caps=body.value("capabilities").toObject();
+    if(body.value("displayNetworkPolicy")!="networkAllowed"&&body.value("displayNetworkPolicy")!="bluetoothOnly")return;
     if(caps.value("protocolVersion")!=1||!caps.value("sessionAvailable").isBool())return;
     const bool first=!m_remote.contains(peer);m_remote[peer]=body;
     const auto path=m_runtime.identityDirectory+"/peer-"+peer+".pem";
@@ -192,7 +200,7 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
       Peer known{peer.toStdString(),connection.value("peerName").toString().toStdString(),{}};
       known.capabilities.send=availability(caps.value("send"));known.capabilities.receive=availability(caps.value("receive"));known.capabilities.sessionAvailable=caps.value("sessionAvailable").toBool();
       const auto host=address(body.value("addresses").toArray());
-      if(!host.isEmpty())m_media->addTrustedEndpoint({known,path,host,24810});
+      if(!host.isEmpty()&&body.value("displayNetworkPolicy")=="networkAllowed"&&connection.value("displayNetworkPolicy")=="networkAllowed")m_media->addTrustedEndpoint({known,path,host,24810});
     }
     capabilities(peer);if(first)hello(peer);return;
   }
@@ -204,6 +212,9 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
     const auto caps=m_remote.value(peer).value("capabilities").toObject();
     Peer known{peer.toStdString(),connection.value("peerName").toString().toStdString(),{}};
     known.capabilities.send=availability(caps.value("send"));known.capabilities.receive=availability(caps.value("receive"));known.capabilities.sessionAvailable=caps.value("sessionAvailable").toBool();
+    if(connection.value("displayNetworkPolicy")!="networkAllowed"||m_remote.value(peer).value("displayNetworkPolicy")!="networkAllowed"){
+      auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode","BluetoothOnlyMode");send(peer,reply);return;
+    }
     auto result=m_display->incomingAuthenticated(known,session(body.value("sessionId")),session(body.value("requestId")));
     if(!result.accepted){auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode",reasonName(result.reason));send(peer,reply);return;}
     m_peer=peer;m_wire={};for(auto key:{"sessionId","requestId","generation","displayEpoch"})m_wire.insert(key,body.value(key));
@@ -233,7 +244,7 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
   else if(type=="stop"||type=="cancel"){
     m_peerTermination=true;
     const auto cause=body.value("reasonCode").toString();
-    const bool cancel=type=="cancel"||(cause!="UserStopped"&&cause!="ApplicationExit"&&cause!="ConnectionLost"&&cause!="SessionUnavailable"&&cause!="IdentityChanged"&&cause!="InputPermissionDenied");
+    const bool cancel=type=="cancel"||(cause!="UserStopped"&&cause!="ApplicationExit"&&cause!="ConnectionLost"&&cause!="SessionUnavailable"&&cause!="IdentityChanged"&&cause!="InputPermissionDenied"&&cause!="BluetoothOnlyMode");
     m_usage->peerStopped(peer,cancel);m_display->stopManagedSession(key,reason(body.value("reasonCode")));
   }
 }

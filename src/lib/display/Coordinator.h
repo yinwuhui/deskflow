@@ -13,7 +13,7 @@ enum class Reason {
   None, CapabilityCheckRequired, UnsupportedPlatform, UnsupportedPeerVersion, PeerBusy, PeerRejected,
   RequestExpired, Cancelled, PermissionRequired, PermissionDenied, SessionUnavailable,
   NetworkUnavailable, IdentityChanged, InputConflict, DisplayCreationFailed,
-  LayoutRejected, DecodeFailed, PresentationFailed, Congestion, ConnectionLost,
+  BluetoothOnlyMode, LayoutRejected, DecodeFailed, PresentationFailed, Congestion, ConnectionLost,
   UserStopped, ApplicationExit, CleanupFailed, InvalidRequest, InputCapabilityIncomplete,
   InputIsolationUnsupported, InputReleaseFailed, InputPermissionDenied, ModeConflict, SwitchFailed, RollbackFailed
 };

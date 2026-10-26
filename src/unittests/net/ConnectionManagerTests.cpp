@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "../../lib/common/PeerPolicy.h"
 #include "ConnectionManager.h"
+#include "../../lib/common/PeerConnectionRegistry.h"
 #include <QFile>
 #include <QJsonArray>
 #include <QSignalSpy>
@@ -73,7 +74,7 @@ class ConnectionManagerTests : public QObject
     right.acceptTransport(in, type);
     left.acceptTransport(out, type);
   }
-  void setup(int initial = 0, bool automatic = true)
+  void setup(int initial = 0, bool automatic = true, int serverTransports = 3)
   {
     QVERIFY(core.listen(QHostAddress::LocalHost, 0));
     QTcpServer reserve;
@@ -82,6 +83,7 @@ class ConnectionManagerTests : public QObject
     reserve.close();
     ConnectionManager::Options right;
     right.server = true;
+    right.serverTransports = serverTransports;
     right.pem = bob;
     right.name = "bob";
     right.port = port;
@@ -140,6 +142,28 @@ private Q_SLOTS:
     store.clear();
     localPort = 0;
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+  }
+  void bluetoothOnlySharingAlsoRestrictsNativeSource()
+  {
+    setup(1,false,2);QTcpSocket local;QTcpSocket* remote=nullptr;online(local,remote);
+    const auto id=QString::fromLatin1(alicePin.toHex());const QString connection(32,'f');
+    PeerConnectionRegistry::update({{"baseConnectionId",connection},{"peerId",id},{"originalInputRole","source"}});
+    auto policy=[&]{for(const auto& item:PeerConnectionRegistry::snapshot().value("connections").toArray())if(item.toObject().value("baseConnectionId")==connection)return item.toObject().value("displayNetworkPolicy").toString();return QString();};
+    QTRY_COMPARE(policy(),QString("bluetoothOnly"));PeerConnectionRegistry::remove(connection);
+  }
+  void bluetoothDisplayPolicyTracksExplicitPermission()
+  {
+    setup(1,false);QTcpSocket local;QTcpSocket* remote=nullptr;online(local,remote);
+    const auto id=QString::fromLatin1(bobPin.toHex());const QString connection(32,'e');
+    PeerConnectionRegistry::update({{"baseConnectionId",connection},{"peerId",id},{"originalInputRole","receiver"}});
+    auto policy=[&]{for(const auto& item:PeerConnectionRegistry::snapshot().value("connections").toArray())if(item.toObject().value("baseConnectionId")==connection)return item.toObject().value("displayNetworkPolicy").toString();return QString();};
+    QTRY_COMPARE(policy(),QString("bluetoothOnly"));
+    client->command({{"kind","policy"},{"peerId",id},{"enabled",true}});
+    QTRY_COMPARE(policy(),QString("networkAllowed"));
+    // Still using Bluetooth is not equivalent to forbidding the network.
+    QCOMPARE(first(*client).value("state").toString(),QString("bluetooth"));
+    client->command({{"kind","policy"},{"peerId",id},{"enabled",false}});
+    QTRY_COMPARE(policy(),QString("bluetoothOnly"));PeerConnectionRegistry::remove(connection);
   }
   void networkFirstDoesNotNeedBluetoothAddress()
   {

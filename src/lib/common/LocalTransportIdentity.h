@@ -25,6 +25,12 @@ public:
     std::lock_guard lock(m_mutex);auto it=m_bindings.find({corePort,proxyPort});
     return it==m_bindings.end()?std::string{}:it->second.peer;
   }
+  static bool containsPeer(const std::string& peer)
+  {
+    std::lock_guard lock(m_mutex);
+    for(const auto& [socket,binding]:m_bindings)if(binding.peer==peer)return true;
+    return false;
+  }
   static void release(const std::string& owner)
   {
     std::lock_guard lock(m_mutex);

@@ -3508,6 +3508,7 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
 </context>
 <context>
     <name>PeerUsageModel</name>
+    <message><source>Bluetooth-only mode cannot use extended display. Enable a network connection first.</source><translation>仅蓝牙模式无法使用扩展屏幕，请先启用网络连接。</translation></message>
     <message>
         <source>The other computer declined the request.</source>
         <translation>对方已拒绝请求。</translation>

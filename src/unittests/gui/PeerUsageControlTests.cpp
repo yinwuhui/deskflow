@@ -27,7 +27,7 @@ class PeerUsageControlTests : public QObject
         {"operationId", QString(32, 'b')},
         {"operationGeneration", "7"},
         {"switchStage", usage == "Switching" ? "AwaitingPermission" : "None"},
-        {"inputCapabilities", QJsonObject{{"input", "supported"}, {"extended", "supported"}}},
+        {"inputCapabilities", QJsonObject{{"input", "supported"}, {"extended", "supported"},{"displayNetworkAllowed",true},{"displayUnavailableReason","None"}}},
         {"availableActions", usage == "Switching" ? QJsonArray{"cancel", "stop"} : QJsonArray{"switch", "stop"}}
     };
   }
@@ -76,6 +76,14 @@ private Q_SLOTS:
     QVERIFY(model.snapshot("computer:work").isEmpty());QVERIFY(model.displayLayoutBlocked());
     auto current=state(4,"none","Inactive");current.insert("baseConnectionId",QString(32,'d'));current.insert("baseConnectionGeneration","2");model.receiveSnapshot(current);
     QVERIFY(!model.displayLayoutBlocked());
+  }
+  void bluetoothOnlyDisablesExtendedAndExplainsWhy()
+  {
+    PeerUsageModel model;QSignalSpy commands(&model,&PeerUsageModel::commandRequested);bind(model,commands);
+    PeerUsageControl control(nullptr,&model);control.setDevice("computer:work");
+    auto snapshot=state(2);auto caps=snapshot.value("inputCapabilities").toObject();caps.insert("displayNetworkAllowed",false);caps.insert("displayUnavailableReason","BluetoothOnlyMode");snapshot.insert("inputCapabilities",caps);model.receiveSnapshot(snapshot);
+    QVERIFY(!control.findChild<QPushButton*>("usageExtended")->isEnabled());QVERIFY(control.findChild<QPushButton*>("usageInput")->isEnabled());
+    QVERIFY(control.findChild<QPushButton*>("usageExtended")->toolTip().contains("Bluetooth"));
   }
   void unavailableDevicesCannotIssueCommands()
   {

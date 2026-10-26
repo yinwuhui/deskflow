@@ -33,7 +33,18 @@ int main(int argc,char** argv) {
     if(argc!=2)return 2; const QString name=QString::fromUtf8(argv[1]);
     DisplayService service(caps(), directory.filePath("display.ini"));
     QSignalSpy replies(&service,&DisplayService::commandFinished), effects(&service,&DisplayService::backendCommand);
-    if(name=="AsyncAndSnapshot") {
+    if(name=="BluetoothPolicyGatesLowerService") {
+      service.authenticatedPeer(peer());service.setPeerNetworkPolicy(QString(64,'a'),false);
+      SessionId request{};request[0]=1;check(service.requestManagedSession(QString(64,'a'),request).reason==Reason::BluetoothOnlyMode,"managed API bypassed policy");
+      SessionId session{};session[0]=2;check(service.incomingAuthenticated(peer(),session,request).reason==Reason::BluetoothOnlyMode,"incoming API bypassed policy");drain();
+      check(effects.isEmpty(),"forbidden request scheduled resources");
+      service.setPeerNetworkPolicy(QString(64,'a'),true);service.setInputRouting(Routing::Clear);
+      check(service.requestManagedSession(QString(64,'a'),request).accepted,"network re-enable failed");
+      auto current=service.currentKey();service.peerResponse(current,true,Reason::None);service.permissionResult(current,Permission::Granted);service.resumeManagedSession(current);
+      service.setPeerNetworkPolicy(QString(64,'a'),false);drain();
+      for(const auto& e:effects)check(e.at(0).toJsonObject().value("operation")!="PrepareHost","queued creation bypassed revoked policy");
+      check(service.snapshot().value("state")=="Stopping","revoked lower session not stopped");
+    }else if(name=="AsyncAndSnapshot") {
       service.execute(command("getDisplaySessionSnapshot")); check(replies.isEmpty(),"synchronous GUI command"); drain();
       auto snapshot=reply(replies).value("snapshot").toObject();
       check(snapshot.value("generation").isString() && snapshot.value("revision").isString(),"lossy JSON counters");

@@ -56,7 +56,7 @@ void UsageDisplayBridge::effect(const QJsonObject& command){
     }
     m_usageKey=key;
     if(m_display->snapshot().value("state")=="CleanupRequired")m_display->retryManagedCleanup(m_display->currentKey());
-    else m_display->stopManagedSession(m_display->currentKey(),command.value("reasonCode")=="UserStopped"?Reason::UserStopped:Reason::Cancelled);
+    else m_display->stopManagedSession(m_display->currentKey(),command.value("reasonCode")=="BluetoothOnlyMode"?Reason::BluetoothOnlyMode:command.value("reasonCode")=="UserStopped"?Reason::UserStopped:Reason::Cancelled);
     displayChanged();
   }
 }
@@ -75,7 +75,7 @@ void UsageDisplayBridge::displayChanged(){
   auto peer=m_peer;auto usageKey=m_usageKey;const bool verified=state=="Idle"&&display.value("cleanupStatus")=="verified";
   Reason reason=Reason::SwitchFailed;
   auto reasonText=display.value("terminalReasonCode").toString();
-  for(auto r:{Reason::PeerRejected,Reason::RequestExpired,Reason::Cancelled,Reason::PermissionDenied,Reason::ConnectionLost,Reason::UserStopped,Reason::CleanupFailed,Reason::PresentationFailed})
+  for(auto r:{Reason::BluetoothOnlyMode,Reason::PeerRejected,Reason::RequestExpired,Reason::Cancelled,Reason::PermissionDenied,Reason::ConnectionLost,Reason::UserStopped,Reason::CleanupFailed,Reason::PresentationFailed})
     if(reasonText==reasonName(r))reason=r;
   // Clear ownership before callbacks: a callback can schedule the next intent.
   if(verified)m_active=false;

@@ -62,11 +62,14 @@ Outcome PeerUsageService::beginIncomingDisplay(const QString& peerId,SessionId r
   auto outcome=it->second.coordinator->begin(UsageMode::Extended,request);
   it->second.coordinator->setCapabilities(it->second.capabilities);publish(peerId);return outcome;
 }
-void PeerUsageService::updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable){
+void PeerUsageService::updateDisplayCapabilities(const QString& peerId,Availability outgoing,Availability incoming,bool networkAvailable,Reason policyReason){
   ownerThread();auto it=m_peers.find(peerId);if(it==m_peers.end())return;
   it->second.capabilities.extended=outgoing;it->second.capabilities.networkAvailable=networkAvailable;
+  if(it->second.connection.displayNetworkPolicy=="bluetoothOnly")policyReason=Reason::BluetoothOnlyMode;
+  else if(it->second.connection.displayNetworkPolicy!="networkAllowed")policyReason=Reason::CapabilityCheckRequired;
+  it->second.capabilities.displayPolicyReason=policyReason;
   it->second.peer.capabilities.receive=incoming;
-  it->second.coordinator->setCapabilities(it->second.capabilities);it->second.published=0;publish(peerId);
+  it->second.coordinator->setCapabilities(it->second.capabilities);it->second.published=0;if(policyReason!=Reason::None)it->second.coordinator->restrictDisplay(policyReason,randomId());publish(peerId);
 }
 QJsonArray PeerUsageService::retainedSnapshots()const{
   ownerThread();QJsonArray result;for(const auto& [peer,entry]:m_peers)result.append(snapshot(peer));return result;
@@ -130,6 +133,8 @@ Outcome PeerUsageService::syncConnectedPeer(Peer peer,UsageCapabilities caps,Bas
       return {false,Reason::CleanupFailed};
     }
   }
+  if(connection.displayNetworkPolicy=="bluetoothOnly")caps.displayPolicyReason=Reason::BluetoothOnlyMode;
+  else if(connection.displayNetworkPolicy!="networkAllowed")caps.displayPolicyReason=Reason::CapabilityCheckRequired;
   authenticatedPeer(std::move(peer),caps);auto& entry=m_peers.at(identity);
   const bool fresh=entry.connection.id!=connection.id;
   entry.connection=std::move(connection);
@@ -138,6 +143,7 @@ Outcome PeerUsageService::syncConnectedPeer(Peer peer,UsageCapabilities caps,Bas
   if(fresh||state==UsageState::Inactive||state==UsageState::InputActive)
     outcome=entry.coordinator->synchronizeInput(entry.connection.permission,entry.connection.focusOwner,entry.connection.inputActive,(fresh||entry.coordinator->snapshot().key.operation==SessionId{})?parseId(QString::fromStdString(entry.connection.id)):SessionId{});
   else entry.coordinator->inputStatus(entry.connection.permission,entry.connection.focusOwner);
+  if(caps.displayPolicyReason!=Reason::None)entry.coordinator->restrictDisplay(caps.displayPolicyReason,randomId());
   Q_EMIT connectionChanged(connectionJson(identity,entry));publish(identity);return outcome;
 }
 bool PeerUsageService::connectionClosed(const QString& peerId,const QString& id,uint64_t generation,bool inputReleaseVerified){
@@ -156,7 +162,7 @@ QJsonObject PeerUsageService::connectionJson(const QString& peerId,const Entry& 
   const char* direction=c.role==InputRole::Source?"localToPeer":c.role==InputRole::Receiver?"peerToLocal":"unknown";
   return {{"peerId",peerId},{"peerName",QString::fromStdString(entry.peer.name)},{"baseConnectionId",QString::fromStdString(c.id)},
     {"baseConnectionGeneration",QString::number(c.generation)},{"baseConnected",c.connected},
-    {"originalInputRole",role},{"originalInputDirection",direction},{"deviceKeys",keys}};
+    {"displayNetworkPolicy",QString::fromStdString(c.displayNetworkPolicy)},{"originalInputRole",role},{"originalInputDirection",direction},{"deviceKeys",keys}};
 }
 QJsonArray PeerUsageService::connectedPeers()const{
   ownerThread();QJsonArray result;for(const auto& [identity,entry]:m_peers)result.append(connectionJson(identity,entry));return result;
@@ -165,7 +171,8 @@ QJsonObject PeerUsageService::capabilities(const Entry& entry)const{
   const auto& c=entry.capabilities;return {{"input",availabilityName(c.input)},{"keyboard",availabilityName(c.keyboard)},
     {"focusSync",availabilityName(c.focusSync)},{"extended",availabilityName(c.extended)},
     {"targetIsolation",availabilityName(c.targetIsolation)},{"inputRelease",availabilityName(c.inputRelease)},
-    {"displayRouting",availabilityName(c.displayRouting)},{"networkAvailable",c.networkAvailable}};
+    {"displayRouting",availabilityName(c.displayRouting)},{"networkAvailable",c.networkAvailable},
+    {"displayNetworkAllowed",c.displayPolicyReason==Reason::None},{"displayUnavailableReason",reasonName(c.displayPolicyReason)}};
 }
 QJsonObject PeerUsageService::snapshot(const QString& peerId)const{
   ownerThread();auto it=m_peers.find(peerId);if(it==m_peers.end())return {};const auto& e=it->second;const auto& s=e.coordinator->snapshot();
