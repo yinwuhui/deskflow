@@ -71,6 +71,10 @@ void MediaSupervisor::start(const Key& key,Role role) {
      (role==Role::Host&&m_runtime.source=="macos"&&!executable(m_runtime.macosProbe))){
     m_service->backendFailed(key,Reason::UnsupportedPlatform);return;
   }
+  QString receiverName,receiverMode;
+  if(role==Role::Receiver&&m_receiverSelectionValidator&&!m_receiverSelectionValidator(receiverName,receiverMode)){
+    m_service->backendFailed(key,Reason::CapabilityCheckRequired);return;
+  }
   OwnedResource record{key,peer,role,{}};
   if(!m_journal.claim(record)){m_service->backendFailed(key,Reason::CleanupFailed);return;}
   m_owner=key;m_stdout.clear();m_stderr.clear();m_cleanupVerified=false;m_exited=false;
@@ -85,6 +89,7 @@ void MediaSupervisor::start(const Key& key,Role role) {
   } else args<<"--host"<<endpoint.address<<"--port"<<QString::number(endpoint.port)<<"--native-viewer"<<m_runtime.nativeViewer;
   auto environment=m_runtime.environment;
   if(role==Role::Receiver){
+    if(!receiverName.isEmpty()){environment.insert("DESKFLOW_VIEWER_SCREEN_NAME",receiverName);environment.insert("DESKFLOW_VIEWER_PRESENTATION",receiverMode);}
     m_viewerEndpoint="busymouse-viewer-"+QUuid::createUuid().toString(QUuid::Id128);m_viewerToken=QUuid::createUuid().toString(QUuid::Id128);
     environment.insert("DESKFLOW_VIEWER_CONTROL_ENDPOINT",m_viewerEndpoint);environment.insert("DESKFLOW_VIEWER_CONTROL_TOKEN",m_viewerToken);
   }

@@ -8,6 +8,7 @@
 #include <QProcessEnvironment>
 #include <QTemporaryDir>
 #include <memory>
+#include <functional>
 namespace deskflow::display {
 struct MediaRuntime {
   QString python;
@@ -34,6 +35,7 @@ public:
   MediaSupervisor(DisplayService* service, MediaRuntime runtime, const QString& resourceDirectory, QObject* parent = nullptr);
   ~MediaSupervisor() override;
   Outcome addTrustedEndpoint(TrustedMediaEndpoint endpoint);
+  void setReceiverSelectionValidator(std::function<bool(QString&,QString&)> validator){m_receiverSelectionValidator=std::move(validator);}
   void setCoordinatedCleanup(bool enabled){m_coordinatedCleanup=enabled;}
   ResourceJournal::Status journalStatus() const { return m_journal.status(); }
 Q_SIGNALS:
@@ -54,6 +56,7 @@ private:
   void verifyResidual(const Key& cleanupKey);
   QPointer<DisplayService> m_service;
   MediaRuntime m_runtime;
+  std::function<bool(QString&,QString&)> m_receiverSelectionValidator;
   ResourceJournal m_journal;
   QHash<QString, TrustedMediaEndpoint> m_endpoints;
   QProcess* m_process = nullptr;

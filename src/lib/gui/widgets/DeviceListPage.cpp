@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-only WITH LicenseRef-OpenSSL-Exception
  */
 #include "DeviceListPage.h"
+#include "DeviceScreenInfo.h"
 #include "PeerUsageControl.h"
 #include "DeviceConnectionInfo.h"
 #include "gui/core/PeerUsageModel.h"
@@ -655,17 +656,22 @@ void DeviceListPage::rebuildDetail()
     auto metadata = label((server ? tr("Keyboard and mouse server") : tr("Receiving computer")) + QStringLiteral(" · ") + d.source, "muted", m_details);
     metadata->setToolTip(d.source);
     layout->addWidget(metadata);
-    auto connections = new DeviceConnectionInfo(m_details);
-    connections->setDevice(d.id, d.address);
-    layout->addSpacing(8);
-    layout->addWidget(connections);
   }
+  auto screens=new DeviceScreenInfo(m_details);screens->setDevice(d.id,local);
   if (!local) {
     auto usage = new PeerUsageControl(m_details);
     usage->setDevice(d.id);
-    layout->addSpacing(12);
+    layout->addSpacing(8);
     layout->addWidget(usage);
+    layout->addWidget(screens->extensionSettings());
+    connect(usage,&PeerUsageControl::extendedSelectionChanged,screens,&DeviceScreenInfo::setExtensionSelected);
+    screens->setExtensionSelected(usage->extendedSelected());
+    auto connections = new DeviceConnectionInfo(m_details);
+    connections->setDevice(d.id, d.address);
+    layout->addSpacing(12);
+    layout->addWidget(connections);
   }
+  layout->addSpacing(12);layout->addWidget(screens);
   layout->addSpacing(20);
   const auto mainText = local       ? tr("View screen arrangement")
                         : server    ? (connected ? tr("Disconnect") : tr("Use this computer's keyboard and mouse"))

@@ -12,8 +12,15 @@ endif()
 # The core remains independently buildable without Qt. The product facade is
 # linked into the application only when BUILD_VIRTUAL_DISPLAY is enabled.
 if(TARGET Qt6::Core)
-  add_library(deskflow-display-service STATIC ProductDisplayRuntime.cpp ProductDisplayRuntime.h CoreInputChannel.cpp CoreInputChannel.h InputRouteAdapter.cpp InputRouteAdapter.h UsageDisplayBridge.cpp UsageDisplayBridge.h PeerUsageService.cpp PeerUsageService.h DisplayService.cpp DisplayService.h ResourceJournal.cpp ResourceJournal.h MediaSupervisor.cpp MediaSupervisor.h)
-  target_link_libraries(deskflow-display-service PUBLIC deskflow-display Qt6::Core Qt6::Network PRIVATE common)
+  add_library(deskflow-display-service STATIC ScreenInventoryService.cpp ScreenInventoryService.h ProductDisplayRuntime.cpp ProductDisplayRuntime.h CoreInputChannel.cpp CoreInputChannel.h InputRouteAdapter.cpp InputRouteAdapter.h UsageDisplayBridge.cpp UsageDisplayBridge.h PeerUsageService.cpp PeerUsageService.h DisplayService.cpp DisplayService.h ResourceJournal.cpp ResourceJournal.h MediaSupervisor.cpp MediaSupervisor.h)
+  target_link_libraries(deskflow-display-service PUBLIC deskflow-display Qt6::Core Qt6::Network Qt6::Gui PRIVATE common)
+  if(APPLE)
+    target_link_libraries(deskflow-display-service PRIVATE "-framework CoreGraphics")
+  endif()
+  if(TARGET Qt6::DBus)
+    target_link_libraries(deskflow-display-service PRIVATE Qt6::DBus)
+    target_compile_definitions(deskflow-display-service PRIVATE DESKFLOW_SCREEN_DBUS)
+  endif()
   set_target_properties(deskflow-display-service PROPERTIES AUTOMOC ON)
   target_compile_definitions(deskflow-display-service PRIVATE DESKFLOW_DISPLAY_RUNTIME_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype")
   install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/display_session.py"

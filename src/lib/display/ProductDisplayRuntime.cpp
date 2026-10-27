@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "ProductDisplayRuntime.h"
+#include "ScreenInventoryService.h"
+#include <QGuiApplication>
 #include "common/Settings.h"
 #include "common/UsageInputState.h"
 #include <QCoreApplication>
@@ -67,6 +69,8 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
 #endif
   m_runtime.bindAddress="0.0.0.0";
   if(configuration)m_runtime=configuration->media;
+  // Keep monitor names, scale and coordinates in the same Qt platform as the GUI.
+  if(qobject_cast<QGuiApplication*>(QCoreApplication::instance()))m_runtime.environment.insert("QT_QPA_PLATFORM",QGuiApplication::platformName());
   const auto config=configuration?configuration->resources:QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)+"/display-runtime";
   QDir().mkpath(config);QFile::setPermissions(config,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
   m_runtime.identityDirectory=config+"/identity";QDir().mkpath(m_runtime.identityDirectory);
@@ -83,6 +87,13 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
   m_inputStateFile=configuration?configuration->resources+"/usage-input.ini":UsageInputState::filePath();
   m_media=new MediaSupervisor(display,m_runtime,config+"/resources",this);
   m_media->setCoordinatedCleanup(true);
+  if(qobject_cast<QGuiApplication*>(QCoreApplication::instance())){
+    m_screens=ScreenInventoryService::applicationService();m_screens->attach(channel,usage);
+    m_media->setReceiverSelectionValidator([this](QString& name,QString& mode){
+      if(!m_screens->resolveLocalSelection(m_receiverSelection,&name))return false;
+      mode=m_receiverSelection.value("presentationMode").toString();return true;
+    });
+  }
   connect(m_media,&MediaSupervisor::localCleanupFinished,this,&ProductDisplayRuntime::localCleanup);
   connect(display,&DisplayService::snapshotChanged,this,&ProductDisplayRuntime::resourceState);
   resourceState(display->snapshot());
@@ -242,6 +253,10 @@ void ProductDisplayRuntime::received(const QJsonObject& event){
     if(connection.value("displayNetworkPolicy")!="networkAllowed"||m_remote.value(peer).value("displayNetworkPolicy")!="networkAllowed"){
       auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode","BluetoothOnlyMode");send(peer,reply);return;
     }
+    if(m_screens&&!m_screens->resolveLocalSelection(body.value("screenSelection").toObject())){
+      auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode","CapabilityCheckRequired");send(peer,reply);return;
+    }
+    m_receiverSelection=body.value("screenSelection").toObject();
     auto result=m_display->incomingAuthenticated(known,session(body.value("sessionId")),session(body.value("requestId")));
     if(!result.accepted){auto reply=body;reply.insert("type","rejected");reply.insert("reasonCode",reasonName(result.reason));send(peer,reply);return;}
     m_peer=peer;m_wire={};for(auto key:{"sessionId","requestId","generation","displayEpoch"})m_wire.insert(key,body.value(key));
@@ -281,7 +296,13 @@ void ProductDisplayRuntime::effect(const QJsonObject& value){
     m_peer=snapshot.value("peerId").toString();m_wire={};for(auto key:{"sessionId","requestId","generation","displayEpoch"})m_wire.insert(key,value.value(key));
     m_displayBase=m_connections.value(m_peer).value("baseConnectionId").toString();
     m_haveLocalCleanup=m_havePeerCleanup=m_localCleanup=m_peerCleanup=false;m_localResourceGone=false;m_peerTermination=false;m_cleanupReply={};
-    send(m_peer,wire("request"));
+    auto request=wire("request");
+    if(m_screens){
+      const auto selection=m_screens->selectionForPeer(m_peer);
+      if(selection.isEmpty()){m_display->stopManagedSession(m_display->currentKey(),Reason::CapabilityCheckRequired);return;}
+      request.insert("screenSelection",selection);
+    }
+    send(m_peer,request);
   }else if(op=="SendAccepted"){
     const auto outcome=m_bridge->adoptIncoming();
     if(!outcome.accepted)m_display->stopManagedSession(m_display->currentKey(),outcome.reason);

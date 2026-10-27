@@ -159,6 +159,11 @@ int main(int argc,char** argv) {
   constexpr qsizetype bytes=1920*1080*4;
   QByteArray pending;pending.reserve(bytes);
   ReceiverWindow window;window.show();
+  const auto selectedScreen=qEnvironmentVariable("DESKFLOW_VIEWER_SCREEN_NAME");
+  if(!selectedScreen.isEmpty()&&!window.present({{"action","presentation"},{"receiverScreenId",selectedScreen},
+       {"presentationMode",qEnvironmentVariable("DESKFLOW_VIEWER_PRESENTATION","window")},{"scaleMode","fit"}})){
+    window.sourceEnded=true;publishWindowEvent({{"event","viewerUnavailable"},{"reasonCode","SessionUnavailable"}});return 3;
+  }
   bool ownerValid=false;const auto owner=qEnvironmentVariableIntValue("DESKFLOW_VIEWER_PARENT_PID",&ownerValid);
   QTimer ownerWatch;
   if(ownerValid&&owner>0){

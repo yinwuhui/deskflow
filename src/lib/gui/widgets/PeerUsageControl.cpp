@@ -32,7 +32,7 @@ PeerUsageControl::PeerUsageControl(QWidget *parent, PeerUsageModel *model)
   m_segments = new QWidget(this);
   m_segments->setObjectName("usageSegments");
   m_segments->setFixedHeight(42);
-  m_segments->setMaximumWidth(330);
+  m_segments->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
   m_selection = new QWidget(m_segments);
   m_selection->setObjectName("usageSelection");
   m_selection->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -176,4 +176,5 @@ void PeerUsageControl::refresh()
           ? tr("Use this computer's screen to extend the local desktop. Requires permission on the other computer.")
           : tr("Extended display support and network availability have not been confirmed."));
   positionSelection(changed);
+  if (changed) Q_EMIT extendedSelectionChanged(selected);
 }

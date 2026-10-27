@@ -5,6 +5,7 @@
 #include "UsageDisplayBridge.h"
 #include <QProcess>
 namespace deskflow::display {
+class ScreenInventoryService;
 // Owns the product composition. Only the authenticated core can introduce peers.
 struct ProductDisplayConfiguration {
   MediaRuntime media;
@@ -41,6 +42,8 @@ private:
   MediaSupervisor* m_media=nullptr;
   MediaRuntime m_runtime;
   Capabilities m_local;
+  ScreenInventoryService* m_screens=nullptr;
+  QJsonObject m_receiverSelection;
   QString m_permission="unknown",m_root,m_publicCertificate,m_peer;
   QHash<QString,QJsonObject> m_connections,m_remote;
   QJsonObject m_wire,m_cleanupReply;

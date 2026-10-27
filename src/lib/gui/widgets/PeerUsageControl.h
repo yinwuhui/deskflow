@@ -11,6 +11,10 @@ class PeerUsageControl : public QWidget
 public:
   explicit PeerUsageControl(QWidget *parent = nullptr, PeerUsageModel *model = nullptr);
   void setDevice(const QString &key);
+  bool extendedSelected() const { return m_extendedSelected; }
+
+Q_SIGNALS:
+  void extendedSelectionChanged(bool selected);
 
 protected:
   void resizeEvent(QResizeEvent *event) override;

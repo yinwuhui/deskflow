@@ -132,6 +132,7 @@ private Q_SLOTS:
     QVERIFY(!args.contains("shareKeyboard"));
     QVERIFY(!arrangement.findChild<QPushButton *>("usageExtended")->isEnabled());
     QCOMPARE(model.snapshot("computer:work")["effectiveMode"].toString(), QString("input"));
+    QSignalSpy selection(&devices, &PeerUsageControl::extendedSelectionChanged);
     auto pending = state(2, "input", "Switching", "extended");
     model.receiveReply({{"id", command["id"]}, {"accepted", true}, {"snapshot", pending}});
     for (auto control : {&devices, &arrangement}) {
@@ -139,12 +140,17 @@ private Q_SLOTS:
       QVERIFY(!control->findChild<QPushButton *>("usageCancel")->isHidden());
       QVERIFY(control->findChild<QLabel *>("usageStatus")->text().contains("permission"));
     }
+    QVERIFY(devices.extendedSelected());
+    QCOMPARE(selection.count(),1);
+    QCOMPARE(selection.last()[0].toBool(),true);
     arrangement.findChild<QPushButton *>("usageCancel")->click();
     auto cancel = commands.last()[0].toJsonObject();
     QCOMPARE(cancel["operation"].toString(), QString("cancelPeerUsageOperation"));
     QCOMPARE(cancel["args"].toObject()["operationGeneration"].toString(), QString("7"));
     model.receiveReply({{"id", cancel["id"]}, {"accepted", true}, {"snapshot", state(3)}});
     QVERIFY(devices.findChild<QPushButton *>("usageInput")->isChecked());
+    QVERIFY(!devices.extendedSelected());
+    QCOMPARE(selection.last()[0].toBool(),false);
     model.receiveSnapshot(state(4, "extended", "DisplayActive"));
     QVERIFY(!devices.findChild<QPushButton *>("usageStop")->isHidden());
     QVERIFY(arrangement.findChild<QPushButton *>("usageExtended")->isChecked());

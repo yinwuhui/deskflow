@@ -3800,4 +3800,150 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
         <translation>应用心跳往返延迟，包含应用调度和排队耗时。</translation>
     </message>
 </context>
+
+<context>
+    <name>DeviceScreenInfo</name>
+    <message>
+        <source>Screen information</source>
+        <translation>屏幕信息</translation>
+    </message>
+    <message>
+        <source>Receiving screen</source>
+        <translation>接收屏幕</translation>
+    </message>
+    <message>
+        <source>Screen to use for extended display</source>
+        <translation>用于拓展屏幕的显示器</translation>
+    </message>
+    <message>
+        <source>Display style</source>
+        <translation>显示方式</translation>
+    </message>
+    <message>
+        <source>Window</source>
+        <translation>窗口</translation>
+    </message>
+    <message>
+        <source>Full screen</source>
+        <translation>全屏</translation>
+    </message>
+    <message>
+        <source>Picture quality</source>
+        <translation>画面规格</translation>
+    </message>
+    <message>
+        <source>1920 × 1080 · 30 fps</source>
+        <translation>1920 × 1080 · 30 帧/秒</translation>
+    </message>
+    <message>
+        <source>About picture quality</source>
+        <translation>画面规格说明</translation>
+    </message>
+    <message>
+        <source>Current support: 1920 × 1080, 30 fps, H.264 SDR. Display specifications do not change the streaming limit.</source>
+        <translation>当前支持 1920 × 1080、30 帧/秒、H.264 SDR。显示器规格不代表拓展画面的传输规格。</translation>
+    </message>
+    <message>
+        <source>Built-in display</source>
+        <translation>内置显示屏</translation>
+    </message>
+    <message>
+        <source>Display %1</source>
+        <translation>显示器 %1</translation>
+    </message>
+    <message>
+        <source> · %1 Hz</source>
+        <translation> · %1 Hz</translation>
+    </message>
+    <message>
+        <source> · Estimated</source>
+        <translation> · 系统估算</translation>
+    </message>
+    <message>
+        <source>Primary</source>
+        <translation>主屏</translation>
+    </message>
+    <message>
+        <source>Details</source>
+        <translation>详情</translation>
+    </message>
+    <message>
+        <source>System name</source>
+        <translation>系统名称</translation>
+    </message>
+    <message>
+        <source>Scaling</source>
+        <translation>缩放比例</translation>
+    </message>
+    <message>
+        <source>Logical size</source>
+        <translation>逻辑尺寸</translation>
+    </message>
+    <message>
+        <source>Orientation</source>
+        <translation>屏幕方向</translation>
+    </message>
+    <message>
+        <source>Portrait</source>
+        <translation>纵向</translation>
+    </message>
+    <message>
+        <source>Landscape</source>
+        <translation>横向</translation>
+    </message>
+    <message>
+        <source>Physical size</source>
+        <translation>物理尺寸</translation>
+    </message>
+    <message>
+        <source>%1 × %2 mm</source>
+        <translation>%1 × %2 毫米</translation>
+    </message>
+    <message>
+        <source>Physical size is reported by the system and has not been calibrated.</source>
+        <translation>物理尺寸由系统报告，未经校准。</translation>
+    </message>
+    <message>
+        <source>Connect to view</source>
+        <translation>连接后可查看</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n screen(s)</source>
+        <translation>
+            <numerusform>%n 块屏幕</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Last connection</source>
+        <translation>上次连接</translation>
+    </message>
+    <message>
+        <source>Cached information · %1</source>
+        <translation>上次连接信息 · %1</translation>
+    </message>
+    <message>
+        <source>Unknown time</source>
+        <translation>时间未知</translation>
+    </message>
+    <message>
+        <source>Automatic (primary screen)</source>
+        <translation>自动选择主屏</translation>
+    </message>
+    <message>
+        <source>Previously selected screen is unavailable</source>
+        <translation>原先选择的屏幕不可用</translation>
+    </message>
+    <message>
+        <source>Unavailable in this build</source>
+        <translation>此版本暂不支持</translation>
+    </message>
+    <message>
+        <source>Applies to the next extension</source>
+        <translation>已保存，下次拓展时生效</translation>
+    </message>
+    <message>
+        <source>Screen information changed. Select a screen again.</source>
+        <translation>屏幕信息已变化，请重新选择。</translation>
+    </message>
+</context>
 </TS>

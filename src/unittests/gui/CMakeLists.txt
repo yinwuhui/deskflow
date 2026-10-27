@@ -78,3 +78,8 @@ create_test(
   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui"
 )
 set_tests_properties(DeviceConnectionInfoTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+if(TARGET deskflow-display-service)
+  create_test(NAME DeviceScreenInfoTests DEPENDS gui SOURCE DeviceScreenInfoTests.cpp WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/gui")
+  set_tests_properties(DeviceScreenInfoTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
