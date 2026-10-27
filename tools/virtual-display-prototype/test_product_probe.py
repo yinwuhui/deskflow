@@ -11,6 +11,21 @@ import product_probe
 
 
 class CapabilityProbeTests(unittest.TestCase):
+    def setUp(self):
+        tls = patch('product_probe.ssl.HAS_TLSv1_3', True)
+        tls.start()
+        self.addCleanup(tls.stop)
+
+    def test_missing_tls13_blocks_both_roles_before_native_probe(self):
+        with patch('product_probe.ssl.HAS_TLSv1_3', False), \
+             patch('product_probe.run') as native:
+            report = product_probe.probe(argparse.Namespace(viewer='viewer', macos_probe='native', request_permission=True))
+        self.assertEqual(report['send'], 'unsupported')
+        self.assertEqual(report['receive'], 'unsupported')
+        self.assertEqual(report['sendReason'], 'UnsupportedPlatform')
+        self.assertEqual(report['receiveReason'], 'UnsupportedPlatform')
+        native.assert_not_called()
+
     def probe(self, data=None, viewer=True, decoder=True, native=True, permission=False, failed_viewer=False):
         data = data if data is not None else dict(sessionOnConsole=True, screenLockKnown=True,
                 screenLocked=False, privateApiAvailable=True, capturePermission=False)

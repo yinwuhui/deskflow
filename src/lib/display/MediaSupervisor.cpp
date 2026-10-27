@@ -188,6 +188,12 @@ void MediaSupervisor::windowCommand(const Key& key,const QJsonObject& command){
 void MediaSupervisor::finish(QProcess* process,const Key& owner,Role) {
   if(process!=m_process || owner!=m_owner)return;
   consume(process,owner);m_stdout+=process->readAllStandardOutput();m_exited=true;m_forceTimer.stop();
+  if(process->exitStatus()!=QProcess::NormalExit||process->exitCode()!=0){
+    const auto report=QJsonDocument::fromJson(m_stdout).object();
+    qWarning().noquote()<<"display-media-exit"<<QJsonDocument(QJsonObject{
+      {"exitCode",process->exitCode()},{"crashed",process->exitStatus()!=QProcess::NormalExit},
+      {"error",report.value("error").toString().left(512)}}).toJson(QJsonDocument::Compact);
+  }
   if(m_service){
     const auto current=m_service->snapshot();
     if(current.value("state")!="Stopping"&&current.value("state")!="CleanupRequired")

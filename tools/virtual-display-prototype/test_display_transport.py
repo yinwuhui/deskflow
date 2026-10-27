@@ -9,9 +9,10 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 from display_transport import (BIND, HELLO, PING, VIDEO, BindingTokens, Frame, Reader,
-                               TransportError, authenticate, decode_json, fingerprint,
+                               TransportError, FRAME_SEND_TIMEOUT, authenticate, decode_json, fingerprint,
                                init_identity, require_fields, tls_context, TransferMetrics, tcp_rtt_ms)
 from h264_access_units import AccessUnitSplitter, MAX_AU, nal_types
 from display_session import BoundedUnits
@@ -24,7 +25,9 @@ class MetricTests(unittest.TestCase):
             def getsockopt(self, *args): return self.data
         linux=struct.pack('=8B16I',1,*([0]*7),*([0]*15),12500)
         mac=struct.pack('=4B11I',4,0,0,0,*([0]*10),12)
-        self.assertEqual(tcp_rtt_ms(Wire(linux),'linux'),12.5)
+        # The synthetic Linux layout also runs on Darwin, which lacks TCP_INFO.
+        with mock.patch.object(socket,'TCP_INFO',11,create=True):
+            self.assertEqual(tcp_rtt_ms(Wire(linux),'linux'),12.5)
         self.assertEqual(tcp_rtt_ms(Wire(mac),'darwin'),12)
         self.assertIsNone(tcp_rtt_ms(Wire(b'bad'),'linux'))
         self.assertIsNone(tcp_rtt_ms(Wire(linux),'unsupported'))
@@ -57,6 +60,32 @@ class QueueTests(unittest.TestCase):
         worker=threading.Thread(target=drain);worker.start()
         units.put(b'c');worker.join()
         self.assertEqual(units.queue.qsize(),2)
+
+    def test_source_survives_temporary_send_stall_without_dropping_units(self):
+        units=BoundedUnits(steady_timeout=FRAME_SEND_TIMEOUT + 0.1)
+        units.startup_until=0
+        units.put(b'a');units.put(b'b')
+        def drain():
+            # Longer than the old 150 ms queue deadline, within send budget.
+            time.sleep(0.25)
+            value=units.get();units.release(value)
+        worker=threading.Thread(target=drain);worker.start()
+        try:
+            units.put(b'c')
+        finally:
+            worker.join()
+        self.assertEqual([units.get(),units.get()],[b'b',b'c'])
+        self.assertEqual(units.bytes,2)
+
+    def test_source_persistent_stall_is_bounded_after_startup(self):
+        units=BoundedUnits(steady_timeout=FRAME_SEND_TIMEOUT + 0.1)
+        units.startup_until=0
+        units.put(b'a');units.put(b'b')
+        started=time.monotonic()
+        with self.assertRaises(TransportError):units.put(b'c')
+        self.assertGreaterEqual(time.monotonic()-started,FRAME_SEND_TIMEOUT)
+        self.assertEqual([units.get(),units.get()],[b'a',b'b'])
+        self.assertEqual(units.bytes,2)
 
     def test_congestion_and_memory_budget(self):
         units=BoundedUnits();units.put(b'a');units.put(b'b')

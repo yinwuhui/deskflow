@@ -20,7 +20,7 @@ import time
 
 from display_transport import (ACCEPT, BIND, CAPS, CONFIG, HELLO, PING, PONG, PRESENT, READY,
                                RELEASE, START, STATS, STOP, STOPPED, VIDEO, ZERO,
-                               BindingTokens, FramedSocket, TransferMetrics, TransportError,
+                               BindingTokens, FRAME_SEND_TIMEOUT, FramedSocket, TransferMetrics, TransportError,
                                authenticate, decode_json, fingerprint, init_identity,
                                require_fields, tls_context)
 from h264_access_units import AccessUnitSplitter, MAX_AU, nal_types
@@ -45,13 +45,14 @@ def hex_value(value, size):
 
 
 class BoundedUnits:
-    def __init__(self):
+    def __init__(self, steady_timeout=0.15):
         self.queue = queue.Queue(maxsize=2)
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
         self.bytes = 0
         self.high_water = 0
         self.completed = 0
+        self.steady_timeout = steady_timeout
         self.startup_until = time.monotonic() + 2
 
     def put(self, data, timeout=None):
@@ -60,9 +61,9 @@ class BoundedUnits:
         with self.condition:
             # Allow two seconds for cold decoder/viewer startup. This is an
             # absolute grace window, not renewed by queue progress. The two
-            # pending-frame/4 MiB budgets remain; steady-state waits are 150 ms.
+            # pending-frame/4 MiB budgets remain; steady-state waits are bounded.
             deadline = time.monotonic() + (timeout if timeout is not None else
-                                           (max(0.15, self.startup_until - time.monotonic())))
+                                           (max(self.steady_timeout, self.startup_until - time.monotonic())))
             while self.bytes + len(data) > 4 * 1024 * 1024 or self.queue.full():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
@@ -121,7 +122,10 @@ class LogEvents:
 
 class Source:
     def __init__(self, args):
-        self.units = BoundedUnits()
+        # A legal frame send can block for the full transport deadline. Do not
+        # abort its producer first; allow a small scheduling margin as well.
+        # Persistent stalls still fail, without dropping dependent H.264 units.
+        self.units = BoundedUnits(steady_timeout=FRAME_SEND_TIMEOUT + 0.1)
         self.finished = threading.Event()
         self.stopping = threading.Event()
         self.error = None

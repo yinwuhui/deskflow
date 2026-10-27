@@ -59,7 +59,15 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
   if(QFileInfo::exists(bundleResources+"/display_session.py"))m_root=bundleResources;
   if(!QFileInfo::exists(m_root+"/display_session.py"))m_root=QStringLiteral(DESKFLOW_DISPLAY_RUNTIME_SOURCE);
   if(configuration&&!configuration->scriptDirectory.isEmpty())m_root=configuration->scriptDirectory;
-  m_runtime.python=QStandardPaths::findExecutable("python3");m_runtime.sessionScript=m_root+"/display_session.py";
+  m_runtime.python=QStandardPaths::findExecutable("python3");
+#ifdef Q_OS_MACOS
+  // LaunchServices often puts Apple's TLS-1.2-only Python first on PATH. Prefer
+  // the packaged runtime, then standard Homebrew locations. The probe below
+  // still requires TLS 1.3; selecting an executable alone grants no capability.
+  for(const auto& candidate:{executable+"/python3",QStringLiteral("/opt/homebrew/bin/python3"),QStringLiteral("/usr/local/bin/python3")})
+    if(QFileInfo(candidate).isFile()&&QFileInfo(candidate).isExecutable()){m_runtime.python=candidate;break;}
+#endif
+  m_runtime.sessionScript=m_root+"/display_session.py";
   m_runtime.nativeViewer=executable+"/busymouse-display-viewer";
   m_runtime.macosProbe=executable+"/busymouse-display-probe";
 #ifdef Q_OS_MACOS
@@ -82,6 +90,21 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
       m_publicCertificate=QString::fromLatin1(certs.first().toPem());
       if(!save(m_runtime.identityDirectory+"/cert.pem",certs.first().toPem())||!save(m_runtime.identityDirectory+"/key.pem",bytes))m_publicCertificate.clear();
     }
+  }
+  if(qEnvironmentVariableIsSet("BMOUSE_DISPLAY_DIAGNOSTICS")){
+    auto report=[previous=std::make_shared<QHash<QByteArray,QByteArray>>()](const char* kind,const QJsonObject& value){
+      QJsonObject summary;
+      for(const auto* key:{"state","usageState","switchStage","reasonCode","terminalReasonCode","cleanupStatus","effectiveMode","targetMode","operation","localDisplayRole","firstFramePresented"})
+        if(value.contains(key))summary.insert(key,value.value(key));
+      const auto bytes=QJsonDocument(summary).toJson(QJsonDocument::Compact);
+      if(previous->value(kind)==bytes)return;
+      previous->insert(kind,bytes);
+      qInfo().noquote()<<"display-diagnostic"<<kind<<bytes;
+    };
+    connect(display,&DisplayService::snapshotChanged,this,[report](const QJsonObject& value){report("display",value);});
+    connect(usage,&PeerUsageService::snapshotChanged,this,[report](const QJsonObject& value){report("usage",value);});
+    connect(display,&DisplayService::backendCommand,this,[report](const QJsonObject& value){report("backend",value);});
+    connect(usage,&PeerUsageService::backendCommand,this,[report](const QJsonObject& value){report("input",value);});
   }
   connect(this,&ProductDisplayRuntime::outboundControl,channel,&CoreInputChannel::sendPeerControl);
   m_inputStateFile=configuration?configuration->resources+"/usage-input.ini":UsageInputState::filePath();

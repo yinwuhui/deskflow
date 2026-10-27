@@ -27,6 +27,7 @@ ZERO = bytes(16)
 CONTROL_LIMIT = 65536
 INPUT_LIMIT = 4096
 VIDEO_LIMIT = 4 * 1024 * 1024
+FRAME_SEND_TIMEOUT = 1.0
 HELLO, CAPS, START, ACCEPT, REJECT, CONFIG, READY, PRESENT = range(1, 9)
 KEYFRAME, LEASE_REQUEST, LEASE_GRANT, LEASE_REVOKE = range(9, 13)
 RECONFIGURE, RECONFIGURE_ACK, STATS, PING, PONG, STOP, STOPPED, BIND = range(13, 21)
@@ -217,7 +218,7 @@ class FramedSocket:
         self.sequence += 1
         frame = Frame(kind, payload, self.session or ZERO, self.epoch or 0, self.sequence)
         encoded = frame.encode()
-        deadline = time.monotonic() + 1
+        deadline = time.monotonic() + FRAME_SEND_TIMEOUT
         for offset in range(0, len(encoded), 16384):
             remaining = deadline - time.monotonic()
             if remaining <= 0:

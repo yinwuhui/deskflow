@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import ssl
 import subprocess
 
 
@@ -25,6 +26,12 @@ def initial_report():
 
 def probe(args):
     report = initial_report()
+    # Control connectivity does not prove the Python media transport can create
+    # the mandatory mutually authenticated TLS 1.3 channel.
+    if not ssl.HAS_TLSv1_3:
+        report.update(send='unsupported', receive='unsupported',
+                      sendReason='UnsupportedPlatform', receiveReason='UnsupportedPlatform')
+        return report
     system = platform.system()
     if system not in ('Linux', 'Darwin'):
         report.update(send='unsupported', receive='unsupported',
