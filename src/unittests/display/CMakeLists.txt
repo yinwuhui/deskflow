@@ -144,3 +144,13 @@ foreach(case FrameLayouts FrameBudget FrameFreshness FrameTickets FrameFences Fr
   set_tests_properties(Display.Infrastructure.${case} PROPERTIES TIMEOUT 10)
 endforeach()
 set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayFrameModelTests)
+
+if(TARGET deskflow-display-infra-runtime)
+  add_executable(DisplayResourceExecutorTests ResourceExecutorTests.cpp)
+  target_link_libraries(DisplayResourceExecutorTests PRIVATE deskflow-display-infra-runtime)
+  foreach(case ResourceExecutionDurability ResourceCancelledCreation ResourceAmbiguousOwner ResourceIndependentAbsence
+               ResourceDependencyCleanup ResourceIntentRecovery ResourceExecutionBarriers ResourceObservationFailure ResourceLegacyRecord ResourceUnsupportedRecord ResourceProviderException)
+    add_test(NAME Display.Infrastructure.${case} COMMAND DisplayResourceExecutorTests ${case})
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayResourceExecutorTests)
+endif()

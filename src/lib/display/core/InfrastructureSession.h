@@ -5,21 +5,51 @@
 #include <deque>
 
 namespace deskflow::display::infra {
-enum class Lifecycle { Idle, Reserved, Negotiating, AwaitingBarriers, Preparing,
-  AwaitingFirstFrame, Streaming, Recovering, Stopping, VerifyingCleanup, CleanupRequired };
-enum class EffectKind { PersistIntent, PrepareBackend, StartMedia, RequestRefresh,
-  StopMedia, CancelPreparation, TerminateWorker, DestroyResources, VerifyResources };
-enum class PresentationEvidence { Decoded, Submitted, NativePaintConfirmed, CompositorPresented };
-struct SessionToken {
+enum class Lifecycle
+{
+  Idle,
+  Reserved,
+  Negotiating,
+  AwaitingBarriers,
+  Preparing,
+  AwaitingFirstFrame,
+  Streaming,
+  Recovering,
+  Stopping,
+  VerifyingCleanup,
+  CleanupRequired
+};
+enum class EffectKind
+{
+  PersistIntent,
+  PrepareBackend,
+  StartMedia,
+  RequestRefresh,
+  StopMedia,
+  CancelPreparation,
+  TerminateWorker,
+  DestroyResources,
+  VerifyResources
+};
+enum class PresentationEvidence
+{
+  Decoded,
+  Submitted,
+  NativePaintConfirmed,
+  CompositorPresented
+};
+struct SessionToken
+{
   std::string session;
   uint64_t attempt = 0;
   uint64_t generation = 0;
   uint32_t epoch = 1;
   std::string owner;
   std::string worker;
-  bool operator==(const SessionToken&) const = default;
+  bool operator==(const SessionToken &) const = default;
 };
-struct SessionScope {
+struct SessionScope
+{
   std::string localIdentity;
   std::string peerIdentity;
   std::string controlBinding;
@@ -28,7 +58,8 @@ struct SessionScope {
   Direction localDirection = Direction::Send;
   uint64_t attempt = 1;
 };
-struct Barriers {
+struct Barriers
+{
   bool authorized = false;
   bool permissionsReady = false;
   bool inputsReleased = false;
@@ -36,11 +67,13 @@ struct Barriers {
   bool peerCommitted = false;
   TimePoint authorizationExpires{};
 };
-struct SessionEffect {
+struct SessionEffect
+{
   EffectKind kind;
   SessionToken token;
 };
-struct SessionSnapshot {
+struct SessionSnapshot
+{
   Lifecycle state = Lifecycle::Idle;
   SessionToken token;
   uint64_t revision = 0;
@@ -53,32 +86,38 @@ struct SessionSnapshot {
 };
 // One owner executor, no I/O, sleeps, platform operations or callbacks.
 // Cleanup uses owner+worker identity, independently of cancellation generation.
-class InfrastructureSession {
+class InfrastructureSession
+{
 public:
-  const SessionSnapshot& snapshot() const { return m_snapshot; }
+  const SessionSnapshot &snapshot() const
+  {
+    return m_snapshot;
+  }
   bool reserve(SessionScope, TimePoint now);
-  bool beginNegotiation(const SessionToken&, TimePoint now);
-  Rejection acceptPlan(const SessionToken&, const SessionPlan&, const std::string& hash,
-                       const CapabilitySnapshot& sender, const CapabilitySnapshot& receiver,
-                       const Requirements&, const SelectionPolicy&, TimePoint now);
-  bool commit(const SessionToken&, Barriers, TimePoint now);
-  bool intentPersisted(const SessionToken&, bool success, TimePoint now);
-  bool attachWorker(const SessionToken&, const std::string& workerInstance, TimePoint now);
-  bool preparationFailed(const SessionToken&, TimePoint now);
-  bool prepared(const SessionToken&, TimePoint now);
-  bool presented(const SessionToken&, PresentationEvidence, bool exposed, TimePoint now);
-  bool beginRecovery(const SessionToken&, TimePoint now);
-  bool recovered(const SessionToken&, TimePoint now);
-  bool retryRefresh(const SessionToken&, TimePoint now);
-  bool stop(const std::string& reason, TimePoint now);
-  bool workerQuiesced(const std::string& owner, const std::string& worker, TimePoint now);
-  bool resourcesDestroyed(const std::string& owner, TimePoint now);
-  bool cleanupEvidence(const std::string& owner, bool verified, TimePoint now);
+  bool beginNegotiation(const SessionToken &, TimePoint now);
+  Rejection acceptPlan(
+      const SessionToken &, const SessionPlan &, const std::string &hash, const CapabilitySnapshot &sender,
+      const CapabilitySnapshot &receiver, const Requirements &, const SelectionPolicy &, TimePoint now
+  );
+  bool commit(const SessionToken &, Barriers, TimePoint now);
+  bool intentPersisted(const SessionToken &, bool success, TimePoint now);
+  bool attachWorker(const SessionToken &, const std::string &workerInstance, TimePoint now);
+  bool preparationFailed(const SessionToken &, TimePoint now);
+  bool prepared(const SessionToken &, TimePoint now);
+  bool presented(const SessionToken &, PresentationEvidence, bool exposed, TimePoint now);
+  bool beginRecovery(const SessionToken &, TimePoint now);
+  bool recovered(const SessionToken &, TimePoint now);
+  bool retryRefresh(const SessionToken &, TimePoint now);
+  bool stop(const std::string &reason, TimePoint now);
+  bool workerQuiesced(const std::string &owner, const std::string &worker, TimePoint now);
+  bool resourcesDestroyed(const std::string &owner, TimePoint now);
+  bool cleanupEvidence(const std::string &owner, bool verified, TimePoint now);
   bool retryCleanup(TimePoint now);
   void tick(TimePoint now);
   std::vector<SessionEffect> takeEffects();
+
 private:
-  bool matches(const SessionToken&) const;
+  bool matches(const SessionToken &) const;
   bool expired(TimePoint now) const;
   void changed();
   void effect(EffectKind);

@@ -12,28 +12,83 @@ namespace deskflow::display::infra {
 using Clock = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
-enum class Direction { Send, Receive };
-enum class WireProtocol { Rdp, WebRtc };
-enum class Readiness { Unknown, Checking, Available, Conditional, Unavailable };
-enum class GraphicsMode { H264ConstrainedBaseline, RdpAvc420, RdpAvc444 };
-enum class SecurityProfile { RdpAuthenticatedTls13, WebRtcAuthenticatedDtlsSrtp };
-enum class ColorProfile { SdrBt709Limited8, SdrBt709Full8 };
-enum class CursorMode { Embedded, Metadata };
-enum class MemoryDomain { Cpu, D3D11, IOSurface, DmaBuf, BackendNative };
-enum class Rejection {
-  None, InvalidCapabilities, WrongDirection, NetworkForbidden, Busy, CleanupUnverified,
-  NotReady, StaleCapabilities, NoCompatiblePipeline, NoCommonProtocol, NoCommonFormat, SecurityMismatch,
-  UnsupportedFeature, UncertifiedPipeline, IdentityMismatch, VersionMismatch,
-  InvalidPlan, ResourceBudgetExceeded
+enum class Direction
+{
+  Send,
+  Receive
+};
+enum class WireProtocol
+{
+  Rdp,
+  WebRtc
+};
+enum class Readiness
+{
+  Unknown,
+  Checking,
+  Available,
+  Conditional,
+  Unavailable
+};
+enum class GraphicsMode
+{
+  H264ConstrainedBaseline,
+  RdpAvc420,
+  RdpAvc444
+};
+enum class SecurityProfile
+{
+  RdpAuthenticatedTls13,
+  WebRtcAuthenticatedDtlsSrtp
+};
+enum class ColorProfile
+{
+  SdrBt709Limited8,
+  SdrBt709Full8
+};
+enum class CursorMode
+{
+  Embedded,
+  Metadata
+};
+enum class MemoryDomain
+{
+  Cpu,
+  D3D11,
+  IOSurface,
+  DmaBuf,
+  BackendNative
+};
+enum class Rejection
+{
+  None,
+  InvalidCapabilities,
+  WrongDirection,
+  NetworkForbidden,
+  Busy,
+  CleanupUnverified,
+  NotReady,
+  StaleCapabilities,
+  NoCompatiblePipeline,
+  NoCommonProtocol,
+  NoCommonFormat,
+  SecurityMismatch,
+  UnsupportedFeature,
+  UncertifiedPipeline,
+  IdentityMismatch,
+  VersionMismatch,
+  InvalidPlan,
+  ResourceBudgetExceeded
 };
 
-bool validId(const std::string& text, size_t bytes);
-bool validName(const std::string& text, size_t maximum = 128);
-std::optional<uint64_t> parseCounter(const std::string& text);
-const char* protocolName(WireProtocol value);
-const char* rejectionName(Rejection value);
+bool validId(const std::string &text, size_t bytes);
+bool validName(const std::string &text, size_t maximum = 128);
+std::optional<uint64_t> parseCounter(const std::string &text);
+const char *protocolName(WireProtocol value);
+const char *rejectionName(Rejection value);
 
-struct VideoFormat {
+struct VideoFormat
+{
   uint32_t width = 1920;
   uint32_t height = 1080;
   uint32_t fpsNumerator = 30;
@@ -41,10 +96,11 @@ struct VideoFormat {
   GraphicsMode graphics = GraphicsMode::H264ConstrainedBaseline;
   ColorProfile color = ColorProfile::SdrBt709Limited8;
   CursorMode cursor = CursorMode::Embedded;
-  bool operator==(const VideoFormat&) const = default;
+  bool operator==(const VideoFormat &) const = default;
 };
 
-struct PipelineProfile {
+struct PipelineProfile
+{
   std::string id;
   std::string implementation;
   std::string implementationVersion;
@@ -62,10 +118,11 @@ struct PipelineProfile {
   bool presentationEvidence = false;
   bool verifiedCleanup = false;
   bool resourceCoupledToWorker = true;
-  bool operator==(const PipelineProfile&) const = default;
+  bool operator==(const PipelineProfile &) const = default;
 };
 
-struct CapabilitySnapshot {
+struct CapabilitySnapshot
+{
   std::string peerIdentity;
   uint64_t revision = 0;
   std::string environment;
@@ -73,11 +130,12 @@ struct CapabilitySnapshot {
   bool sessionAvailable = false;
   bool cleanupVerified = false;
   std::vector<PipelineProfile> pipelines;
-  bool operator==(const CapabilitySnapshot&) const = default;
+  bool operator==(const CapabilitySnapshot &) const = default;
 };
 
 // Not supplied by the peer. Records come from the local release/diagnostic policy.
-struct Certification {
+struct Certification
+{
   std::string senderPipeline;
   std::string receiverPipeline;
   std::string senderImplementationVersion;
@@ -87,10 +145,11 @@ struct Certification {
   VideoFormat format;
   SecurityProfile security;
   int priority = 0;
-  bool operator==(const Certification&) const = default;
+  bool operator==(const Certification &) const = default;
 };
 
-struct Requirements {
+struct Requirements
+{
   uint32_t width = 1920;
   uint32_t height = 1080;
   uint32_t fpsNumerator = 30;
@@ -104,14 +163,16 @@ struct Requirements {
   bool allowRedirection = false;
 };
 
-struct SelectionPolicy {
+struct SelectionPolicy
+{
   std::vector<WireProtocol> preference{WireProtocol::WebRtc, WireProtocol::Rdp};
   std::vector<Certification> certified;
   // Local development policy only; must never be decoded from a peer request.
   bool allowUncertifiedDiagnostics = false;
 };
 
-struct Candidate {
+struct Candidate
+{
   PipelineProfile sender;
   PipelineProfile receiver;
   VideoFormat format;
@@ -119,32 +180,38 @@ struct Candidate {
   bool certified = false;
   int certificationPriority = 0;
   bool requiresConditionalProbe = false;
-  bool operator==(const Candidate&) const = default;
+  bool operator==(const Candidate &) const = default;
 };
-struct CandidateRejection {
+struct CandidateRejection
+{
   std::string sender;
   std::string receiver;
   Rejection reason;
 };
-struct Selection {
+struct Selection
+{
   Rejection reason = Rejection::None;
   std::vector<Candidate> candidates;
   std::vector<CandidateRejection> rejected;
 };
 
-bool validCapabilities(const CapabilitySnapshot& value);
-bool validFormat(const VideoFormat& value, WireProtocol protocol);
-Selection plan(const CapabilitySnapshot& sender, const CapabilitySnapshot& receiver,
-               const Requirements& requirements, const SelectionPolicy& policy);
+bool validCapabilities(const CapabilitySnapshot &value);
+bool validFormat(const VideoFormat &value, WireProtocol protocol);
+Selection plan(
+    const CapabilitySnapshot &sender, const CapabilitySnapshot &receiver, const Requirements &requirements,
+    const SelectionPolicy &policy
+);
 
-struct SessionPolicy {
+struct SessionPolicy
+{
   std::chrono::milliseconds startup{10000};
   std::chrono::milliseconds normalStop{5000};
   std::chrono::milliseconds abnormalCleanup{15000};
   uint32_t maximumAttempts = 2;
-  bool operator==(const SessionPolicy&) const = default;
+  bool operator==(const SessionPolicy &) const = default;
 };
-struct SessionPlan {
+struct SessionPlan
+{
   std::string controlBinding;
   std::string session;
   uint64_t attempt = 0;
@@ -155,9 +222,10 @@ struct SessionPlan {
   Candidate candidate;
   std::string authorizationScopeDigest;
   SessionPolicy policy;
-  bool operator==(const SessionPlan&) const = default;
+  bool operator==(const SessionPlan &) const = default;
 };
-Rejection validatePlan(const SessionPlan& value, const CapabilitySnapshot& sender,
-                       const CapabilitySnapshot& receiver, const Requirements& requirements,
-                       const SelectionPolicy& policy);
+Rejection validatePlan(
+    const SessionPlan &value, const CapabilitySnapshot &sender, const CapabilitySnapshot &receiver,
+    const Requirements &requirements, const SelectionPolicy &policy
+);
 } // namespace deskflow::display::infra
