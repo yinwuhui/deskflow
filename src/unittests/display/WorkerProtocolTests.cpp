@@ -57,6 +57,10 @@ static void state(){
   require(live.w.feed(live.a.encode(WorkerStop{StopReason::Revoked},live.now),true,live.now),"stop rejected");
   require(live.a.feed(live.w.encode(WorkerQuiesced{},live.now),true,live.now),"quiescence rejected");
   require(!live.a.encode(WorkerStart{},live.now).size(),"restart after stop accepted");
+  Pair race;race.start();const auto inFlight=race.w.encode(WorkerPresented{1,PresentationEvidence::Submitted,false},{});
+  const auto stop=race.a.encode(WorkerStop{},{});
+  require(race.a.feed(inFlight,true,{})&&race.a.takeMessages().empty(),"in-flight frame was dispatched or killed graceful stop");
+  require(race.w.feed(stop,true,{}),"stop race rejected");
   Pair spontaneous;spontaneous.start();require(spontaneous.w.encode(WorkerQuiesced{},{}).isEmpty(),"unsolicited cleanup accepted");
 }
 static void replay(){

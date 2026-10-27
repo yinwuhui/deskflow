@@ -38,3 +38,8 @@ ctest --test-dir /private/tmp/deskflow-build/src/unittests \
 后续 Resource Manager/Supervisor 必须报告所有在途操作的最终完成，即使已取消；不能简单丢弃旧回调。执行器必须在每个副作用前验证 token，并对晚到资源执行原 owner 清理。
 
 当前尚未取代原 Coordinator/UsageCoordinator 的产品装配。审查重点是取消与在途持久化/进程启动、停止期限以及 worker/owner/generation 的区别。提交与备忘录同阶段，按 git history 定位。
+
+
+## 后续跨平台验证补记
+
+M006 阶段在 Ubuntu x86_64 / Qt 6.10.2 构建并执行前五个模块的 37 项测试，全部通过。Mac 仍为主开发环境；此补记不代表产品链路或 Windows 认证。

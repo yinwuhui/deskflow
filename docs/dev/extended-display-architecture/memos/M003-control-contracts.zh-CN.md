@@ -35,3 +35,8 @@ ctest --test-dir /private/tmp/deskflow-build/src/unittests \
 审查信封注册范围、字节预算、序号消费时机、schema 限制及计划摘要绑定。收到一个合法 Envelope 后，仍必须验证当前状态、授权、正文注册表和标准后端消息；不能直接执行系统操作。
 
 尚未切换现有 usage-display/1 通道，避免将未完成的正文处理器对外发布。提交与本备忘录同阶段，使用 git history 定位。
+
+
+## 后续跨平台验证补记
+
+M006 阶段在 Ubuntu x86_64 / Qt 6.10.2 构建并执行前五个模块的 37 项测试，全部通过。Mac 仍为主开发环境；此补记不代表产品链路或 Windows 认证。

@@ -32,3 +32,8 @@ ctest --test-dir /private/tmp/deskflow-build/src/unittests -R '^Display.Infrastr
 本模块不改变已有运行中的 Python 媒体路径，可独立回滚。需要审查挑战通过私有通道交付、平台凭据判断、进程退出和资源验证之间的接线；仅本模块通过不构成这些集成项已完成的证据。尚未在 Ubuntu/Windows 执行本模块；媒体库和实机呈现均未认证。后续监督器需要为 socket 读写设相同的硬预算、周期调用 tick、按绑定限制可执行文件，并将失败变成自停和资源恢复。
 
 提交定位：本备忘录与协议实现/测试在同一提交，`git log --follow -- docs/dev/extended-display-architecture/memos/M005-worker-ipc.zh-CN.md`。
+
+
+## 后续跨平台验证补记
+
+M006 阶段在 Ubuntu x86_64 / Qt 6.10.2 构建并执行前五个模块的 37 项测试，全部通过。Mac 仍为主开发环境；此补记不代表产品链路或 Windows 认证。

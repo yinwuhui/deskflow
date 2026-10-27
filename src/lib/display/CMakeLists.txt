@@ -27,6 +27,7 @@ if(TARGET Qt6::Core)
   add_library(deskflow-display-infra-runtime STATIC
     control/InfrastructureControl.cpp
     supervision/WorkerProtocol.cpp
+    supervision/WorkerProcess.cpp
     resource/DurableResourceLedger.cpp)
   target_link_libraries(deskflow-display-infra-runtime PUBLIC deskflow-display-infra-core Qt6::Core Qt6::Network)
   if(WIN32)

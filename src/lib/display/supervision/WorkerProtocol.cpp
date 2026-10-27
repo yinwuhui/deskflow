@@ -138,7 +138,12 @@ bool WorkerProtocol::consume(const QByteArray& bytes,TimePoint now) {
   const auto typed=message(o.value("body").toObject());
   if(!typed||!acceptMessage(*typed,false)){fail("IpcMessageState");return false;}
   if(m_pending.size()>=size_t(MaxPendingMessages)){fail("IpcQueueBudget");return false;}
-  m_rx=*sequence;m_pending.push_back(*typed);m_leaseDeadline=now+std::chrono::milliseconds(1500);return true;
+  m_rx=*sequence;
+  // Frames/Ready already in the pipe when Stop was sent are not new work.
+  // Authenticate and consume their sequence but never dispatch them after revoke.
+  const bool lateObservation=m_stopping&&(std::holds_alternative<WorkerPresented>(*typed)||std::holds_alternative<WorkerReady>(*typed));
+  if(!lateObservation)m_pending.push_back(*typed);
+  m_leaseDeadline=now+std::chrono::milliseconds(1500);return true;
 }
 bool WorkerProtocol::acceptMessage(const WorkerMessage& m,bool outbound) {
   const bool agent=(m_side==WorkerSide::Agent)==outbound;
@@ -154,7 +159,9 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage& m,bool outbound) {
   if(std::holds_alternative<WorkerQuiesced>(m)){
     if(agent||!m_stopping)return false;m_quiesced=true;return true;
   }
-  if(m_stopping)return false;
+  const bool lateObservation=!outbound&&m_side==WorkerSide::Agent&&
+    (std::holds_alternative<WorkerPresented>(m)||std::holds_alternative<WorkerReady>(m));
+  if(m_stopping&&!lateObservation)return false;
   if(std::holds_alternative<WorkerReady>(m)){if(agent||m_ready)return false;m_ready=true;return true;}
   if(std::holds_alternative<WorkerStart>(m)){if(!agent||!m_ready||m_started)return false;m_started=true;return true;}
   if(std::holds_alternative<WorkerRefresh>(m))return agent&&m_started;

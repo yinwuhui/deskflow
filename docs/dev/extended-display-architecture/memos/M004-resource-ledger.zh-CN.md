@@ -37,3 +37,8 @@ ctest --test-dir /private/tmp/deskflow-build/src/unittests \
 重点审查耐久顺序、损坏边界、快照/日志一致性、所有权证据来源和资源依赖。ResourceEvidence 的 verified 只能由受信平台提供者产生，不能直接从网络正文传入；账本验证结构和合法状态迁移，不自行证明平台 API 已执行。
 
 后续需接资源管理者、真实平台证据、旧日志导入和 Worker/平台在途创建清理流程。提交与本备忘录同阶段，可按 git history 定位源码。
+
+
+## 后续跨平台验证补记
+
+M006 阶段在 Ubuntu x86_64 / Qt 6.10.2 构建并执行前五个模块的 37 项测试，全部通过。Mac 仍为主开发环境；此补记不代表产品链路或 Windows 认证。
