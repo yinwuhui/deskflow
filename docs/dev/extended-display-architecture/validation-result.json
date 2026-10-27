@@ -1,0 +1,13 @@
+{
+  "schema": "Draft202012Validator meta-schema passed",
+  "validExamples": 5,
+  "rejectedExamples": 13,
+  "mainSections": 30,
+  "faultScenarios": 40,
+  "jsonCodeExamples": 2,
+  "scope": "文档结构、公共 JSON Schema 与示例；不含后端正文验证、实际协议/平台/性能认证。",
+  "appendices": 4,
+  "markdownTables": "column counts passed",
+  "artifactLinks": "local references passed",
+  "finalDocumentCharacters": 51869
+}

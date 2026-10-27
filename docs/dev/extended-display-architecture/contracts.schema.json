@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bmouse:display-infra:v1:contracts",
+  "title": "BMouse display infrastructure V1 common contracts",
+  "description": "目标设计的公共封装、会话计划及资源记录。不是全部后端标准信令的替代校验器。全局大小、深度、uint64 范围、身份/状态/摘要与资源约束需语义校验。",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ControlEnvelope"
+    },
+    {
+      "$ref": "#/$defs/SessionPlan"
+    },
+    {
+      "$ref": "#/$defs/ResourceRecord"
+    }
+  ],
+  "$defs": {
+    "Id128": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "not": {
+        "const": "00000000000000000000000000000000"
+      }
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "U64": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,19}$",
+      "maxLength": 20,
+      "description": "语义校验器还必须校验不超过 uint64 最大值。"
+    },
+    "ProfileId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "VideoFormat": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "const": 1920
+        },
+        "height": {
+          "const": 1080
+        },
+        "fpsNumerator": {
+          "const": 30
+        },
+        "fpsDenominator": {
+          "const": 1
+        },
+        "graphicsMode": {
+          "enum": [
+            "h264-constrained-baseline",
+            "rdp-avc420",
+            "rdp-avc444"
+          ]
+        },
+        "colorProfileId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "cursorMode": {
+          "enum": [
+            "embedded",
+            "metadata"
+          ]
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "fpsNumerator",
+        "fpsDenominator",
+        "graphicsMode",
+        "colorProfileId",
+        "cursorMode"
+      ],
+      "additionalProperties": false
+    },
+    "SessionPolicy": {
+      "type": "object",
+      "properties": {
+        "startupDeadlineMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "normalStopTargetMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "abnormalCleanupTargetMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15000
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "allowRemoteInput": {
+          "const": false
+        },
+        "allowAudio": {
+          "const": false
+        },
+        "allowRedirection": {
+          "const": false
+        }
+      },
+      "required": [
+        "startupDeadlineMs",
+        "normalStopTargetMs",
+        "abnormalCleanupTargetMs",
+        "maxAttempts",
+        "allowRemoteInput",
+        "allowAudio",
+        "allowRedirection"
+      ],
+      "additionalProperties": false
+    },
+    "SessionPlan": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "controlBindingId": {
+          "$ref": "#/$defs/Digest"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "attemptId": {
+          "$ref": "#/$defs/U64"
+        },
+        "senderPeerId": {
+          "$ref": "#/$defs/Digest"
+        },
+        "receiverPeerId": {
+          "$ref": "#/$defs/Digest"
+        },
+        "senderCapabilityRevision": {
+          "$ref": "#/$defs/U64"
+        },
+        "receiverCapabilityRevision": {
+          "$ref": "#/$defs/U64"
+        },
+        "senderPipelineId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "receiverPipelineId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "mediaBackend": {
+          "enum": [
+            "rdp",
+            "webrtc"
+          ]
+        },
+        "wireProfileId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "securityProfileId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "authorizationScopeDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "video": {
+          "$ref": "#/$defs/VideoFormat"
+        },
+        "policy": {
+          "$ref": "#/$defs/SessionPolicy"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "controlBindingId",
+        "sessionId",
+        "attemptId",
+        "senderPeerId",
+        "receiverPeerId",
+        "senderCapabilityRevision",
+        "receiverCapabilityRevision",
+        "senderPipelineId",
+        "receiverPipelineId",
+        "mediaBackend",
+        "wireProfileId",
+        "securityProfileId",
+        "authorizationScopeDigest",
+        "video",
+        "policy"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mediaBackend": {
+                "const": "rdp"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "video": {
+                "properties": {
+                  "graphicsMode": {
+                    "enum": [
+                      "rdp-avc420",
+                      "rdp-avc444"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "video": {
+                "properties": {
+                  "graphicsMode": {
+                    "const": "h264-constrained-baseline"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ControlEnvelope": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "const": "display-infra/1"
+        },
+        "type": {
+          "enum": [
+            "CapabilitiesSnapshot",
+            "PlanOffer",
+            "PlanAnswer",
+            "PlanPropose",
+            "PlanAccept",
+            "PlanCommit",
+            "PlanCommitted",
+            "MediaSignal",
+            "EndpointReady",
+            "MediaReady",
+            "FirstFrameEvidence",
+            "HealthSummary",
+            "Stop",
+            "Stopped",
+            "Error"
+          ]
+        },
+        "messageId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "controlBindingId": {
+          "$ref": "#/$defs/Digest"
+        },
+        "senderPeerId": {
+          "$ref": "#/$defs/Digest"
+        },
+        "sequence": {
+          "$ref": "#/$defs/U64"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "attemptId": {
+          "$ref": "#/$defs/U64"
+        },
+        "planHash": {
+          "$ref": "#/$defs/Digest"
+        },
+        "body": {
+          "type": "object",
+          "maxProperties": 32,
+          "description": "必须进一步通过文档 A.4 注册表及后端标准信令语义校验。"
+        }
+      },
+      "required": [
+        "protocol",
+        "type",
+        "messageId",
+        "controlBindingId",
+        "senderPeerId",
+        "sequence",
+        "body"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "not": {
+                  "enum": [
+                    "CapabilitiesSnapshot",
+                    "Error"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "sessionId",
+              "attemptId"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "PlanPropose",
+                  "PlanAccept",
+                  "PlanCommit",
+                  "PlanCommitted",
+                  "MediaSignal",
+                  "EndpointReady",
+                  "MediaReady",
+                  "FirstFrameEvidence",
+                  "HealthSummary"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "planHash"
+            ]
+          }
+        }
+      ]
+    },
+    "ResourceEvidence": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "nativeObjectOwnership",
+            "driverOwnerBinding",
+            "verifiedHelperRegistry",
+            "systemAbsenceCheck",
+            "unproven"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "unknown",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "reference",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "ResourceRecord": {
+      "type": "object",
+      "properties": {
+        "recordType": {
+          "const": "ResourceRecord"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "resourceId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "resourceOwnerId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "creationIntentId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/Id128"
+        },
+        "planHash": {
+          "$ref": "#/$defs/Digest"
+        },
+        "recordSequence": {
+          "$ref": "#/$defs/U64"
+        },
+        "localUserSessionRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "bootInstanceRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "providerId": {
+          "$ref": "#/$defs/ProfileId"
+        },
+        "providerVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "resourceKind": {
+          "enum": [
+            "virtualOutput",
+            "capture",
+            "encoder",
+            "decoder",
+            "presenter",
+            "sharedMemory",
+            "worker"
+          ]
+        },
+        "lifecycle": {
+          "enum": [
+            "intent",
+            "observed",
+            "active",
+            "releasing",
+            "cleanupRequired",
+            "releaseVerified",
+            "closed"
+          ]
+        },
+        "platformResourceRef": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          ]
+        },
+        "dependencyResourceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id128"
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        },
+        "evidence": {
+          "$ref": "#/$defs/ResourceEvidence"
+        }
+      },
+      "required": [
+        "recordType",
+        "schemaVersion",
+        "resourceId",
+        "resourceOwnerId",
+        "creationIntentId",
+        "sessionId",
+        "planHash",
+        "recordSequence",
+        "localUserSessionRef",
+        "bootInstanceRef",
+        "providerId",
+        "providerVersion",
+        "resourceKind",
+        "lifecycle",
+        "platformResourceRef",
+        "dependencyResourceIds",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "lifecycle": {
+                "enum": [
+                  "releaseVerified",
+                  "closed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "properties": {
+                  "status": {
+                    "const": "verified"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

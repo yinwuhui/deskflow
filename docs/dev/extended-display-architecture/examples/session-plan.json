@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "controlBindingId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sessionId": "22222222222222222222222222222222",
+  "attemptId": "1",
+  "senderPeerId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "receiverPeerId": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "senderCapabilityRevision": "4",
+  "receiverCapabilityRevision": "7",
+  "senderPipelineId": "macos.capture.webrtc.h264.sdr.v1",
+  "receiverPipelineId": "linux.receive.webrtc.h264.sdr.v1",
+  "mediaBackend": "webrtc",
+  "wireProfileId": "webrtc.video.h264.v1",
+  "securityProfileId": "webrtc.authenticated-dtls-srtp.v1",
+  "authorizationScopeDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fpsNumerator": 30,
+    "fpsDenominator": 1,
+    "graphicsMode": "h264-constrained-baseline",
+    "colorProfileId": "sdr-bt709-limited-8bit",
+    "cursorMode": "embedded"
+  },
+  "policy": {
+    "startupDeadlineMs": 10000,
+    "normalStopTargetMs": 5000,
+    "abnormalCleanupTargetMs": 15000,
+    "maxAttempts": 2,
+    "allowRemoteInput": false,
+    "allowAudio": false,
+    "allowRedirection": false
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "reviewedAt": "2026-10-27",
+  "note": "官方开源仓库文件的阅读位置和内容 blob SHA；不表示采用其代码或完成构建。固定提交和标准引用见主文档。",
+  "files": [
+    {
+      "url": "https://github.com/LizardByte/Sunshine/blob/master/src/video.h",
+      "title": "video.h",
+      "blobSha": "2092fcacf0ce65a282812fd1293b2185e2483031"
+    },
+    {
+      "url": "https://github.com/moonlight-stream/moonlight-common-c/blob/master/src/Limelight.h",
+      "title": "Limelight.h",
+      "blobSha": "22bee469ad8f8a95e2b0c75db2a7414bf26a7e51"
+    },
+    {
+      "url": "https://github.com/rustdesk/rustdesk/blob/master/src/server/video_service.rs",
+      "title": "video_service.rs",
+      "blobSha": "a13aebb526b293d2053d60f69b77c78568b19d52"
+    },
+    {
+      "url": "https://github.com/gnif/LookingGlass/blob/master/common/include/common/framebuffer.h",
+      "title": "framebuffer.h",
+      "blobSha": "0d0ea4203b7d5880fb2e31567b7720706e371d56"
+    },
+    {
+      "url": "https://github.com/LizardByte/Sunshine/blob/master/src/platform/common.h",
+      "title": "common.h",
+      "blobSha": "62961d7a31077ad02658be7aa33d2f26247c26da"
+    }
+  ],
+  "commitSnapshots": [
+    {
+      "repository": "FreeRDP/FreeRDP",
+      "commit": "b2403bb99fba33acc817ffd4042b64e077d59076"
+    },
+    {
+      "repository": "GNOME/gnome-remote-desktop",
+      "commit": "265339dc520f7c3978298a2509a22e4cb6c54e99"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "recordType": "ResourceRecord",
+  "schemaVersion": 1,
+  "resourceId": "33333333333333333333333333333333",
+  "resourceOwnerId": "44444444444444444444444444444444",
+  "creationIntentId": "55555555555555555555555555555555",
+  "sessionId": "22222222222222222222222222222222",
+  "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "recordSequence": "1",
+  "localUserSessionRef": "example-user-session",
+  "bootInstanceRef": "example-boot-instance",
+  "providerId": "macos.virtual-output.v1",
+  "providerVersion": "1.0.0",
+  "resourceKind": "virtualOutput",
+  "lifecycle": "intent",
+  "platformResourceRef": null,
+  "dependencyResourceIds": [],
+  "evidence": {
+    "kind": "unproven",
+    "reference": "example-create-intent",
+    "status": "unknown"
+  }
+}

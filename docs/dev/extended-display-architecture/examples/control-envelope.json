@@ -1,0 +1,14 @@
+{
+  "protocol": "display-infra/1",
+  "type": "PlanPropose",
+  "messageId": "11111111111111111111111111111111",
+  "controlBindingId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "senderPeerId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sequence": "12",
+  "sessionId": "22222222222222222222222222222222",
+  "attemptId": "1",
+  "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "body": {
+    "planRef": "plan-1"
+  }
+}
