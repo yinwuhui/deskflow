@@ -1,0 +1,22 @@
+{
+  "timestampUtc": "2026-10-27T16:47:07.526444+00:00",
+  "sdkPrefix": "/home/ywh/code/bmouse-dependencies/gstreamer-1.28.2/sdk/usr",
+  "gstreamerVersion": "1.28.2",
+  "sourceSha256": "b2aea44b370c66976f8747dcf73e8062ff8063c6c66512977c7c5997550d89cb",
+  "exitCode": 0,
+  "timedOut": false,
+  "metrics": {
+    "verified_h264_constrained_baseline": 1,
+    "received_decoded_frames": 219,
+    "errors": 0,
+    "selected_x264": 1,
+    "gcc_updates": 21,
+    "gcc_min_bps": 2033368,
+    "gcc_max_bps": 3541875,
+    "encoder_updates": 22,
+    "encoder_min_kbps": 2000,
+    "encoder_max_kbps": 3138
+  },
+  "decodedOutputCaps": "video/x-raw, width=(int)1920, height=(int)1080, interlace-mode=(string)progressive, pixel-aspect-ratio=(fraction)1/1, framerate=(fraction)30/1, format=(string)BGRA, colorimetry=(string)1:1:5:1",
+  "scope": "Synthetic loopback only; not authenticated product IPC, virtual-output, presentation or hardware certification"
+}
