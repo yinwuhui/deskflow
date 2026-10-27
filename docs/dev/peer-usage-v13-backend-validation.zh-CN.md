@@ -95,3 +95,13 @@ Ubuntu 双端隔离媒体联调另验证了策略传播、恢复许可后仍可�
 - 实际 Mac ↔ Ubuntu 连接已恢复，认证 hello 中双方网络策略允许、收发 supported、桌面可用；Mac 设备详情的拓展屏幕按钮恢复可用。
 - 用户本次不方便手动锁屏，因此未完成新回退信号在真实锁屏/解锁过程中的验证。锁屏分支由自动化测试覆盖，实机状态切换仍待验收。
 - 此次不新增媒体首帧、实际延迟、长时间稳定性或 Windows 验收结论；网络候选地址可用也不能替代真实媒体/TLS 预检。
+
+
+## macOS 空显示 ID 的历史清理恢复（2026-10-27）
+
+- 原故障：中断的 host 会话已写入资源归属，但 displayId 尚为空。旧恢复检查直接返回失败，导致“待清理”永久阻止后续用途。
+- 原生 probe 通过 CGGetOnlineDisplayList 枚举在线输出（包括非活动输出），报告本后端 vendor/product 对应的 deskflowVirtualDisplays。仅当 macOS host 的空 ID 记录遇到明确空列表时，才确认资源已不存在并清理日志。枚举失败、字段缺失、发现残留、进程异常退出或非零退出都保留待清理；空 ID 的 receiver/Linux 记录不使用此恢复推断。
+- 恢复仅检查不存在，不按名称或历史 PID 删除显示器或结束其他进程，不重新申请显示授权，也不自动启用键鼠或视频。
+- UnknownHostResourceRecovery 覆盖空列表、残留列表、缺失字段、null、无效 JSON、receiver/Linux 限制、非零退出和信号终止。RecoveryAdoptsPendingConnection 覆盖统一清理后采用待接入基础连接且不自动启用用途。
+- Ubuntu 与 Mac 均编译成功，Display.Service / Display.UsageService 各 38 项 CTest 全部通过。
+- Mac 实机：原生只读探测得到 deskflowVirtualDisplays=[]，物理显示列表前后均为 [3]。从设备详情点击“重试清理”后警告消失，资源日志变为 active:null。更新原开发证书签名的预览应用并正常重新启动后，原故障设备仍无清理警告；目前基础连接未启动，仅显示“请先建立连接”。本次没有新增首帧或双机拓展成功验收结论。

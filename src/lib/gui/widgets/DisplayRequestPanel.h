@@ -1,26 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only WITH LicenseRef-OpenSSL-Exception
 #pragma once
+#include <QFrame>
 #include <QJsonObject>
-#include <QWidget>
 class QLabel;
 class QPushButton;
-// Non-modal in-window consent card. No display permission is inferred from
+// Device-scoped inline consent card. No display permission is inferred from
 // an existing keyboard/mouse connection.
-class DisplayRequestPanel : public QWidget
+class DisplayRequestPanel : public QFrame
 {
   Q_OBJECT
 public:
   explicit DisplayRequestPanel(QWidget *parent);
-
-protected:
-  bool eventFilter(QObject *watched, QEvent *event) override;
+  void setDevice(const QString &device);
+  static QString peerForDevice(const QString &device);
+  static bool needsAttention(const QJsonObject &snapshot);
 
 private:
   void updateRequest(const QJsonObject &snapshot);
   void respond(bool allow);
-  void place();
-  QLabel *m_peer, *m_status;
+  QLabel *m_title, *m_peer, *m_status;
   QPushButton *m_allow, *m_reject;
   QJsonObject m_snapshot;
-  QString m_pending;
+  QString m_pending, m_device, m_errorText;
 };

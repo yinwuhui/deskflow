@@ -216,7 +216,10 @@ void MediaSupervisor::verifyResidual(const Key& cleanupKey) {
   // only verifies absence; it never deletes an output or kills a persisted PID.
   if(!m_journal.record()){finishCleanup(cleanupKey,m_journal.status()==ResourceJournal::Status::Empty);return;}
   const auto record=*m_journal.record();
-  if(record.displayId.isEmpty()){finishCleanup(cleanupKey,false);return;}
+  const bool unknownHost=record.displayId.isEmpty()&&record.role==Role::Host&&m_runtime.source=="macos";
+  // An empty ID is not evidence of absence. Only the native host can positively
+  // enumerate this backend's outputs; unknown receiver/Linux claims stay blocked.
+  if(record.displayId.isEmpty()&&!unknownHost){finishCleanup(cleanupKey,false);return;}
   auto process=new QProcess(this);QStringList args;
   if(m_runtime.source=="macos")process->setProgram(m_runtime.macosProbe);
   else {process->setProgram(m_runtime.python);args<<QFileInfo(m_runtime.sessionScript).dir().filePath("virtual_display_probe.py")<<"--query-topology";}
@@ -225,13 +228,18 @@ void MediaSupervisor::verifyResidual(const Key& cleanupKey) {
   connect(process,&QProcess::readyReadStandardOutput,this,[process,output]{*output+=process->readAllStandardOutput();if(output->size()>65536)process->kill();});
   auto deadline=new QTimer(process);deadline->setSingleShot(true);deadline->start(4000);
   connect(deadline,&QTimer::timeout,process,&QProcess::kill);
-  connect(process,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,process,output,record,cleanupKey](int code,QProcess::ExitStatus){
+  connect(process,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,process,output,record,cleanupKey](int code,QProcess::ExitStatus status){
     *output+=process->readAllStandardOutput();const auto doc=QJsonDocument::fromJson(*output);
-    bool verified=code==0&&doc.isObject();
+    bool verified=status==QProcess::NormalExit&&code==0&&doc.isObject();
     if(verified){
-      const auto values=doc.object().value(m_runtime.source=="macos"?"displaysBefore":"displayIds");
-      verified=values.isArray();
-      for(const auto& id:values.toArray())if((id.isString()?id.toString():QString::number(id.toDouble(),'f',0))==record.displayId)verified=false;
+      if(record.displayId.isEmpty()){
+        const auto values=doc.object().value("deskflowVirtualDisplays");
+        verified=record.role==Role::Host&&m_runtime.source=="macos"&&values.isArray()&&values.toArray().isEmpty();
+      }else{
+        const auto values=doc.object().value(m_runtime.source=="macos"?"displaysBefore":"displayIds");
+        verified=values.isArray();
+        for(const auto& id:values.toArray())if((id.isString()?id.toString():QString::number(id.toDouble(),'f',0))==record.displayId)verified=false;
+      }
     }
     if(m_service&&parseKey(m_service->snapshot())==cleanupKey)finishCleanup(cleanupKey,verified);
     process->deleteLater();

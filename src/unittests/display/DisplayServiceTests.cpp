@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "display/DisplayService.h"
 #include "display/ResourceJournal.h"
+#include "display/MediaSupervisor.h"
+#include <QTest>
 #include <QFile>
 #include <QDir>
 #include <QCoreApplication>
@@ -34,7 +36,33 @@ int main(int argc,char** argv) {
     if(argc!=2)return 2; const QString name=QString::fromUtf8(argv[1]);
     DisplayService service(caps(), directory.filePath("display.ini"));
     QSignalSpy replies(&service,&DisplayService::commandFinished), effects(&service,&DisplayService::backendCommand);
-    if(name=="BluetoothPolicyGatesLowerService") {
+    if(name=="UnknownHostResourceRecovery") {
+      auto exercise=[&](const QByteArray& report,bool expected,Role role=Role::Host,QString source="macos",QByteArray ending={}){
+        QTemporaryDir fixture;const auto resources=fixture.filePath("resources");
+        OwnedResource record;record.owner.session[0]=1;record.owner.request[0]=2;record.owner.generation=9;record.owner.epoch=1;
+        record.peerIdentity=QString(64,'a');record.role=role;
+        {ResourceJournal journal(resources);check(journal.claim(record),"claim fixture");}
+        const auto probe=fixture.filePath("probe.sh");QFile file(probe);check(file.open(QIODevice::WriteOnly),"probe fixture");
+        file.write("#!/bin/sh\nprintf '%s\\n' '");file.write(report);file.write("'\n");file.write(ending);file.close();
+        check(file.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner),"probe permission");
+        DisplayService display(caps(),{});MediaRuntime runtime;runtime.source=source;runtime.macosProbe=probe;
+        MediaSupervisor media(&display,runtime,resources);check(display.snapshot().value("state")=="CleanupRequired","claim not restored");
+        check(display.retryManagedCleanup(display.currentKey()).accepted,"retry rejected");
+        for(int n=0;n<100&&display.snapshot().value("state")=="Stopping";++n)QTest::qWait(10);
+        check(display.snapshot().value("state")== (expected?"Idle":"CleanupRequired"),"unexpected cleanup result");
+        check(media.journalStatus()==(expected?ResourceJournal::Status::Empty:ResourceJournal::Status::Pending),"unverified record retired");
+        check(!display.snapshot().value("firstFramePresented").toBool(),"cleanup started streaming");
+      };
+      exercise("{\"displaysBefore\":[1],\"deskflowVirtualDisplays\":[]}",true);
+      exercise("{\"displaysBefore\":[1],\"deskflowVirtualDisplays\":[7]}",false);
+      exercise("{\"displaysBefore\":[1]}",false);
+      exercise("{\"deskflowVirtualDisplays\":null}",false);
+      exercise("not-json",false);
+      exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Receiver);
+      exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"gnome");
+      exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"macos","exit 1\n");
+      exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"macos","kill -TERM $$\n");
+    }else if(name=="BluetoothPolicyGatesLowerService") {
       service.authenticatedPeer(peer());service.setPeerNetworkPolicy(QString(64,'a'),false);
       SessionId request{};request[0]=1;check(service.requestManagedSession(QString(64,'a'),request).reason==Reason::BluetoothOnlyMode,"managed API bypassed policy");
       SessionId session{};session[0]=2;check(service.incomingAuthenticated(peer(),session,request).reason==Reason::BluetoothOnlyMode,"incoming API bypassed policy");drain();

@@ -1485,6 +1485,18 @@ Additionally, check you are able to %1 the server config file: %2</source>
         <source>Select the other computer’s Bluetooth device</source>
         <translation>请选择对应电脑的蓝牙设备</translation>
     </message>
+    <message>
+        <source>A screen request or extension needs attention. Open device details.</source>
+        <translation>有屏幕请求或拓展状态需要处理，请打开设备详情。</translation>
+    </message>
+    <message>
+        <source>Previous extended-display device</source>
+        <translation>上次拓展的电脑</translation>
+    </message>
+    <message>
+        <source>Screen session needs attention</source>
+        <translation>拓展状态待处理</translation>
+    </message>
 </context>
 <context>
     <name>NewComputerWidget</name>
@@ -3667,6 +3679,10 @@ This computer's clipboard cap is up to 64 KiB; lower limits are retained.</sourc
     <message>
         <source>Verify cleanup before starting another use.</source>
         <translation>确认清理完成后，才能开始其他用途。</translation>
+    </message>
+    <message>
+        <source>Extended display needs attention</source>
+        <translation>拓展屏幕需要处理</translation>
     </message>
 </context>
 <context>

@@ -128,6 +128,24 @@ int main(int argc,char** argv){
    check(s.syncConnectedPeer({identity.toStdString(),"source",{}},caps(),connection).accepted,"new connection blocked by retired input");
    check(!s.connectionClosed(identity,QString(32,'c'),1,true),"old close retired new input");
    check(s.snapshot(identity).value("effectiveMode")=="input","new native input not imported");
+  }else if(name=="RecoveryAdoptsPendingConnection"){
+   PeerUsageService recovered;DisplayService display({Availability::Supported,Availability::Supported,false,false,true,1},{});UsageDisplayBridge bridge(&recovered,&display);
+   Key owner{};owner.session[0]=9;owner.request[0]=8;owner.generation=3;owner.epoch=1;
+   check(display.restorePendingResource({identity.toStdString(),"previous",{}},owner,Role::Host,{}),"restore failed");
+   check(bridge.adoptCleanup().accepted,"adopt failed");
+   check(recovered.syncConnectedPeer({identity.toStdString(),"Ubuntu",{}},caps(),connection).reason==Reason::CleanupFailed,"pending connection bypassed cleanup");
+   check(!recovered.snapshot(identity).value("baseConnected").toBool(),"premature connection binding");
+   QSignalSpy recoveryReplies(&recovered,&PeerUsageService::commandFinished);
+   const auto before=recovered.snapshot(identity);
+   recovered.execute({{"id","recover"},{"operation","retryPeerUsageCleanup"},{"args",QJsonObject{{"peerId",identity},{"operationId",operation},
+     {"baseConnectionId",before.value("baseConnectionId")},{"baseConnectionGeneration",before.value("baseConnectionGeneration")}}}});drain();
+   check(!recoveryReplies.isEmpty()&&last(recoveryReplies).value("accepted").toBool(),"GUI recovery command rejected");
+   display.cleanupFinished(display.currentKey(),true);drain();
+   const auto state=recovered.snapshot(identity);
+   check(state.value("baseConnected").toBool(),"pending connection not adopted");
+   check(state.value("baseConnectionId")==QString(32,'c'),"wrong connection adopted");
+   check(state.value("usageState")=="Inactive"&&state.value("effectiveMode")=="none","cleanup started input automatically");
+   check(state.value("availableActions").toArray().contains("start"),"mode selection remains locked");
   }else if(name=="RecoveryUsesUnifiedCleanup"){
    DisplayService display({Availability::Supported,Availability::Supported,false,false,true,1},{});UsageDisplayBridge bridge(&s,&display);
    Key owner{};owner.session[0]=9;owner.request[0]=8;owner.generation=3;

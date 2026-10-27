@@ -5,6 +5,7 @@
  */
 #include "DeviceListPage.h"
 #include "DeviceScreenInfo.h"
+#include "DisplayRequestPanel.h"
 #include "PeerUsageControl.h"
 #include "DeviceConnectionInfo.h"
 #include "gui/core/PeerUsageModel.h"
@@ -656,6 +657,9 @@ void DeviceListPage::rebuildDetail()
     auto metadata = label((server ? tr("Keyboard and mouse server") : tr("Receiving computer")) + QStringLiteral(" · ") + d.source, "muted", m_details);
     metadata->setToolTip(d.source);
     layout->addWidget(metadata);
+    auto request=new DisplayRequestPanel(m_details);
+    request->setDevice(d.id);
+    layout->addWidget(request);
   }
   auto screens=new DeviceScreenInfo(m_details);screens->setDevice(d.id,local);
   if (!local) {

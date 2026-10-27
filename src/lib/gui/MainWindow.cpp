@@ -24,6 +24,9 @@
 #endif
 #include "core/PeerUsageModel.h"
 #include "widgets/DisplayRequestPanel.h"
+#ifdef DESKFLOW_DISPLAY
+#include "display/DisplayService.h"
+#endif
 #include "widgets/ScreenLayoutPage.h"
 #include "widgets/SettingsPage.h"
 #include <QStackedWidget>
@@ -323,7 +326,11 @@ void MainWindow::setupControls()
 
 void MainWindow::setupHome()
 {
-  new DisplayRequestPanel(ui->topLevelWidget);
+#ifdef DESKFLOW_DISPLAY
+  connect(deskflow::display::DisplayService::applicationService(),&deskflow::display::DisplayService::snapshotChanged,
+          this,[this]{updateDisplayAttention();});
+  updateDisplayAttention();
+#endif
   auto *backupPanel = new BackupConnectionPanel(ui->homeActionCard);
   m_backupPanel = backupPanel;
   ui->modeLinksLayout->insertWidget(0, backupPanel);
@@ -755,8 +762,20 @@ void MainWindow::openDevices()
   }
   ensureDeviceDiscovery();
   updateDevicesPage();
+  if(!m_displayAttentionDevice.isEmpty())m_devicesPage->selectDevice(m_displayAttentionDevice);
   m_pageStack->setCurrentWidget(m_devicesPage);
   ui->btnDevices->setChecked(true);
+}
+
+void MainWindow::updateDisplayAttention()
+{
+#ifdef DESKFLOW_DISPLAY
+  const bool attention=DisplayRequestPanel::needsAttention(deskflow::display::DisplayService::applicationService()->snapshot());
+  ui->btnDevices->setText(tr("Devices")+(attention?QStringLiteral("  •"):QString()));
+  ui->btnDevices->setProperty("displayAttention",attention);
+  ui->btnDevices->setToolTip(attention?tr("A screen request or extension needs attention. Open device details."):QString());
+  if(m_devicesPage)updateDevicesPage();
+#endif
 }
 
 void MainWindow::updateDevicesPage()
@@ -880,6 +899,21 @@ void MainWindow::updateDevicesPage()
     devices.append(d);
   for (const auto &d : servers)
     devices.append(d);
+  m_displayAttentionDevice.clear();
+#ifdef DESKFLOW_DISPLAY
+  const auto display=deskflow::display::DisplayService::applicationService()->snapshot();
+  const auto attentionPeer=display.value("peerId").toString();
+  if(DisplayRequestPanel::needsAttention(display)&&attentionPeer.size()==64){
+    for(const auto& d:devices)if(d.kind!=Kind::Local&&DisplayRequestPanel::peerForDevice(d.id)==attentionPeer){m_displayAttentionDevice=d.id;break;}
+    if(m_displayAttentionDevice.isEmpty()){
+      // Preserve access to an orphaned cleanup record even when the peer is offline or no longer saved.
+      m_displayAttentionDevice="peer:"+attentionPeer;
+      const auto name=display.value("peerName").toString();
+      devices.append({m_displayAttentionDevice,name.isEmpty()||name=="Previous display session"?tr("Previous extended-display device"):name,
+        {},tr("Screen session needs attention"),Kind::History,State::Offline});
+    }
+  }
+#endif
   QSet<QString> connected;
   for (const auto &device : devices)
     if (device.state == State::Connected) connected.insert(device.id);
@@ -1948,6 +1982,7 @@ void MainWindow::changeEvent(QEvent *e)
     setTrayIcon();
   } else if (e->type() == QEvent::LanguageChange) {
     ui->retranslateUi(this);
+    updateDisplayAttention();
     updateModeControls();
     updateStatus();
     serverClientsChanged(m_connectedClients);

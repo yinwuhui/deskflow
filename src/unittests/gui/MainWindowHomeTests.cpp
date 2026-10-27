@@ -5,6 +5,7 @@
  */
 
 #include "gui/MainWindow.h"
+#include "gui/widgets/DisplayRequestPanel.h"
 #include "gui/core/BackupConnectionPanel.h"
 #include "gui/core/NearbyBluetoothModel.h"
 #include "gui/widgets/DiscoveryComboBox.h"
@@ -952,6 +953,7 @@ private Q_SLOTS:
   void showsIdentityWithoutInventingAConnection()
   {
     MainWindow window;
+    QVERIFY(window.findChildren<DisplayRequestPanel*>().isEmpty());
     QCOMPARE(window.findChild<QLabel *>("lblComputerName")->toolTip(), QString("home-test-computer"));
     QCOMPARE(window.findChild<QLabel *>("lblComputerName")->accessibleName(), QString("home-test-computer"));
     QCOMPARE(window.findChild<QLabel *>("lblSidebarName")->text(), QString("home-test-computer"));

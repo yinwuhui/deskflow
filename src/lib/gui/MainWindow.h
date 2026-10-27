@@ -147,6 +147,7 @@ private:
   void setupWindowChrome();
   void openDevices();
   void updateDevicesPage();
+  void updateDisplayAttention();
   void ensureDeviceDiscovery();
   void connectDeviceServer(const QString &address, const QString &name, bool autoConnect);
   void updateHomeDevices();
@@ -198,6 +199,7 @@ private:
   SettingsPage *m_settingsPage = nullptr;
   ScreenLayoutPage *m_layoutPage = nullptr;
   DeviceListPage *m_devicesPage = nullptr;
+  QString m_displayAttentionDevice;
   QStackedWidget *m_pageStack = nullptr;
   QLabel *m_actionTransitionOverlay = nullptr;
   QPropertyAnimation *m_actionTransition = nullptr;

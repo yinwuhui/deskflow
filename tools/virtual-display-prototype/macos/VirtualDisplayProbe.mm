@@ -47,6 +47,22 @@ static NSArray<NSNumber *> *activeDisplays() {
   return [result sortedArrayUsingSelector:@selector(compare:)];
 }
 
+// Enumerate online outputs, including inactive ones. Only this backend uses this vendor/product pair.
+// Absence can retire an interrupted host claim whose display ID was never committed.
+static NSArray<NSNumber *> *deskflowVirtualDisplays() {
+  uint32_t count=0;
+  if(CGGetOnlineDisplayList(0,nullptr,&count)!=kCGErrorSuccess || count==0 || count>4096)return nil;
+  std::vector<CGDirectDisplayID> displays(count);
+  uint32_t actual=0;
+  if(count && CGGetOnlineDisplayList(count,displays.data(),&actual)!=kCGErrorSuccess)return nil;
+  if(actual>displays.size())return nil;
+  NSMutableArray *result=[NSMutableArray array];
+  for(uint32_t i=0;i<actual;++i)
+    if(CGDisplayVendorNumber(displays[i])==0x4446 && CGDisplayModelNumber(displays[i])==0x0001)
+      [result addObject:@(displays[i])];
+  return result;
+}
+
 @interface ProbeSink : NSObject <SCStreamOutput, SCStreamDelegate> {
 @public
   std::atomic<unsigned> frames;
@@ -290,6 +306,7 @@ int main(int argc, const char *argv[]) {
       @"captured": @NO, @"cleanupVerified": @NO} mutableCopy];
     NSArray *before = activeDisplays();
     report[@"displaysBefore"] = before;
+    report[@"deskflowVirtualDisplays"] = deskflowVirtualDisplays() ?: (id)[NSNull null];
     __strong CGVirtualDisplay *display = nil;
     __strong SCStream *capture = nil;
     ProbeSink *sink = [[ProbeSink alloc] init];

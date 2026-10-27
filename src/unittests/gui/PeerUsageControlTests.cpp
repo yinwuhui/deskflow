@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QSignalSpy>
+#include <QVBoxLayout>
 #include <QtTest>
 #ifdef DESKFLOW_DISPLAY
 #include "display/DisplayService.h"
@@ -50,19 +51,44 @@ private Q_SLOTS:
     service->updateCapabilities(caps);
     QWidget mainWindow;
     mainWindow.resize(1000, 700);
-    DisplayRequestPanel panel(&mainWindow);
+    QVBoxLayout layout(&mainWindow);
+    QLabel above("Device title"),below("Usage mode");
+    DisplayRequestPanel panel(&mainWindow),other(&mainWindow);
+    layout.addWidget(&above);layout.addWidget(&panel);layout.addWidget(&below);layout.addWidget(&other);
+    panel.setDevice("peer:"+peer);other.setDevice("peer:"+QString(64,'e'));
     QVERIFY(panel.isHidden());
     SessionId session{}, request{};
     session[0] = 1;
     request[0] = 2;
     QVERIFY(service->incomingAuthenticated(Peer{peer.toStdString(), "work", caps}, session, request).accepted);
     QVERIFY(!panel.isHidden());
+    QVERIFY(other.isHidden());
+    mainWindow.show();QApplication::processEvents();
+    QVERIFY(!panel.geometry().intersects(above.geometry()));
+    QVERIFY(!panel.geometry().intersects(below.geometry()));
+    QCOMPARE(panel.findChild<QLabel*>("displayRequestTitle")->text(),QString("Screen use request"));
     QCOMPARE(panel.parentWidget(), &mainWindow);
     QVERIFY(!panel.isWindow());
     panel.findChild<QPushButton *>("allowDisplayRequest")->click();
     QTRY_VERIFY(panel.isHidden());
     QCOMPARE(service->snapshot().value("firstFramePresented").toBool(), false);
     service->stopManagedSession(service->currentKey());
+#endif
+  }
+  void cleanupIsScopedToItsDeviceAndHasItsOwnTitle()
+  {
+#ifdef DESKFLOW_DISPLAY
+    using namespace deskflow::display;
+    auto service=DisplayService::applicationService();
+    service->cleanupFinished(service->currentKey(),true);
+    Key owner{};owner.session[0]=4;owner.request[0]=5;owner.generation=9;owner.epoch=1;
+    QVERIFY(service->restorePendingResource(Peer{peer.toStdString(),"work",{}},owner,Role::Host,{}));
+    QWidget page;QVBoxLayout layout(&page);DisplayRequestPanel panel(&page);layout.addWidget(&panel);
+    QVERIFY(panel.isHidden());
+    panel.setDevice("peer:"+QString(64,'e'));QVERIFY(panel.isHidden());
+    panel.setDevice("peer:"+peer);QVERIFY(!panel.isHidden());
+    QCOMPARE(panel.findChild<QLabel*>("displayRequestTitle")->text(),QString("Extended display needs attention"));
+    service->cleanupFinished(service->currentKey(),true);QVERIFY(panel.isHidden());
 #endif
   }
   void reconnectKeepsDirtyLayoutGuard()
