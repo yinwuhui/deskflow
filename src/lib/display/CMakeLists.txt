@@ -1,6 +1,18 @@
 # SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 # SPDX-License-Identifier: MIT
+add_library(deskflow-display-infra-core STATIC
+  core/InfrastructureTypes.cpp
+  core/InfrastructureSession.cpp)
+target_compile_features(deskflow-display-infra-core PUBLIC cxx_std_20)
+target_include_directories(deskflow-display-infra-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
+if(MSVC)
+  target_compile_options(deskflow-display-infra-core PRIVATE /W4)
+else()
+  target_compile_options(deskflow-display-infra-core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 add_library(deskflow-display STATIC Protocol.cpp Session.cpp Coordinator.cpp UsageCoordinator.cpp)
+target_link_libraries(deskflow-display PUBLIC deskflow-display-infra-core)
 target_compile_features(deskflow-display PUBLIC cxx_std_20)
 target_include_directories(deskflow-display PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 if(MSVC)
@@ -12,8 +24,15 @@ endif()
 # The core remains independently buildable without Qt. The product facade is
 # linked into the application only when BUILD_VIRTUAL_DISPLAY is enabled.
 if(TARGET Qt6::Core)
+  add_library(deskflow-display-infra-runtime STATIC
+    control/InfrastructureControl.cpp
+    resource/DurableResourceLedger.cpp)
+  target_link_libraries(deskflow-display-infra-runtime PUBLIC deskflow-display-infra-core Qt6::Core Qt6::Network)
+  if(WIN32)
+    target_link_libraries(deskflow-display-infra-runtime PRIVATE advapi32)
+  endif()
   add_library(deskflow-display-service STATIC ScreenInventoryService.cpp ScreenInventoryService.h ProductDisplayRuntime.cpp ProductDisplayRuntime.h CoreInputChannel.cpp CoreInputChannel.h InputRouteAdapter.cpp InputRouteAdapter.h UsageDisplayBridge.cpp UsageDisplayBridge.h PeerUsageService.cpp PeerUsageService.h DisplayService.cpp DisplayService.h ResourceJournal.cpp ResourceJournal.h MediaSupervisor.cpp MediaSupervisor.h)
-  target_link_libraries(deskflow-display-service PUBLIC deskflow-display Qt6::Core Qt6::Network Qt6::Gui PRIVATE common)
+  target_link_libraries(deskflow-display-service PUBLIC deskflow-display deskflow-display-infra-runtime Qt6::Core Qt6::Network Qt6::Gui PRIVATE common)
   if(APPLE)
     target_link_libraries(deskflow-display-service PRIVATE "-framework CoreGraphics")
   endif()

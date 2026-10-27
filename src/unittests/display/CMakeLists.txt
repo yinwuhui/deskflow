@@ -82,3 +82,38 @@ if(TARGET deskflow-display-service AND TARGET Qt6::Test)
   target_link_libraries(ScreenInventoryTests PRIVATE deskflow-display-service Qt6::Test)
   add_test(NAME Display.ScreenInventory COMMAND ScreenInventoryTests)
 endif()
+
+add_executable(DisplayInfrastructurePlannerTests InfrastructurePlannerTests.cpp)
+target_link_libraries(DisplayInfrastructurePlannerTests PRIVATE deskflow-display-infra-core)
+foreach(case DirectionMatrix AsymmetricProtocols SafetyGates NoProtocolConversion
+             CertificationInvalidation InvalidDeclarations FeedbackAndConditional PlanBinding CounterBounds)
+  add_test(NAME Display.Infrastructure.${case} COMMAND DisplayInfrastructurePlannerTests ${case})
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayInfrastructurePlannerTests)
+
+add_executable(DisplayInfrastructureSessionTests InfrastructureSessionTests.cpp)
+target_link_libraries(DisplayInfrastructureSessionTests PRIVATE deskflow-display-infra-core)
+foreach(case AuthorizationDurability PresentationEvidence CancelDuringPersistence CancelDuringSpawn
+             StaleFramesCleanup AbsoluteDeadlines RecoveryBudget GrantRevocationCleanup QueuedCreateCancelled)
+  add_test(NAME Display.Infrastructure.${case} COMMAND DisplayInfrastructureSessionTests ${case})
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayInfrastructureSessionTests)
+
+if(TARGET deskflow-display-service)
+  add_executable(DisplayInfrastructureControlTests InfrastructureControlTests.cpp)
+  target_link_libraries(DisplayInfrastructureControlTests PRIVATE deskflow-display-infra-runtime)
+  foreach(case StrictJson BindingReplay EnvelopeGates PlanCanonicalization)
+    add_test(NAME Display.Infrastructure.${case} COMMAND DisplayInfrastructureControlTests ${case})
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayInfrastructureControlTests)
+endif()
+
+if(TARGET deskflow-display-service)
+  add_executable(DurableResourceLedgerTests DurableResourceLedgerTests.cpp)
+  target_link_libraries(DurableResourceLedgerTests PRIVATE deskflow-display-infra-runtime)
+  foreach(case DurableIntentReplay ExclusiveLedger TornLedgerTail LedgerCorruption MissingCurrent
+               LedgerCompaction DependencyOrder LedgerSymlink)
+    add_test(NAME Display.Infrastructure.${case} COMMAND DurableResourceLedgerTests ${case})
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DurableResourceLedgerTests)
+endif()
