@@ -47,6 +47,7 @@ public:
   bool stopped() const;
   QString error() const;
   std::optional<ReadFrame> readNewest();
+  std::shared_ptr<CpuFrameLease> takeCpuLease();
   bool releaseRead(const FrameTicket &);
   FrameBudget::Usage usage() const;
   MacCaptureStatistics statistics() const;

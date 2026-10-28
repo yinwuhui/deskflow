@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-28",
+  "scope": "Mac CPU capture callback lifetime; no encoder or transport certification",
+  "sourceSha256": {
+    "src/lib/display/frame/FrameModel.cpp": "61a62fa0316287b1f4159b455691a4f6bd608a40d0b7f1856e9aced8f88c285d",
+    "src/lib/display/platform/macos/MacCaptureSource.mm": "81c777d0a00a6718b2dd1c6ed180f1a66df014622f3618cde270d2d65d9daa66",
+    "src/unittests/display/MacResourceProviderSmoke.cpp": "6022f31a53bf5aef0710231ac536981567a971357ffdcab8503070c6219d1802"
+  },
+  "runs": [
+    {
+      "mode": "capture-callback",
+      "exitCode": 0,
+      "seconds": 4.775,
+      "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-callback\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-callback\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-SnnDNL/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+    },
+    {
+      "mode": "capture",
+      "exitCode": 0,
+      "seconds": 6.44,
+      "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-YEoOYR/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+    },
+    {
+      "mode": "capture-cancel",
+      "exitCode": 0,
+      "seconds": 4.619,
+      "stdout": "{\"cpuBudgetReleased\":true,\"frameObserved\":false,\"mode\":\"capture-cancel\",\"resourceBound\":true,\"test\":\"native-mac-capture\"}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-cancel\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-rNUAjn/ledger\n"
+    },
+    {
+      "mode": "capture-revoke",
+      "exitCode": 0,
+      "seconds": 6.766,
+      "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-revoke\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-revoke\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-mHYgUb/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+    }
+  ]
+}

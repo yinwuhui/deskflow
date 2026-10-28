@@ -17,6 +17,7 @@
 #include <QUuid>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 using namespace deskflow::display::infra;
 static void require(bool v, const char *why)
 {
@@ -80,9 +81,9 @@ int main(int argc, char **argv)
     require(argc == 3, "usage: MacPlatformHelperSmoke <helper-executable> <graceful|terminate>");
     const auto mode = QString(argv[2]);
     require(
-        mode == "capture-revoke" || mode == "capture-cancel" || mode == "capture" || mode == "normal" ||
-            mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout" ||
-            mode == "probe-invalid",
+        mode == "capture-callback" || mode == "capture-revoke" || mode == "capture-cancel" || mode == "capture" ||
+            mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous" ||
+            mode == "probe-timeout" || mode == "probe-invalid",
         "unknown mode"
     );
     const auto before = macDisplayInventory();
@@ -227,12 +228,16 @@ int main(int argc, char **argv)
       if (mode == "capture-cancel")
         capture.stop();
       std::optional<ReadFrame> frame;
+      std::shared_ptr<CpuFrameLease> cpuLease;
       if (mode != "capture-cancel") {
         const bool received = until(
             [&] {
               capture.poll();
-              frame = capture.readNewest();
-              return frame.has_value() || !capture.error().isEmpty();
+              if (mode == "capture-callback")
+                cpuLease = capture.takeCpuLease();
+              else
+                frame = capture.readNewest();
+              return frame.has_value() || bool(cpuLease) || !capture.error().isEmpty();
             },
             9000
         );
@@ -242,14 +247,15 @@ int main(int argc, char **argv)
         std::cerr << "captureSamples=" << stats.samples << " complete=" << stats.complete
                   << " published=" << stats.published << " budgetDrops=" << stats.budgetDrops
                   << " status=" << stats.lastStatus << '\n';
-        require(received && frame.has_value(), "no valid native frame");
+        require(received && (frame.has_value() || cpuLease), "no valid native frame");
+        const auto &metadata = cpuLease ? cpuLease->descriptor() : frame->descriptor;
         require(
-            frame->descriptor.sourceResource == outputRecord.id.toStdString() &&
-                frame->descriptor.session == session.toStdString() && frame->descriptor.width == 1920 &&
-                frame->descriptor.height == 1080 && frame->descriptor.captureTimeValid && frame->owner,
+            metadata.sourceResource == outputRecord.id.toStdString() && metadata.session == session.toStdString() &&
+                metadata.width == 1920 && metadata.height == 1080 && metadata.captureTimeValid &&
+                (cpuLease ? cpuLease->data() != nullptr : bool(frame->owner)),
             "native frame resource/format binding"
         );
-        const auto ticket = frame->ticket;
+        const auto ticket = frame ? frame->ticket : FrameTicket{};
         if (mode == "capture-revoke") {
           require(
               provider->quiesce(ledger->records().value(outputRecord.id), Clock::now() + std::chrono::seconds(5)),
@@ -261,8 +267,14 @@ int main(int argc, char **argv)
         }
         capture.stop();
         require(!capture.stopped(), "capture declared drained with borrowed frame");
-        frame.reset();
-        require(capture.releaseRead(ticket), "native frame lease not released");
+        if (cpuLease) {
+          require(cpuLease->allocationBytes() == 8294400, "native CPU view byte count");
+          std::thread callback([lease = std::move(cpuLease)] { (void)lease->data(); });
+          callback.join();
+        } else {
+          frame.reset();
+          require(capture.releaseRead(ticket), "native frame lease not released");
+        }
       }
       const bool stopped = until([&] { return capture.stopped(); }, 5000);
       if (!stopped)

@@ -255,6 +255,14 @@ bool FramePool::publish(const FrameTicket &t, FrameDescriptor descriptor, bool p
 }
 std::optional<ReadFrame> FramePool::readNewest()
 {
+  return readNewest(false);
+}
+std::optional<ReadFrame> FramePool::readNewestCpu()
+{
+  return readNewest(true);
+}
+std::optional<ReadFrame> FramePool::readNewest(bool requireCpuView)
+{
   ReclaimBatch reclaim{m_budget, {}};
   std::lock_guard lock(m_mutex);
   if (m_retired)
@@ -264,7 +272,8 @@ std::optional<ReadFrame> FramePool::readNewest()
     if (m_slots[i].state == SlotState::Published &&
         (!newest || m_slots[i].descriptor.sequence > m_slots[*newest].descriptor.sequence))
       newest = i;
-  if (!newest)
+  if (!newest ||
+      (requireCpuView && (m_slots[*newest].memory != MemoryDomain::Cpu || !m_slots[*newest].allocation.cpuData)))
     return {};
   for (uint32_t i = 0; i < m_slots.size(); ++i)
     if (i != *newest && m_slots[i].state == SlotState::Published) {
@@ -273,7 +282,7 @@ std::optional<ReadFrame> FramePool::readNewest()
     }
   auto &s = m_slots[*newest];
   s.state = SlotState::Reading;
-  return ReadFrame{ticket(*newest), s.descriptor, s.allocation.owner};
+  return ReadFrame{ticket(*newest), s.descriptor, s.allocation.owner, s.allocation.cpuData, s.bytes};
 }
 bool FramePool::releaseRead(const FrameTicket &t, uint64_t fence)
 {
@@ -324,5 +333,23 @@ uint64_t FramePool::droppedRawFrames() const
 {
   std::lock_guard lock(m_mutex);
   return m_drops;
+}
+std::shared_ptr<CpuFrameLease> CpuFrameLease::acquire(std::shared_ptr<FramePool> pool)
+{
+  if (!pool)
+    return {};
+  // Allocate callback ownership before borrowing a slot, so allocation failure
+  // cannot strand a Reading ticket.
+  auto lease = std::shared_ptr<CpuFrameLease>(new CpuFrameLease(std::move(pool)));
+  lease->m_frame = lease->m_pool->readNewestCpu();
+  return lease->m_frame ? lease : std::shared_ptr<CpuFrameLease>{};
+}
+CpuFrameLease::~CpuFrameLease()
+{
+  if (!m_frame)
+    return;
+  const auto ticket = m_frame->ticket;
+  m_frame.reset();
+  m_pool->releaseRead(ticket);
 }
 } // namespace deskflow::display::infra

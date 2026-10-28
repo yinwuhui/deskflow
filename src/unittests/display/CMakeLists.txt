@@ -139,7 +139,7 @@ endif()
 
 add_executable(DisplayFrameModelTests FrameModelTests.cpp)
 target_link_libraries(DisplayFrameModelTests PRIVATE deskflow-display-infra-core)
-foreach(case FrameLayouts FrameBudget FrameFreshness FrameTickets FrameFences FrameRetirement FrameQuarantine FrameDeleter)
+foreach(case FrameLayouts FrameBudget FrameFreshness FrameTickets FrameFences FrameRetirement FrameQuarantine FrameDeleter FrameCpuCallbackLifetime FrameCpuViewGates)
   add_test(NAME Display.Infrastructure.${case} COMMAND DisplayFrameModelTests ${case})
   set_tests_properties(Display.Infrastructure.${case} PROPERTIES TIMEOUT 10)
 endforeach()

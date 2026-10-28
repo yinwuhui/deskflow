@@ -218,6 +218,54 @@ static void deleterOutsideLock()
   require(t && p.adopt(*t, std::move(a)), "reentrant owner adopt");
   require(p.abortWrite(*t) && deleted, "deleter ran while lock held");
 }
+static void cpuCallbackLifetime()
+{
+  auto budget = std::make_shared<FrameBudget>();
+  auto pool = std::make_shared<FramePool>(instance, 1, session, budget);
+  auto pixels = std::make_shared<std::vector<unsigned char>>(16, 0x5a);
+  const void *view = pixels->data();
+  require(view != pixels.get(), "fixture must distinguish owner from pixel view");
+  auto ticket = pool->reserve(16, MemoryDomain::Cpu);
+  require(ticket.has_value(), "reserve CPU callback fixture");
+  FrameAllocation allocation{pixels, 16, MemoryDomain::Cpu, view};
+  pixels.reset();
+  require(pool->adopt(*ticket, std::move(allocation)) && pool->publish(*ticket, descriptor()), "publish CPU view");
+  auto lease = CpuFrameLease::acquire(pool);
+  require(
+      lease && lease->data() == view && lease->allocationBytes() == 16 && lease->descriptor().sequence == 1,
+      "CPU lease lost actual view or metadata"
+  );
+  auto callbackOwner = lease;
+  pool->retire();
+  require(!pool->drained() && !CpuFrameLease::acquire(pool), "retired borrowed CPU frame forced free");
+  pool.reset();
+  lease.reset();
+  require(budget->usage().bytes == 16, "callback input freed before last consumer");
+  std::atomic<bool> valid{false};
+  std::thread callback([owner = std::move(callbackOwner), &valid] {
+    valid.store(static_cast<const unsigned char *>(owner->data())[15] == 0x5a);
+  });
+  callback.join();
+  require(
+      valid.load() && budget->usage().bytes == 0 && budget->usage().surfaces == 0,
+      "foreign-thread callback did not preserve/release CPU input"
+  );
+}
+static void cpuViewGates()
+{
+  require(!CpuFrameLease::acquire({}), "null CPU pool accepted");
+  auto budget = std::make_shared<FrameBudget>();
+  auto opaque = std::make_shared<FramePool>(instance, 1, session, budget);
+  put(*opaque, 1);
+  require(!CpuFrameLease::acquire(opaque), "opaque owner interpreted as CPU pixels");
+  opaque->retire();
+  require(opaque->drained(), "CPU view refusal consumed opaque ticket");
+  auto gpu = std::make_shared<FramePool>(instance, 1, session, budget);
+  put(*gpu, 1, MemoryDomain::IOSurface);
+  require(!CpuFrameLease::acquire(gpu), "GPU owner interpreted as CPU pixels");
+  gpu->retire();
+  require(gpu->drained() && budget->usage().bytes == 0, "GPU refusal borrowed or forged a fence");
+}
 int main(int argc, char **argv)
 {
   try {
@@ -237,6 +285,10 @@ int main(int argc, char **argv)
       retirement();
     else if (c == "FrameQuarantine")
       quarantine();
+    else if (c == "FrameCpuCallbackLifetime")
+      cpuCallbackLifetime();
+    else if (c == "FrameCpuViewGates")
+      cpuViewGates();
     else if (c == "FrameDeleter")
       deleterOutsideLock();
     else

@@ -96,12 +96,17 @@ struct FrameAllocation
   std::shared_ptr<void> owner;
   uint64_t bytes = 0;
   MemoryDomain memory = MemoryDomain::Cpu;
+  // Optional local CPU view, never serialized. Trusted importer guarantees
+  // allocationBytes of accessible storage and ties its lifetime to owner.
+  const void *cpuData = nullptr;
 };
 struct ReadFrame
 {
   FrameTicket ticket;
   FrameDescriptor descriptor;
   std::shared_ptr<const void> owner;
+  const void *cpuData = nullptr;
+  uint64_t allocationBytes = 0;
 };
 class FramePool
 {
@@ -117,6 +122,7 @@ public:
   bool abortWrite(const FrameTicket &);
   bool publish(const FrameTicket &, FrameDescriptor, bool producerFenceComplete = false);
   std::optional<ReadFrame> readNewest();
+  std::optional<ReadFrame> readNewestCpu();
   // Every borrowed owner copy must be gone before releaseRead. A GPU reader
   // supplies a unique nonzero fence token even if it completed synchronously.
   bool releaseRead(const FrameTicket &, uint64_t fenceToken = 0);
@@ -126,6 +132,7 @@ public:
   uint64_t droppedRawFrames() const;
 
 private:
+  std::optional<ReadFrame> readNewest(bool requireCpuView);
   struct Slot
   {
     SlotState state = SlotState::Free;
@@ -151,5 +158,35 @@ private:
   mutable std::mutex m_mutex;
   uint64_t m_lastSequence = 0, m_lastTimestamp = 0, m_drops = 0;
   bool m_retired = false, m_valid = false;
+};
+// Shared callback lifetime for native encoders/appsrc. It never interprets an
+// opaque native owner as pixels, and needs no platform facade on destruction.
+// CPU view importers must supply an owner safe to destroy on a consumer thread.
+class CpuFrameLease final
+{
+public:
+  static std::shared_ptr<CpuFrameLease> acquire(std::shared_ptr<FramePool>);
+  ~CpuFrameLease();
+  CpuFrameLease(const CpuFrameLease &) = delete;
+  CpuFrameLease &operator=(const CpuFrameLease &) = delete;
+  const FrameDescriptor &descriptor() const
+  {
+    return m_frame->descriptor;
+  }
+  const void *data() const
+  {
+    return m_frame->cpuData;
+  }
+  uint64_t allocationBytes() const
+  {
+    return m_frame->allocationBytes;
+  }
+
+private:
+  explicit CpuFrameLease(std::shared_ptr<FramePool> pool) : m_pool(std::move(pool))
+  {
+  }
+  std::shared_ptr<FramePool> m_pool;
+  std::optional<ReadFrame> m_frame;
 };
 } // namespace deskflow::display::infra

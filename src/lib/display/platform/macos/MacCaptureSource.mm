@@ -151,8 +151,9 @@ void topologyChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags, void *conte
     std::memcpy(owner.get() + row * stride, source + row * sourceStride, stride);
   CVPixelBufferUnlockBaseAddress(pixels, kCVPixelBufferLock_ReadOnly);
   std::shared_ptr<void> allocation(owner, owner.get());
+  const void *cpuData = owner.get();
   owner.reset();
-  if (!current->pool->adopt(*ticket, {std::move(allocation), bytes, MemoryDomain::Cpu})) {
+  if (!current->pool->adopt(*ticket, {std::move(allocation), bytes, MemoryDomain::Cpu, cpuData})) {
     current->pool->abortWrite(*ticket);
     current->fail("CaptureBufferAdoptionFailed");
     return;
@@ -362,6 +363,16 @@ std::optional<ReadFrame> MacCaptureSource::readNewest()
     s->pool->releaseRead(ticket);
   }
   return frame;
+}
+std::shared_ptr<CpuFrameLease> MacCaptureSource::takeCpuLease()
+{
+  auto s = m_impl->state;
+  if (!s->valid() || !s->pool)
+    return {};
+  auto lease = CpuFrameLease::acquire(s->pool);
+  if (!s->valid())
+    lease.reset();
+  return lease;
 }
 bool MacCaptureSource::releaseRead(const FrameTicket &ticket)
 {
