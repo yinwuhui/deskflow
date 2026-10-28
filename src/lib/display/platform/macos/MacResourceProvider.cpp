@@ -4,6 +4,8 @@
 #include <QCoreApplication>
 #include <QDataStream>
 #include <QProcess>
+#include <QSet>
+#include <QtEndian>
 #include <algorithm>
 #include <cmath>
 namespace deskflow::display::infra {
@@ -15,6 +17,35 @@ struct ProbeResult
   MacDesktopState desktop;
   MacDisplayInventory inventory;
 };
+// Check all variable-length fields before QDataStream may allocate from them.
+// Qt 6.0 encodes QString lengths as big-endian UTF-16 byte counts.
+bool validProbeFraming(const QByteArray &bytes)
+{
+  qsizetype at = 0;
+  auto skip = [&](qsizetype n) {
+    if (n < 0 || n > bytes.size() - at)
+      return false;
+    at += n;
+    return true;
+  };
+  auto word = [&]() -> std::optional<quint32> {
+    if (bytes.size() - at < 4)
+      return {};
+    auto n = qFromBigEndian<quint32>(bytes.constData() + at);
+    at += 4;
+    return n;
+  };
+  auto flag = [&] { return at < bytes.size() && (bytes[at] == 0 || bytes[at] == 1) && skip(1); };
+  if (word() != 0x424d5001 || !flag() || !flag() || !flag() || word() != 128 || !skip(128))
+    return false;
+  const auto count = word();
+  if (!count || *count == 0 || *count > 64)
+    return false;
+  for (quint32 i = 0; i < *count; ++i)
+    if (!skip(24) || word() != 72 || !skip(72 + 32) || !flag() || !flag())
+      return false;
+  return at == bytes.size();
+}
 std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoint deadline)
 {
   if (Clock::now() >= deadline || !validWorkerExecutable(registration))
@@ -48,6 +79,8 @@ std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoi
   if (bytes.size() > 65536 || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0 ||
       Clock::now() >= deadline)
     return {};
+  if (!validProbeFraming(bytes))
+    return {};
   QDataStream stream(bytes);
   stream.setVersion(QDataStream::Qt_6_0);
   quint32 magic = 0, count = 0;
@@ -56,6 +89,8 @@ std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoi
       result.inventory.digest >> count;
   if (magic != 0x424d5001 || count == 0 || count > 64 || !validId(result.inventory.digest.toStdString(), 32))
     return {};
+  QSet<quint32> ids;
+  QSet<QString> identities;
   for (quint32 i = 0; i < count; ++i) {
     MacDisplayRecord d;
     stream >> d.id >> d.vendor >> d.product >> d.serial >> d.pixelWidth >> d.pixelHeight >> d.identity >> d.bounds >>
@@ -66,6 +101,10 @@ std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoi
         std::abs(d.bounds.y()) > 65536 || d.bounds.width() < 0 || d.bounds.width() > 32768 || d.bounds.height() < 0 ||
         d.bounds.height() > 32768)
       return {};
+    if (ids.contains(d.id) || identities.contains(d.identity))
+      return {};
+    ids.insert(d.id);
+    identities.insert(d.identity);
     result.inventory.displays.push_back(std::move(d));
   }
   if (!stream.atEnd())

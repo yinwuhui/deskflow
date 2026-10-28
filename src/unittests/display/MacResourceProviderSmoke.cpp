@@ -6,6 +6,7 @@
 #include "display/supervision/WorkerProcess.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDataStream>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
@@ -57,6 +58,14 @@ int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
   if (argc == 2 && QString(argv[1]) == "--display-platform-probe") {
+    if (QCoreApplication::applicationFilePath().endsWith(".invalid")) {
+      QFile out;
+      if (!out.open(stdout, QIODevice::WriteOnly))
+        return 2;
+      QDataStream stream(&out);
+      stream << quint32(0x424d5001) << true << true << false << quint32(0xfffffffe);
+      return out.flush() ? 0 : 3;
+    }
     QThread::sleep(5);
     return 0;
   }
@@ -64,7 +73,8 @@ int main(int argc, char **argv)
     require(argc == 3, "usage: MacPlatformHelperSmoke <helper-executable> <graceful|terminate>");
     const auto mode = QString(argv[2]);
     require(
-        mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout",
+        mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout" ||
+            mode == "probe-invalid",
         "unknown mode"
     );
     const auto before = macDisplayInventory();
@@ -105,19 +115,25 @@ int main(int argc, char **argv)
         QFileInfo(executable).canonicalFilePath(), QString::fromLatin1(digest.result().toHex()), binding.backend,
         binding.profile, WorkerPurpose::Platform
     };
-    if (mode == "probe-timeout") {
-      QFile own(QCoreApplication::applicationFilePath());
+    if (mode == "probe-timeout" || mode == "probe-invalid") {
+      const auto fixturePath = temporary.path() + "/fixture.invalid";
+      if (mode == "probe-invalid")
+        require(QFile::copy(QCoreApplication::applicationFilePath(), fixturePath), "copy malformed fixture");
+      QFile own(mode == "probe-invalid" ? fixturePath : QCoreApplication::applicationFilePath());
       require(own.open(QIODevice::ReadOnly), "fixture executable");
       QCryptographicHash ownHash(QCryptographicHash::Sha256);
       require(ownHash.addData(&own), "fixture digest");
       registration.executable = QFileInfo(own).canonicalFilePath();
       registration.sha256 = QString::fromLatin1(ownHash.result().toHex());
+      require(validWorkerExecutable(registration), "registered fixture executable");
       MacResourceProvider stalled(*ledger, registration, binding);
       QElapsedTimer elapsed;
       elapsed.start();
-      const auto observation = stalled.snapshot(workerRecord, Clock::now() + std::chrono::milliseconds(300));
+      const auto observation = stalled.snapshot(
+          workerRecord, Clock::now() + std::chrono::milliseconds(mode == "probe-invalid" ? 1500 : 300)
+      );
       require(!observation.complete && elapsed.elapsed() < 1800, "stalled probe was not bounded");
-      std::cout << "{\"mode\":\"probe-timeout\",\"bounded\":true}\n";
+      std::cout << "{\"mode\":\"" << mode.toStdString() << "\",\"bounded\":true}\n";
       temporary.setAutoRemove(true);
       return 0;
     }
