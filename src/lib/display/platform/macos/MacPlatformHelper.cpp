@@ -3,6 +3,8 @@
 #include "MacVirtualOutput.h"
 #include "display/supervision/WorkerProcess.h"
 #include <QCoreApplication>
+#include <QDataStream>
+#include <QFile>
 #include <QThread>
 #include <QTimer>
 #include <atomic>
@@ -24,6 +26,23 @@ struct State
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
+  if (argc == 2 && QString(argv[1]) == "--display-platform-probe") {
+    const auto desktop = macDesktopState();
+    const auto inventory = macDisplayInventory();
+    if (!inventory.complete)
+      return 4;
+    QFile out;
+    if (!out.open(stdout, QIODevice::WriteOnly))
+      return 5;
+    QDataStream stream(&out);
+    stream.setVersion(QDataStream::Qt_6_0);
+    stream << quint32(0x424d5001) << desktop.onConsole << desktop.lockKnown << desktop.locked << inventory.digest
+           << quint32(inventory.displays.size());
+    for (const auto &d : inventory.displays)
+      stream << d.id << d.vendor << d.product << d.serial << d.pixelWidth << d.pixelHeight << d.identity << d.bounds
+             << d.active << d.mirrored;
+    return stream.status() == QDataStream::Ok && out.flush() ? 0 : 6;
+  }
   if (argc != 2 || QString(argv[1]) != "--display-worker")
     return 2;
   QString error;

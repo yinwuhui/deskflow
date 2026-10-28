@@ -2,11 +2,77 @@
 // SPDX-License-Identifier: MIT
 #include "MacResourceProvider.h"
 #include <QCoreApplication>
+#include <QDataStream>
+#include <QProcess>
 #include <algorithm>
+#include <cmath>
 namespace deskflow::display::infra {
 namespace {
 constexpr auto providerId = "macos.cgdisplay.helper.v1";
 constexpr auto policy = "native-helper-and-system-absence.v1";
+struct ProbeResult
+{
+  MacDesktopState desktop;
+  MacDisplayInventory inventory;
+};
+std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoint deadline)
+{
+  if (Clock::now() >= deadline || !validWorkerExecutable(registration))
+    return {};
+  QProcess process;
+  process.setProgram(registration.executable);
+  process.setArguments({"--display-platform-probe"});
+  process.setStandardErrorFile(QProcess::nullDevice());
+  process.start();
+  auto remaining = [&] {
+    return int(std::max<int64_t>(
+        0,
+        std::min<int64_t>(1000, std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now()).count())
+    ));
+  };
+  if (!process.waitForStarted(remaining()))
+    return {};
+  QByteArray bytes;
+  while (process.state() != QProcess::NotRunning && Clock::now() < deadline) {
+    process.waitForReadyRead(std::min(remaining(), 50));
+    bytes += process.read(65537 - bytes.size());
+    if (bytes.size() > 65536)
+      break;
+  }
+  if (process.state() != QProcess::NotRunning) {
+    process.kill();
+    process.waitForFinished(1000);
+    return {};
+  }
+  bytes += process.read(65537 - bytes.size());
+  if (bytes.size() > 65536 || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0 ||
+      Clock::now() >= deadline)
+    return {};
+  QDataStream stream(bytes);
+  stream.setVersion(QDataStream::Qt_6_0);
+  quint32 magic = 0, count = 0;
+  ProbeResult result;
+  stream >> magic >> result.desktop.onConsole >> result.desktop.lockKnown >> result.desktop.locked >>
+      result.inventory.digest >> count;
+  if (magic != 0x424d5001 || count == 0 || count > 64 || !validId(result.inventory.digest.toStdString(), 32))
+    return {};
+  for (quint32 i = 0; i < count; ++i) {
+    MacDisplayRecord d;
+    stream >> d.id >> d.vendor >> d.product >> d.serial >> d.pixelWidth >> d.pixelHeight >> d.identity >> d.bounds >>
+        d.active >> d.mirrored;
+    if (stream.status() != QDataStream::Ok || !d.id || d.identity.size() != 36 || d.pixelWidth > 32768 ||
+        d.pixelHeight > 32768 || !std::isfinite(d.bounds.x()) || !std::isfinite(d.bounds.y()) ||
+        !std::isfinite(d.bounds.width()) || !std::isfinite(d.bounds.height()) || std::abs(d.bounds.x()) > 65536 ||
+        std::abs(d.bounds.y()) > 65536 || d.bounds.width() < 0 || d.bounds.width() > 32768 || d.bounds.height() < 0 ||
+        d.bounds.height() > 32768)
+      return {};
+    result.inventory.displays.push_back(std::move(d));
+  }
+  if (!stream.atEnd())
+    return {};
+  result.inventory.complete = true;
+  return result;
+}
 QString outputReference(const WorkerOutputObserved &claim)
 {
   return QString("cgoutput1:%1:%2").arg(claim.source.primary).arg(claim.nativeIdentity);
@@ -66,11 +132,10 @@ ResourceContextSnapshot MacResourceProvider::snapshot(const ResourceRecord &r, T
   if (!scope(r) || Clock::now() >= deadline || r.bootInstance != macBootInstanceReference() ||
       r.userSession != macUserSessionReference())
     return {};
-  const auto d = macDesktopState();
-  if (!d.onConsole || !d.lockKnown || d.locked)
+  const auto snapshot = probe(m_registration, deadline);
+  if (!snapshot || !snapshot->desktop.onConsole || !snapshot->desktop.lockKnown || snapshot->desktop.locked)
     return {};
-  const auto inventory = macDisplayInventory();
-  return {inventory.complete, inventory.digest};
+  return {true, snapshot->inventory.digest};
 }
 const ResourceRecord *MacResourceProvider::dependency(const ResourceRecord &r) const
 {
@@ -188,9 +253,10 @@ NativeInspection MacResourceProvider::inspect(const ResourceRecord &r, TimePoint
   }
   if (r.kind != "virtualOutput")
     return {};
-  const auto inventory = macDisplayInventory();
-  if (!inventory.complete)
+  const auto snapshot = probe(m_registration, deadline);
+  if (!snapshot)
     return {};
+  const auto &inventory = snapshot->inventory;
   const auto *helper = dependency(r);
   auto ref = parseOutput(r.platformReference);
   if (!r.platformReference.isEmpty() && !ref)

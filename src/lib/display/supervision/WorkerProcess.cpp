@@ -160,6 +160,10 @@ bool validExecutable(const WorkerRegistration &r)
   return hash.addData(&file) && QString::fromLatin1(hash.result().toHex()) == r.sha256;
 }
 } // namespace
+bool validWorkerExecutable(const WorkerRegistration &r)
+{
+  return validExecutable(r);
+}
 std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
 {
   QFile input;

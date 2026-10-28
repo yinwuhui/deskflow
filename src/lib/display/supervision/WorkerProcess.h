@@ -24,6 +24,7 @@ struct WorkerBootstrap
   uint64_t parentPid = 0;
   QByteArray secret;
 };
+bool validWorkerExecutable(const WorkerRegistration &);
 // Only read from inherited stdin, never from a network message or arbitrary file.
 std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error);
 

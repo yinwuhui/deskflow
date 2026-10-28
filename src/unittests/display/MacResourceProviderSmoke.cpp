@@ -56,10 +56,17 @@ static ResourceRecord record(QString owner, QString session, QString plan, QStri
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
+  if (argc == 2 && QString(argv[1]) == "--display-platform-probe") {
+    QThread::sleep(5);
+    return 0;
+  }
   try {
     require(argc == 3, "usage: MacPlatformHelperSmoke <helper-executable> <graceful|terminate>");
     const auto mode = QString(argv[2]);
-    require(mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous", "unknown mode");
+    require(
+        mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout",
+        "unknown mode"
+    );
     const auto before = macDisplayInventory();
     const auto desktop = macDesktopState();
     require(
@@ -98,6 +105,22 @@ int main(int argc, char **argv)
         QFileInfo(executable).canonicalFilePath(), QString::fromLatin1(digest.result().toHex()), binding.backend,
         binding.profile, WorkerPurpose::Platform
     };
+    if (mode == "probe-timeout") {
+      QFile own(QCoreApplication::applicationFilePath());
+      require(own.open(QIODevice::ReadOnly), "fixture executable");
+      QCryptographicHash ownHash(QCryptographicHash::Sha256);
+      require(ownHash.addData(&own), "fixture digest");
+      registration.executable = QFileInfo(own).canonicalFilePath();
+      registration.sha256 = QString::fromLatin1(ownHash.result().toHex());
+      MacResourceProvider stalled(*ledger, registration, binding);
+      QElapsedTimer elapsed;
+      elapsed.start();
+      const auto observation = stalled.snapshot(workerRecord, Clock::now() + std::chrono::milliseconds(300));
+      require(!observation.complete && elapsed.elapsed() < 1800, "stalled probe was not bounded");
+      std::cout << "{\"mode\":\"probe-timeout\",\"bounded\":true}\n";
+      temporary.setAutoRemove(true);
+      return 0;
+    }
     auto provider = std::make_shared<MacResourceProvider>(*ledger, registration, binding);
     auto makeExecutor = [&] {
       auto executor = std::make_unique<ResourceExecutor>(

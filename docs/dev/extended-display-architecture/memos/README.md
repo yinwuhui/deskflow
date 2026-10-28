@@ -19,6 +19,7 @@
 | M011 | Mac 原生虚拟输出 helper/配置落盘屏障 | Mac 正常/强制退出真实输出清理；两端 113 项回归通过 | [原生输出 helper](M011-mac-platform-helper.zh-CN.md) |
 | M012 | 原生进程出生身份与监督器绑定 | Mac/Ubuntu 各 8 项相关测试，Mac 两种真实输出清理通过 | [原生进程身份](M012-native-process-identity.zh-CN.md) |
 | M013 | Mac 资源 provider/耐久恢复核查 | Mac 四项原生验证；两端 115 项回归通过，待产品装配 | [Mac 资源提供者](M013-mac-resource-provider.zh-CN.md) |
+| M014 | Mac 显示拓扑探测进程隔离 | Mac 真机资源测试与模拟探测超时通过；完整超时认证待补 | [探测进程](M014-mac-probe-isolation.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 
