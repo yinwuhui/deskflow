@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-28",
+  "scope": "Mac native resource provider and reopened durable ledger; no whole-agent crash/media certification",
+  "sourceSha256": {
+    "src/lib/display/platform/macos/MacResourceProvider.cpp": "64dfcd9bd40869fe6397d69cc5fbf19083e4773800ac5750ceffc0131dbc3fbb",
+    "src/unittests/display/MacResourceProviderSmoke.cpp": "d0c531f6afc9e90bf1da82bc3c69f86f0eeb795d40093b8d69cd25523eea722d"
+  },
+  "results": [
+    {
+      "test": "native-mac-resource-provider",
+      "mode": "ambiguous",
+      "blockedSafely": true
+    },
+    {
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "mode": "normal",
+      "outputAbsenceVerified": true,
+      "ownerClosed": true,
+      "scope": "real ResourceExecutor/provider lifecycle; no capture/media certification",
+      "test": "native-mac-resource-provider"
+    },
+    {
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "mode": "recover",
+      "outputAbsenceVerified": true,
+      "ownerClosed": true,
+      "scope": "real ResourceExecutor/provider lifecycle; no capture/media certification",
+      "test": "native-mac-resource-provider"
+    },
+    {
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "mode": "intent",
+      "outputAbsenceVerified": true,
+      "ownerClosed": true,
+      "scope": "real ResourceExecutor/provider lifecycle; no capture/media certification",
+      "test": "native-mac-resource-provider"
+    }
+  ]
+}

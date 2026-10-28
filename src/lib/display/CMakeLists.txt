@@ -85,7 +85,7 @@ if(APPLE AND BUILD_OSX_BUNDLE AND TARGET busymouse-display-probe)
 endif()
 
 if(APPLE AND TARGET deskflow-display-infra-runtime)
-  add_library(deskflow-display-platform-macos STATIC platform/macos/MacVirtualOutput.mm)
+  add_library(deskflow-display-platform-macos STATIC platform/macos/MacVirtualOutput.mm platform/macos/MacResourceProvider.cpp)
   target_link_libraries(deskflow-display-platform-macos PUBLIC deskflow-display-infra-runtime PRIVATE
     "-framework Cocoa" "-framework CoreGraphics" "-framework IOKit" "-framework Security")
   target_include_directories(deskflow-display-platform-macos PRIVATE

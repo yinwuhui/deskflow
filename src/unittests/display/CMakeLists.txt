@@ -179,3 +179,8 @@ if(TARGET deskflow-display-infra-runtime)
   endforeach()
   set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayNativeProcessIdentityTests)
 endif()
+
+if(TARGET deskflow-display-platform-macos)
+  add_executable(MacResourceProviderSmoke MacResourceProviderSmoke.cpp)
+  target_link_libraries(MacResourceProviderSmoke PRIVATE deskflow-display-platform-macos)
+endif()
