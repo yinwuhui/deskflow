@@ -161,6 +161,29 @@ static void registrationGates()
   good.profile = "fixture.other";
   WorkerProcess other;
   require(!other.launch(good, b), "wrong pipeline launched");
+#ifdef Q_OS_UNIX
+  QTemporaryDir temp;
+  require(temp.isValid(), "registration test directory");
+  auto writable = registration(b);
+  const auto path = temp.path() + "/writable-worker";
+  require(QFile::copy(writable.executable, path), "copy writable fixture");
+  require(
+      QFile::setPermissions(
+          path, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner | QFileDevice::ReadGroup |
+                    QFileDevice::WriteGroup | QFileDevice::ExeGroup
+      ),
+      "make fixture group writable"
+  );
+  writable.executable = QFileInfo(path).canonicalFilePath();
+  WorkerProcess unsafe;
+  require(!unsafe.launch(writable, b), "group-writable registered executable launched");
+  const auto link = temp.path() + "/linked-worker";
+  require(QFile::link(registration(b).executable, link), "create fixture symlink");
+  auto linked = registration(b);
+  linked.executable = link;
+  WorkerProcess symlink;
+  require(!symlink.launch(linked, b), "symlinked executable launched");
+#endif
 }
 static void failures()
 {

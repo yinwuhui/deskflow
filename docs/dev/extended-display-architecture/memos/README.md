@@ -21,6 +21,7 @@
 | M013 | Mac 资源 provider/耐久恢复核查 | Mac 四项原生验证；两端 115 项回归通过，待产品装配 | [Mac 资源提供者](M013-mac-resource-provider.zh-CN.md) |
 | M014 | Mac 显示拓扑探测进程隔离 | Mac 真机资源测试与模拟探测超时通过；完整超时认证待补 | [探测进程](M014-mac-probe-isolation.zh-CN.md) |
 | M015 | Mac 探测消息解码前边界 | Mac 实际输出与异常长度/超时夹具通过；其余故障注入待补 | [探测消息边界](M015-probe-framing.zh-CN.md) |
+| M016 | Worker 可执行文件描述符校验 | Mac/Ubuntu 各 6 项监督器回归；执行前替换竞态仍待解决 | [可执行文件校验](M016-worker-executable-validation.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 

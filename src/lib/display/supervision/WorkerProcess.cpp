@@ -12,6 +12,7 @@
 #include <QRandomGenerator>
 #include <QtEndian>
 #ifdef Q_OS_UNIX
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -148,16 +149,39 @@ bool validExecutable(const WorkerRegistration &r)
       f.size() <= 0 || f.size() > 128 * 1024 * 1024 || !validId(r.sha256.toStdString(), 32))
     return false;
 #ifdef Q_OS_UNIX
-  struct stat st{};
-  if (stat(QFile::encodeName(r.executable).constData(), &st) != 0 || (st.st_uid != geteuid() && st.st_uid != 0) ||
-      (st.st_mode & (S_IWGRP | S_IWOTH)))
+  // Hash the same no-follow descriptor whose ownership and metadata we check.
+  // This rejects replacement during hashing; QProcess still launches by path,
+  // so this does not eliminate replacement between validation and exec.
+  const auto path = QFile::encodeName(r.executable);
+  const int fd = ::open(path.constData(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  if (fd < 0)
     return false;
-#endif
+  QFile file;
+  if (!file.open(fd, QIODevice::ReadOnly, QFileDevice::AutoCloseHandle)) {
+    ::close(fd);
+    return false;
+  }
+  struct stat before{}, after{}, named{};
+  if (fstat(fd, &before) != 0 || !S_ISREG(before.st_mode) || (before.st_uid != geteuid() && before.st_uid != 0) ||
+      (before.st_mode & (S_IWGRP | S_IWOTH)) || before.st_size <= 0 || before.st_size > 128 * 1024 * 1024)
+    return false;
+  QCryptographicHash hash(QCryptographicHash::Sha256);
+  if (!hash.addData(&file) || fstat(fd, &after) != 0 || lstat(path.constData(), &named) != 0)
+    return false;
+  if (before.st_dev != after.st_dev || before.st_ino != after.st_ino || before.st_size != after.st_size ||
+      before.st_mode != after.st_mode || before.st_uid != after.st_uid || before.st_gid != after.st_gid ||
+      before.st_mtime != after.st_mtime || before.st_ctime != after.st_ctime || after.st_dev != named.st_dev ||
+      after.st_ino != named.st_ino || after.st_mode != named.st_mode || after.st_uid != named.st_uid ||
+      after.st_size != named.st_size)
+    return false;
+  return QString::fromLatin1(hash.result().toHex()) == r.sha256;
+#else
   QFile file(r.executable);
   if (!file.open(QIODevice::ReadOnly))
     return false;
   QCryptographicHash hash(QCryptographicHash::Sha256);
   return hash.addData(&file) && QString::fromLatin1(hash.result().toHex()) == r.sha256;
+#endif
 }
 } // namespace
 bool validWorkerExecutable(const WorkerRegistration &r)
