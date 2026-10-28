@@ -89,7 +89,7 @@ static int fixture(QCoreApplication &app)
   if (profile == "fixture.wrongpeer")
     ++boot->parentPid;
   WorkerConnection connection(std::move(*boot));
-  connection.onShutdown = [&] { app.exit(43); };
+  connection.onShutdown = [&] { app.exit(profile == "fixture.finalclose" ? 0 : 43); };
 
   connection.onMessage = [&](const WorkerMessage &m) {
     if (std::holds_alternative<WorkerPrepare>(m))
@@ -101,7 +101,10 @@ static int fixture(QCoreApplication &app)
     }
     if (std::holds_alternative<WorkerStop>(m) && profile != "fixture.ignorestop") {
       connection.send(WorkerQuiesced{});
-      QTimer::singleShot(50, &app, [&] { app.exit(0); });
+      if (profile == "fixture.finalclose")
+        connection.disconnectAfterWrites();
+      else
+        QTimer::singleShot(50, &app, [&] { app.exit(0); });
     }
   };
   QTimer::singleShot(0, &connection, [&] { connection.connectToAgent(); });
@@ -117,10 +120,10 @@ static bool launchPrepared(WorkerProcess &p, const WorkerBinding &b)
   };
   return p.launch(registration(b), b);
 }
-static void lifecycle()
+static void lifecycle(bool finalClose = false)
 {
   WorkerProcess p;
-  auto b = binding();
+  auto b = binding(finalClose ? "fixture.finalclose" : "fixture.clean");
   bool established = false, presented = false, quiesced = false, exited = false;
   int exit = -1;
   p.onEstablished = [&] { established = true; };
@@ -278,6 +281,8 @@ int main(int argc, char **argv)
     const std::string c = argv[1];
     if (c == "WorkerProcessLifecycle")
       lifecycle();
+    else if (c == "WorkerFinalDrain")
+      lifecycle(true);
     else if (c == "WorkerRegistration")
       registrationGates();
     else if (c == "WorkerProcessFailures")

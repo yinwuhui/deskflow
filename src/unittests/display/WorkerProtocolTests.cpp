@@ -357,6 +357,102 @@ static void preparationDeadline()
       "Ready renewed absolute preparation deadline"
   );
 }
+static WorkerBinding platformBinding()
+{
+  auto b = binding();
+  b.purpose = WorkerPurpose::Platform;
+  b.backend = "platform.macos.virtual-output";
+  b.profile = "macos.virtual-output.cgdisplay.sdr1080.v1";
+  b.peerIdentity.clear();
+  b.controlBinding.clear();
+  return b;
+}
+struct PlatformPair
+{
+  WorkerProtocol a{WorkerSide::Agent, platformBinding(), QByteArray(32, 'x'), {}};
+  WorkerProtocol w{WorkerSide::Worker, platformBinding(), QByteArray(32, 'x'), {}};
+  WorkerPrepareOutput config{QString(32, '4'), QString(32, '5'), QString(64, '6'), 10000000000ULL};
+  WorkerOutputObserved claim{QString(32, '4'), "native-display-uuid", {NativeSourceKind::CgDisplay, 77, 0}, 1};
+  void connect()
+  {
+    auto ah = a.hello(), wh = w.hello();
+    require(a.feed(wh, true, {}) && w.feed(ah, true, {}), "platform handshake");
+  }
+  void start()
+  {
+    connect();
+    require(w.feed(a.encode(config, {}), true, {}), "platform prepare");
+    w.takeMessages();
+    require(a.feed(w.encode(WorkerReady{}, {}), true, {}), "platform ready");
+    a.takeMessages();
+    require(w.feed(a.encode(WorkerStart{}, {}), true, {}), "platform start");
+    w.takeMessages();
+  }
+};
+static void platformContract()
+{
+  PlatformPair p;
+  p.start();
+  require(p.a.feed(p.w.encode(p.claim, {}), true, {}), "owned output claim");
+  auto messages = p.a.takeMessages();
+  require(messages.size() == 1 && std::get<WorkerOutputObserved>(messages.front()) == p.claim, "claim changed");
+  require(p.w.feed(p.a.encode(WorkerConfigureOutput{p.config.resourceId}, {}), true, {}), "layout permission");
+  require(p.a.feed(p.w.encode(WorkerOutputReady{p.config.resourceId}, {}), true, {}), "layout verification");
+  PlatformPair early;
+  early.start();
+  require(early.a.encode(WorkerConfigureOutput{early.config.resourceId}, {}).isEmpty(), "layout before ownership");
+  PlatformPair wrong;
+  wrong.start();
+  wrong.claim.source.kind = NativeSourceKind::PipeWireNode;
+  require(wrong.w.encode(wrong.claim, {}).isEmpty(), "foreign backend source accepted");
+  PlatformPair race;
+  race.start();
+  auto late = race.w.encode(race.claim, {});
+  auto stop = race.a.encode(WorkerStop{}, {});
+  require(race.w.feed(stop, true, {}), "platform stop race");
+  require(race.a.feed(late, true, {}), "late resource ownership rejected");
+  require(race.a.takeMessages().size() == 1, "late ownership suppressed instead of dispatched for cleanup");
+  require(race.a.encode(WorkerConfigureOutput{race.config.resourceId}, {}).isEmpty(), "revoked layout accepted");
+  PlatformPair lateReady;
+  lateReady.start();
+  require(lateReady.a.feed(lateReady.w.encode(lateReady.claim, {}), true, {}), "ready race ownership");
+  lateReady.a.takeMessages();
+  require(
+      lateReady.w.feed(lateReady.a.encode(WorkerConfigureOutput{lateReady.config.resourceId}, {}), true, {}),
+      "ready race configure"
+  );
+  const auto prepared = lateReady.w.encode(WorkerOutputReady{lateReady.config.resourceId}, {});
+  lateReady.a.encode(WorkerStop{}, {});
+  require(
+      lateReady.a.feed(prepared, true, {}) && lateReady.a.takeMessages().empty(), "late ready dispatched after stop"
+  );
+  auto config = p.config;
+  config.width = 3840;
+  require(!validOutputPreparation(config, {}), "unbounded native mode accepted");
+}
+static void purposeIsolation()
+{
+  PlatformPair p;
+  p.connect();
+  require(p.a.encode(preparation({}), {}).isEmpty(), "media configuration entered platform helper");
+  PlatformPair frame;
+  frame.start();
+  require(
+      frame.w.encode(WorkerPresented{1, PresentationEvidence::Submitted, false}, {}).isEmpty(),
+      "platform reported media"
+  );
+  Pair media;
+  media.start();
+  require(media.w.encode(PlatformPair{}.claim, {}).isEmpty(), "media worker claimed output ownership");
+  auto invalid = platformBinding();
+  invalid.peerIdentity = QString(64, 'c');
+  WorkerProtocol bad(WorkerSide::Agent, invalid, QByteArray(32, 'x'), {});
+  require(bad.failed(), "platform silently accepted media peer scope");
+  WorkerProtocol agent(WorkerSide::Agent, platformBinding(), QByteArray(32, 'x'), {});
+  WorkerProtocol worker(WorkerSide::Worker, binding(), QByteArray(32, 'x'), {});
+  agent.hello();
+  require(!agent.feed(worker.hello(), true, {}), "cross-purpose hello accepted");
+}
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
@@ -383,6 +479,10 @@ int main(int argc, char **argv)
       signalBudgets();
     else if (c == "WorkerSignalDirection")
       signalDirection();
+    else if (c == "WorkerPlatformContract")
+      platformContract();
+    else if (c == "WorkerPurposeIsolation")
+      purposeIsolation();
     else if (c == "WorkerPreparationDeadline")
       preparationDeadline();
     else

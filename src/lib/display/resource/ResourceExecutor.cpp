@@ -166,10 +166,17 @@ ResourceResult ResourceExecutor::create(ResourceRecord r, const ResourceAuthoriz
         result.primaryError = "ResourceObservationNotDurable";
       else if (permit(r, a, deadline)) {
         const auto current = m_ledger.records().value(r.id);
+        const bool configured = safeProvider([&] { return p->implementation->configure(current, deadline); }, false);
         const auto observed =
-            safeProvider([&] { return p->implementation->inspect(current, deadline); }, NativeInspection{});
-        if (observed.presence == Presence::Owned && observed.reference == created.reference &&
-            ownership(observed.evidence) && observed.topologyMatches) {
+            configured && permit(r, a, deadline)
+                ? safeProvider([&] { return p->implementation->inspect(current, deadline); }, NativeInspection{})
+                : NativeInspection{};
+        if (!permit(r, a, deadline))
+          result.primaryError = "ResourcePermitRevoked";
+        else if (!configured)
+          result.primaryError = "ResourceConfigurationFailed";
+        else if (observed.presence == Presence::Owned && observed.reference == created.reference &&
+                 ownership(observed.evidence) && observed.topologyMatches) {
           if (!permit(r, a, deadline))
             result.primaryError = "ResourcePermitRevoked";
           else if (m_ledger.transition(r.id, ResourcePhase::Active, created.reference, observed.evidence)) {

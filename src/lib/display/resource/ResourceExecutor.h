@@ -55,6 +55,12 @@ public:
   virtual ~PlatformResourceProvider() = default;
   virtual ResourceContextSnapshot snapshot(const ResourceRecord &, TimePoint deadline) = 0;
   virtual NativeCreation create(const ResourceRecord &, TimePoint deadline) = 0;
+  // Invoked only after ResourceObserved is durable. Non-layout providers may
+  // keep the no-op default; display providers configure only their owned output.
+  virtual bool configure(const ResourceRecord &, TimePoint)
+  {
+    return true;
+  }
   // Stop and acknowledge all pending owner-bound creates before absence can be
   // trusted. A timed-out asynchronous create must not appear after OwnerClosed.
   virtual bool quiesce(const ResourceRecord &, TimePoint deadline) = 0;

@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-28",
+  "environment": {
+    "system": "macOS-27.0.1-arm64-arm-64bit",
+    "qt": "6.8.3",
+    "architecture": "arm64"
+  },
+  "scope": "real Mac additional output and own helper lifetime; no capture/media/presentation certification",
+  "sourceSha256": {
+    "src/lib/display/platform/macos/MacVirtualOutput.mm": "75fa48a5f4c42959963f5bb8b6621640bed4606f0d08597e59654ac8bfa23545",
+    "src/lib/display/platform/macos/MacPlatformHelper.cpp": "a303b9fa30472f179fc2768a0c240ba872bbf5c8416ca69f2e65b8e73898beeb",
+    "src/lib/display/supervision/WorkerProcess.cpp": "d10f063d42551929e112f6654fab07b6b74b2df5656bf80ca788ee7e80233c3d",
+    "src/unittests/display/MacPlatformHelperSmoke.cpp": "71dfad86ca2a67a772fada3afe1c6434f73fbb58eb72dbc1cc39551959550e0f"
+  },
+  "results": [
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "graceful",
+      "nativeDisplayId": 102,
+      "nativeIdentity": "c881d974-ab70-480d-9071-96d1047da82a",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": true,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "",
+      "test": "native-mac-platform-helper"
+    },
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "terminate",
+      "nativeDisplayId": 103,
+      "nativeIdentity": "dbf000eb-657d-4734-8568-3ee27177e86d",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": false,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "WorkerTerminatedBySupervisor",
+      "test": "native-mac-platform-helper"
+    },
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "graceful",
+      "nativeDisplayId": 104,
+      "nativeIdentity": "1d98d703-9dde-43de-883b-413def31fe02",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": true,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "",
+      "test": "native-mac-platform-helper"
+    },
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "terminate",
+      "nativeDisplayId": 105,
+      "nativeIdentity": "52322245-111a-48fa-bb6c-b197053f6f96",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": false,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "WorkerTerminatedBySupervisor",
+      "test": "native-mac-platform-helper"
+    }
+  ]
+}

@@ -173,6 +173,31 @@ QJsonObject body(const WorkerMessage &message)
   return std::visit(
       [](const auto &m) -> QJsonObject {
         using T = std::decay_t<decltype(m)>;
+        if constexpr (std::is_same_v<T, WorkerConfigureOutput>)
+          return {{"type", "ConfigureOutput"}, {"resourceId", m.resourceId}};
+        if constexpr (std::is_same_v<T, WorkerOutputReady>)
+          return {{"type", "OutputReady"}, {"resourceId", m.resourceId}};
+        if constexpr (std::is_same_v<T, WorkerPrepareOutput>)
+          return {
+              {"type", "PrepareOutput"},
+              {"resourceId", m.resourceId},
+              {"creationIntent", m.creationIntent},
+              {"preCreateContextDigest", m.preCreateContextDigest},
+              {"startupDeadlineNanoseconds", counter(m.startupDeadlineNanoseconds)},
+              {"width", int(m.width)},
+              {"height", int(m.height)},
+              {"refreshRate", int(m.refreshRate)}
+          };
+        if constexpr (std::is_same_v<T, WorkerOutputObserved>)
+          return {
+              {"type", "OutputObserved"},
+              {"resourceId", m.resourceId},
+              {"nativeIdentity", m.nativeIdentity},
+              {"kind", int(m.source.kind)},
+              {"primary", counter(m.source.primary)},
+              {"secondary", double(m.source.secondary)},
+              {"topologyGeneration", counter(m.topologyGeneration)}
+          };
         if constexpr (std::is_same_v<T, WorkerPrepare>)
           return prepareBody(m);
         if constexpr (std::is_same_v<T, WorkerMediaSignal>)
@@ -206,7 +231,41 @@ std::optional<WorkerMessage> message(const QJsonObject &o)
     return {};
   const auto type = o.value("type").toString();
   WorkerMessage value;
-  if (type == "Prepare") {
+  if (type == "ConfigureOutput" || type == "OutputReady") {
+    if (!o.value("resourceId").isString())
+      return {};
+    if (type == "ConfigureOutput")
+      value = WorkerConfigureOutput{o.value("resourceId").toString()};
+    else
+      value = WorkerOutputReady{o.value("resourceId").toString()};
+  } else if (type == "PrepareOutput") {
+    auto deadline = number(o.value("startupDeadlineNanoseconds"));
+    auto w = integer(o.value("width")), h = integer(o.value("height")), r = integer(o.value("refreshRate"));
+    if (!deadline || !w || !h || !r || !o.value("resourceId").isString() || !o.value("creationIntent").isString() ||
+        !o.value("preCreateContextDigest").isString())
+      return {};
+    value = WorkerPrepareOutput{
+        o.value("resourceId").toString(),
+        o.value("creationIntent").toString(),
+        o.value("preCreateContextDigest").toString(),
+        *deadline,
+        *w,
+        *h,
+        *r
+    };
+  } else if (type == "OutputObserved") {
+    auto primary = number(o.value("primary")), generation = number(o.value("topologyGeneration"));
+    auto k = integer(o.value("kind")), secondary = integer(o.value("secondary"));
+    if (!primary || !generation || !k || *k > uint32_t(NativeSourceKind::WindowsDisplay) || !secondary ||
+        !o.value("resourceId").isString() || !o.value("nativeIdentity").isString())
+      return {};
+    value = WorkerOutputObserved{
+        o.value("resourceId").toString(),
+        o.value("nativeIdentity").toString(),
+        {NativeSourceKind(*k), *primary, *secondary},
+        *generation
+    };
+  } else if (type == "Prepare") {
     auto p = prepareMessage(o);
     if (!p)
       return {};
@@ -262,12 +321,18 @@ WorkerProtocol::WorkerProtocol(WorkerSide s, WorkerBinding binding, QByteArray s
       m_leaseDeadline(now)
 {
   const auto &t = m_binding.token;
+  const bool media = m_binding.purpose == WorkerPurpose::Media && id(m_binding.peerIdentity, 64) &&
+                     m_binding.localIdentity != m_binding.peerIdentity && id(m_binding.controlBinding, 64) &&
+                     (m_binding.direction == Direction::Send || m_binding.direction == Direction::Receive);
+  const bool platform =
+      m_binding.purpose == WorkerPurpose::Platform && m_binding.peerIdentity.isEmpty() &&
+      m_binding.controlBinding.isEmpty() && m_binding.direction == Direction::Send &&
+      (m_binding.backend == "platform.macos.virtual-output" || m_binding.backend == "platform.linux.virtual-output" ||
+       m_binding.backend == "platform.windows.virtual-output");
   if (m_secret.size() != 32 || !validId(t.session, 16) || !validId(t.owner, 16) || !validId(t.worker, 16) ||
       !t.attempt || !t.generation || !t.epoch || !name(m_binding.localUserSession) ||
       !name(m_binding.buildCompatibility) || !name(m_binding.backend) || !name(m_binding.profile) ||
-      !id(m_binding.planHash, 64) || !id(m_binding.localIdentity, 64) || !id(m_binding.peerIdentity, 64) ||
-      m_binding.localIdentity == m_binding.peerIdentity || !id(m_binding.controlBinding, 64) ||
-      (m_binding.direction != Direction::Send && m_binding.direction != Direction::Receive))
+      !id(m_binding.planHash, 64) || !id(m_binding.localIdentity, 64) || (!media && !platform))
     fail("InvalidBootstrap");
 }
 WorkerProtocol::~WorkerProtocol()
@@ -279,7 +344,7 @@ QByteArray WorkerProtocol::context() const
 {
   const auto &t = m_binding.token;
   return json(
-      {{"protocol", "display-worker/2"},
+      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/2"},
        {"session", QString::fromStdString(t.session)},
        {"attempt", counter(t.attempt)},
        {"generation", counter(t.generation)},
@@ -414,8 +479,9 @@ bool WorkerProtocol::consume(const QByteArray &bytes, TimePoint now)
   // Frames/Ready already in the pipe when Stop was sent are not new work.
   // Authenticate and consume their sequence but never dispatch them after revoke.
   const bool lateObservation =
-      m_stopping && (std::holds_alternative<WorkerPresented>(*typed) || std::holds_alternative<WorkerReady>(*typed) ||
-                     std::holds_alternative<WorkerMediaSignal>(*typed));
+      m_stopping &&
+      (std::holds_alternative<WorkerPresented>(*typed) || std::holds_alternative<WorkerReady>(*typed) ||
+       std::holds_alternative<WorkerMediaSignal>(*typed) || std::holds_alternative<WorkerOutputReady>(*typed));
   if (!lateObservation)
     m_pending.push_back(*typed);
   m_leaseDeadline = now + std::chrono::milliseconds(1500);
@@ -446,16 +512,54 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
     m_quiesced = true;
     return true;
   }
-  const bool lateObservation = !outbound && m_side == WorkerSide::Agent &&
-                               (std::holds_alternative<WorkerPresented>(m) || std::holds_alternative<WorkerReady>(m) ||
-                                std::holds_alternative<WorkerMediaSignal>(m));
-  if (m_stopping && !lateObservation)
+  const bool lateObservation =
+      !outbound && m_side == WorkerSide::Agent &&
+      (std::holds_alternative<WorkerPresented>(m) || std::holds_alternative<WorkerReady>(m) ||
+       std::holds_alternative<WorkerMediaSignal>(m) || std::holds_alternative<WorkerOutputReady>(m));
+  const bool resourceObservation =
+      !agent && m_binding.purpose == WorkerPurpose::Platform && std::holds_alternative<WorkerOutputObserved>(m);
+  if (m_stopping && !lateObservation && !resourceObservation)
     return false;
   if (const auto *configuration = std::get_if<WorkerPrepare>(&m)) {
-    if (!agent || m_configuration || m_ready || !validWorkerPrepare(*configuration, m_binding.direction, now) ||
+    if (m_binding.purpose != WorkerPurpose::Media || !agent || m_configuration || m_ready ||
+        !validWorkerPrepare(*configuration, m_binding.direction, now) ||
         m_binding.backend != (configuration->protocol == WireProtocol::WebRtc ? "webrtc" : "rdp"))
       return false;
     m_configuration = *configuration;
+    return true;
+  }
+  if (const auto *configuration = std::get_if<WorkerPrepareOutput>(&m)) {
+    if (m_binding.purpose != WorkerPurpose::Platform || !agent || m_outputConfiguration || m_ready ||
+        !validOutputPreparation(*configuration, now))
+      return false;
+    m_outputConfiguration = *configuration;
+    return true;
+  }
+  if (const auto *configuration = std::get_if<WorkerConfigureOutput>(&m)) {
+    if (m_binding.purpose != WorkerPurpose::Platform || !agent || !m_outputObserved || m_outputConfigureRequested ||
+        !m_outputConfiguration || configuration->resourceId != m_outputConfiguration->resourceId)
+      return false;
+    m_outputConfigureRequested = true;
+    return true;
+  }
+  if (const auto *ready = std::get_if<WorkerOutputReady>(&m)) {
+    if (m_binding.purpose != WorkerPurpose::Platform || agent || !m_outputConfigureRequested || m_outputReady ||
+        !m_outputConfiguration || ready->resourceId != m_outputConfiguration->resourceId)
+      return false;
+    m_outputReady = true;
+    return true;
+  }
+  if (const auto *observed = std::get_if<WorkerOutputObserved>(&m)) {
+    if (m_binding.purpose != WorkerPurpose::Platform || agent || !m_started || !m_outputConfiguration ||
+        m_outputObserved || observed->resourceId != m_outputConfiguration->resourceId ||
+        !validOutputObservation(*observed))
+      return false;
+    const auto expected = m_binding.backend == "platform.macos.virtual-output"   ? NativeSourceKind::CgDisplay
+                          : m_binding.backend == "platform.linux.virtual-output" ? NativeSourceKind::PipeWireNode
+                                                                                 : NativeSourceKind::WindowsDisplay;
+    if (observed->source.kind != expected)
+      return false;
+    m_outputObserved = true;
     return true;
   }
   if (const auto *signal = std::get_if<WorkerMediaSignal>(&m)) {
@@ -484,7 +588,7 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
     return true;
   }
   if (std::holds_alternative<WorkerReady>(m)) {
-    if (agent || m_ready || !m_configuration)
+    if (agent || m_ready || (!m_configuration && !m_outputConfiguration))
       return false;
     m_ready = true;
     return true;
@@ -496,10 +600,10 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
     return true;
   }
   if (std::holds_alternative<WorkerRefresh>(m))
-    return agent && m_started;
+    return m_binding.purpose == WorkerPurpose::Media && agent && m_started;
   if (const auto *f = std::get_if<WorkerPresented>(&m)) {
-    if (agent || !m_started || !f->frame || f->frame <= m_lastFrame || int(f->evidence) < 0 ||
-        int(f->evidence) > int(PresentationEvidence::CompositorPresented))
+    if (m_binding.purpose != WorkerPurpose::Media || agent || !m_started || !f->frame || f->frame <= m_lastFrame ||
+        int(f->evidence) < 0 || int(f->evidence) > int(PresentationEvidence::CompositorPresented))
       return false;
     m_lastFrame = f->frame;
     return true;
@@ -540,6 +644,10 @@ void WorkerProtocol::tick(TimePoint now)
            std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count() >= 0 &&
            uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count()) >=
                m_configuration->startupDeadlineNanoseconds)
+    fail("IpcPreparationDeadline");
+  else if (m_outputConfiguration && !m_started && !m_stopping &&
+           uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count()) >=
+               m_outputConfiguration->startupDeadlineNanoseconds)
     fail("IpcPreparationDeadline");
   else if (m_established && !m_quiesced && now >= m_leaseDeadline)
     fail("IpcLeaseExpired");

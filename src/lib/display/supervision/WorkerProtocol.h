@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "MediaWorkerContracts.h"
+#include "PlatformWorkerContracts.h"
 #include "display/core/InfrastructureSession.h"
 #include <QByteArray>
 #include <QString>
@@ -9,12 +10,18 @@
 
 namespace deskflow::display::infra {
 // This is control IPC only. Native surfaces use OS handle transfer separately.
+enum class WorkerPurpose
+{
+  Media,
+  Platform
+};
 struct WorkerBinding
 {
   SessionToken token;
   QString localUserSession, buildCompatibility, backend, profile, planHash;
   QString localIdentity, peerIdentity, controlBinding;
   Direction direction = Direction::Send;
+  WorkerPurpose purpose = WorkerPurpose::Media;
   bool operator==(const WorkerBinding &) const = default;
 };
 enum class WorkerSide
@@ -69,7 +76,8 @@ struct WorkerFailure
 };
 using WorkerMessage = std::variant<
     WorkerStart, WorkerStop, WorkerHeartbeat, WorkerRefresh, WorkerReady, WorkerPresented, WorkerQuiesced,
-    WorkerFailure, WorkerPrepare, WorkerMediaSignal>;
+    WorkerFailure, WorkerPrepare, WorkerMediaSignal, WorkerPrepareOutput, WorkerOutputObserved, WorkerConfigureOutput,
+    WorkerOutputReady>;
 
 // Single event-loop owner. Both ends require an independently authenticated local
 // transport. A secret delivered over an inherited private channel authenticates
@@ -114,6 +122,8 @@ private:
   TimePoint m_handshakeDeadline, m_leaseDeadline;
   uint64_t m_tx = 0, m_rx = 0, m_lastFrame = 0;
   std::optional<WorkerPrepare> m_configuration;
+  std::optional<WorkerPrepareOutput> m_outputConfiguration;
+  bool m_outputObserved = false, m_outputConfigureRequested = false, m_outputReady = false;
   uint32_t m_agentIce = 0, m_workerIce = 0;
   QString m_agentSdpDigest, m_workerSdpDigest;
   bool m_helloSent = false, m_established = false, m_ready = false, m_started = false, m_stopping = false,

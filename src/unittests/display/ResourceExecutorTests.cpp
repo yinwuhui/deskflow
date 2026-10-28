@@ -58,7 +58,9 @@ struct Provider : PlatformResourceProvider
   DurableResourceLedger *ledger = nullptr;
   QMap<QString, QString> objects;
   QStringList released;
-  int creates = 0;
+  int creates = 0, configurations = 0;
+  bool configurationSucceeds = true;
+  std::function<void()> duringConfigure;
   bool ambiguous = false, removeOnRelease = true, absenceVerified = true, quiescent = true, topology = true;
   std::function<void()> duringCreate;
   ResourceContextSnapshot snapshot(const ResourceRecord &, TimePoint) override
@@ -76,6 +78,16 @@ struct Provider : PlatformResourceProvider
     if (duringCreate)
       duringCreate();
     return {CreationCertainty::Created, ref, {"nativeObjectOwnership", r.owner, "verified"}};
+  }
+  bool configure(const ResourceRecord &r, TimePoint) override
+  {
+    require(
+        ledger->records().value(r.id).phase == ResourcePhase::Observed, "layout configured before durable observation"
+    );
+    ++configurations;
+    if (duringConfigure)
+      duringConfigure();
+    return configurationSucceeds;
   }
   bool quiesce(const ResourceRecord &, TimePoint) override
   {
@@ -159,6 +171,28 @@ static void cancellation()
       "cancelled create was lost or exposed"
   );
   require(f.ledger.records().value(r.id).phase == ResourcePhase::Closed, "cancelled output not closed");
+}
+static void configurationBarrier()
+{
+  for (bool revoke : {false, true}) {
+    Fixture f;
+    auto r = record();
+    auto auth = grant(r);
+    if (revoke)
+      f.provider->duringConfigure = [&] { auth.revoked->store(true); };
+    else
+      f.provider->configurationSucceeds = false;
+    auto result = f.executor.create(r, auth, deadline());
+    require(
+        result.primaryError == (revoke ? "ResourcePermitRevoked" : "ResourceConfigurationFailed"),
+        "configuration failure hidden"
+    );
+    require(
+        result.outcome != ResourceOutcome::Active && f.provider->configurations == 1 && f.provider->objects.isEmpty(),
+        "failed layout leaked or became active"
+    );
+    require(f.ledger.records().value(r.id).phase == ResourcePhase::Closed, "failed configuration not compensated");
+  }
 }
 static void ambiguity()
 {
@@ -286,7 +320,8 @@ static void observationFailure()
       "journal failure hidden"
   );
   require(
-      f.provider->objects.isEmpty() && f.provider->released.size() == 1, "unlogged native resource not compensated"
+      f.provider->objects.isEmpty() && f.provider->released.size() == 1 && f.provider->configurations == 0,
+      "unlogged native resource configured or not compensated"
   );
   require(!f.ledger.activeOwner().isEmpty(), "non-durable closure released owner gate");
 }
@@ -382,6 +417,8 @@ int main(int argc, char **argv)
       durable();
     else if (c == "ResourceCancelledCreation")
       cancellation();
+    else if (c == "ResourceConfigurationBarrier")
+      configurationBarrier();
     else if (c == "ResourceAmbiguousOwner")
       ambiguity();
     else if (c == "ResourceIndependentAbsence")

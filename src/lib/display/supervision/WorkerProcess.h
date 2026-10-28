@@ -14,6 +14,7 @@ namespace deskflow::display::infra {
 struct WorkerRegistration
 {
   QString executable, sha256, backend, profile;
+  WorkerPurpose purpose = WorkerPurpose::Media;
 };
 struct WorkerBootstrap
 {
@@ -33,9 +34,14 @@ public:
   bool launch(const WorkerRegistration &, const WorkerBinding &);
   bool send(const WorkerMessage &);
   void stop(StopReason);
+  void terminate();
   bool running() const
   {
     return m_process.state() != QProcess::NotRunning;
+  }
+  qint64 processId() const
+  {
+    return m_process.processId();
   }
   QString error() const
   {
@@ -75,6 +81,7 @@ public:
   explicit WorkerConnection(WorkerBootstrap, QObject *parent = nullptr);
   ~WorkerConnection() override;
   void connectToAgent();
+  void disconnectAfterWrites();
   bool send(const WorkerMessage &);
   QString error() const
   {

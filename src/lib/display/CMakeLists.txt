@@ -31,6 +31,7 @@ if(TARGET Qt6::Core)
     supervision/WorkerProtocol.cpp
     supervision/WorkerProcess.cpp
     supervision/MediaWorkerContracts.cpp
+    supervision/PlatformWorkerContracts.cpp
     resource/DurableResourceLedger.cpp
     resource/ResourceExecutor.cpp)
   target_link_libraries(deskflow-display-infra-runtime PUBLIC deskflow-display-infra-core Qt6::Core Qt6::Network)
@@ -80,4 +81,17 @@ if(APPLE AND BUILD_OSX_BUNDLE AND TARGET busymouse-display-probe)
       configure_mac_codesign(${helper})
     endif()
   endforeach()
+endif()
+
+if(APPLE AND TARGET deskflow-display-infra-runtime)
+  add_library(deskflow-display-platform-macos STATIC platform/macos/MacVirtualOutput.mm)
+  target_link_libraries(deskflow-display-platform-macos PUBLIC deskflow-display-infra-runtime PRIVATE
+    "-framework Cocoa" "-framework CoreGraphics" "-framework IOKit" "-framework Security")
+  target_include_directories(deskflow-display-platform-macos PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/macos")
+  set_target_properties(deskflow-display-platform-macos PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED ON)
+  target_compile_options(deskflow-display-platform-macos PRIVATE -fobjc-arc)
+  add_executable(busymouse-display-platform-helper platform/macos/MacPlatformHelper.cpp)
+  target_link_libraries(busymouse-display-platform-helper PRIVATE deskflow-display-platform-macos)
+  install(TARGETS busymouse-display-platform-helper RUNTIME DESTINATION bin)
 endif()

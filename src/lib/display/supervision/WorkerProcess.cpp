@@ -63,7 +63,7 @@ QJsonObject bindingObject(const WorkerBinding &b)
       {"direction", int(b.direction)}
   };
 }
-std::optional<WorkerBinding> decodeBinding(const QJsonObject &o)
+std::optional<WorkerBinding> decodeBinding(const QJsonObject &o, WorkerPurpose purpose)
 {
   auto num = [&](const char *k) {
     return o.value(k).isString() ? parseCounter(o.value(k).toString().toStdString()) : std::optional<uint64_t>{};
@@ -84,6 +84,7 @@ std::optional<WorkerBinding> decodeBinding(const QJsonObject &o)
       o.value("controlBinding").toString(),
       Direction(o.value("direction").toInt(-1))
   };
+  b.purpose = purpose;
   if (bindingObject(b) != o)
     return {};
   WorkerProtocol check(WorkerSide::Worker, b, QByteArray(32, 'x'), Clock::now());
@@ -95,7 +96,8 @@ QByteArray bootstrapBytes(const WorkerBinding &b, const QString &endpoint, const
 {
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/2"},
+                 {"protocol",
+                  b.purpose == WorkerPurpose::Platform ? "display-platform-bootstrap/1" : "display-worker-bootstrap/2"},
                  {"binding", bindingObject(b)},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
@@ -168,13 +170,19 @@ std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
   auto bytes = input.read(WorkerProtocol::MaxBootstrapBytes + 1);
   ControlError e;
   auto o = parseBoundedObject(bytes, WorkerProtocol::MaxBootstrapBytes, e);
-  if (!o || o->size() != 5 || o->value("protocol") != "display-worker-bootstrap/2" || !o->value("binding").isObject() ||
-      !o->value("endpoint").isString() || !o->value("parentPid").isString() || !o->value("secret").isString()) {
+  if (!o || o->size() != 5 ||
+      (o->value("protocol") != "display-worker-bootstrap/2" && o->value("protocol") != "display-platform-bootstrap/1"
+      ) ||
+      !o->value("binding").isObject() || !o->value("endpoint").isString() || !o->value("parentPid").isString() ||
+      !o->value("secret").isString()) {
     erase(bytes);
     error = "BootstrapSchema";
     return {};
   }
-  const auto b = decodeBinding(o->value("binding").toObject());
+  const auto b = decodeBinding(
+      o->value("binding").toObject(),
+      o->value("protocol") == "display-platform-bootstrap/1" ? WorkerPurpose::Platform : WorkerPurpose::Media
+  );
   const auto pid = parseCounter(o->value("parentPid").toString().toStdString());
   const auto secretText = o->value("secret").toString().toLatin1();
   const auto endpoint = o->value("endpoint").toString();
@@ -233,6 +241,13 @@ WorkerProcess::WorkerProcess(QObject *parent) : QObject(parent), m_directory(QDi
       [this](int code, QProcess::ExitStatus status) {
         m_timer.stop();
         m_server.close();
+        // Process exit may be delivered before the local socket's readyRead.
+        // Consume the bounded receive buffer before aborting it, including the
+        // final authenticated Quiesced observation.
+        if (m_socket && m_socket->state() == QLocalSocket::ConnectedState)
+          m_socket->waitForReadyRead(0); // Poll kernel bytes when its notifier is still pending.
+        for (int chunk = 0; chunk < 4 && m_socket && m_socket->bytesAvailable() > 0 && m_error.isEmpty(); ++chunk)
+          read();
         if (m_socket)
           m_socket->abort();
         erase(m_bootstrap);
@@ -282,7 +297,8 @@ bool WorkerProcess::launch(const WorkerRegistration &r, const WorkerBinding &b)
   if (m_launched || !m_error.isEmpty())
     return false;
   m_launched = true;
-  if (r.backend != b.backend || r.profile != b.profile || !validExecutable(r) || !m_directory.isValid()) {
+  if (r.purpose != b.purpose || r.backend != b.backend || r.profile != b.profile || !validExecutable(r) ||
+      !m_directory.isValid()) {
     fail("WorkerRegistration");
     return false;
   }
@@ -346,6 +362,8 @@ void WorkerProcess::accept()
   m_server.close();
   connect(socket, &QLocalSocket::readyRead, this, [this] { read(); });
   connect(socket, &QLocalSocket::disconnected, this, [this] {
+    for (int chunk = 0; chunk < 4 && m_socket && m_socket->bytesAvailable() > 0 && m_error.isEmpty(); ++chunk)
+      read();
     if (!m_expectedExit)
       fail("WorkerIpcEof");
   });
@@ -401,6 +419,10 @@ void WorkerProcess::stop(StopReason reason)
   else
     fail("WorkerStopBeforeHandshake");
 }
+void WorkerProcess::terminate()
+{
+  fail("WorkerTerminatedBySupervisor");
+}
 void WorkerProcess::poll()
 {
   if (!m_protocol)
@@ -453,6 +475,8 @@ WorkerConnection::WorkerConnection(WorkerBootstrap bootstrap, QObject *parent)
       m_parentPid(bootstrap.parentPid)
 {
   erase(bootstrap.secret);
+  m_socket.setParent(this);
+  m_timer.setParent(this);
   m_socket.setReadBufferSize(2 * (WorkerProtocol::MaxMessageBytes + 4));
   connect(&m_socket, &QLocalSocket::connected, this, [this] {
     if (!peerIdentity(m_socket, m_parentPid, false)) {
@@ -486,6 +510,10 @@ void WorkerConnection::connectToAgent()
     return;
   m_timer.start();
   m_socket.connectToServer(m_endpoint);
+}
+void WorkerConnection::disconnectAfterWrites()
+{
+  m_socket.disconnectFromServer();
 }
 void WorkerConnection::read()
 {
