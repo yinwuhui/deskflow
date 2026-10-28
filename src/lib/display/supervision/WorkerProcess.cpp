@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #ifdef Q_OS_MACOS
+#include <sys/acl.h>
 #include <sys/un.h>
 #endif
 #endif
@@ -143,6 +144,98 @@ bool writeBounded(QLocalSocket *socket, const QByteArray &bytes)
          socket->bytesToWrite() + bytes.size() <= 4 * (WorkerProtocol::MaxMessageBytes + 4) &&
          socket->write(bytes) == bytes.size();
 }
+#ifdef Q_OS_MACOS
+bool noMutatingAcl(int fd)
+{
+  // Require positive volume support and a successful security snapshot. A bare
+  // ENOENT from acl_get_fd_np cannot distinguish absent ACL from unknown state.
+  if (fpathconf(fd, _PC_EXTENDED_SECURITY_NP) != 1)
+    return false;
+  filesec_t security = filesec_init();
+  if (!security)
+    return false;
+  struct stat metadata{};
+  int present = -1;
+  const bool queried =
+      fstatx_np(fd, &metadata, security) == 0 && filesec_query_property(security, FILESEC_ACL, &present) == 0;
+  acl_t acl = nullptr;
+  const bool retrieved = queried && present == 1 && filesec_get_property(security, FILESEC_ACL, &acl) == 0;
+  filesec_free(security);
+  if (queried && present == 0)
+    return true;
+  if (!retrieved || !acl)
+    return false;
+  bool safe = acl_valid(acl) == 0;
+  for (int i = 0; safe && i <= ACL_MAX_ENTRIES; ++i) {
+    acl_entry_t entry;
+    if (acl_get_entry(acl, i, &entry) != 0) {
+      safe = errno == EINVAL;
+      break;
+    }
+    if (i == ACL_MAX_ENTRIES) {
+      safe = false;
+      break;
+    }
+    acl_tag_t tag;
+    if (acl_get_tag_type(entry, &tag) != 0) {
+      safe = false;
+      break;
+    }
+    if (tag == ACL_EXTENDED_DENY)
+      continue;
+    acl_permset_t permissions;
+    if (tag != ACL_EXTENDED_ALLOW || acl_get_permset(entry, &permissions) != 0) {
+      safe = false;
+      break;
+    }
+    // Conservative policy: no mutation grants, even if the qualifier is trusted.
+    for (auto permission :
+         {ACL_WRITE_DATA, ACL_APPEND_DATA, ACL_DELETE, ACL_DELETE_CHILD, ACL_WRITE_ATTRIBUTES, ACL_WRITE_EXTATTRIBUTES,
+          ACL_WRITE_SECURITY, ACL_CHANGE_OWNER})
+      if (acl_get_perm_np(permissions, permission) != 0) {
+        safe = false;
+        break;
+      }
+  }
+  acl_free(acl);
+  return safe;
+}
+bool trustedExecutableParents(const QByteArray &path, const struct stat &file)
+{
+  const auto parts = path.split('/');
+  if (parts.size() < 2 || !parts.front().isEmpty())
+    return false;
+  int directory = ::open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+  if (directory < 0)
+    return false;
+  bool trusted = true;
+  for (qsizetype i = 1; i < parts.size(); ++i) {
+    struct stat parent{};
+    if (parts[i].isEmpty() || parts[i] == "." || parts[i] == ".." || fstat(directory, &parent) != 0 ||
+        !S_ISDIR(parent.st_mode) || !noMutatingAcl(directory) || (parent.st_uid != 0 && parent.st_uid != geteuid()) ||
+        ((parent.st_mode & (S_IWGRP | S_IWOTH)) && !(parent.st_mode & S_ISVTX))) {
+      trusted = false;
+      break;
+    }
+    if (i == parts.size() - 1) {
+      struct stat named{};
+      trusted = fstatat(directory, parts[i].constData(), &named, AT_SYMLINK_NOFOLLOW) == 0 &&
+                named.st_dev == file.st_dev && named.st_ino == file.st_ino && named.st_mode == file.st_mode &&
+                named.st_uid == file.st_uid;
+    } else {
+      const int next = openat(directory, parts[i].constData(), O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+      if (next < 0) {
+        trusted = false;
+        break;
+      }
+      ::close(directory);
+      directory = next;
+    }
+  }
+  ::close(directory);
+  return trusted;
+}
+#endif
 bool validExecutable(const WorkerRegistration &r, QFile *pinned = nullptr)
 {
   QFileInfo f(r.executable);
@@ -164,8 +257,15 @@ bool validExecutable(const WorkerRegistration &r, QFile *pinned = nullptr)
   }
   struct stat before{}, after{}, named{};
   if (fstat(fd, &before) != 0 || !S_ISREG(before.st_mode) || (before.st_uid != geteuid() && before.st_uid != 0) ||
-      (before.st_mode & (S_IWGRP | S_IWOTH)) || before.st_size <= 0 || before.st_size > 128 * 1024 * 1024)
+      (before.st_mode & (S_IWGRP | S_IWOTH | S_ISUID | S_ISGID)) || before.st_size <= 0 ||
+      before.st_size > 128 * 1024 * 1024)
     return false;
+#ifdef Q_OS_MACOS
+  // Path execution is protected from other-user directory replacement. Same-UID
+  // compromise and a trusted updater racing exec are not kernel-bound by this.
+  if (!noMutatingAcl(fd) || !trustedExecutableParents(path, before))
+    return false;
+#endif
   QCryptographicHash hash(QCryptographicHash::Sha256);
   if (!hash.addData(&file) || fstat(fd, &after) != 0 || lstat(path.constData(), &named) != 0)
     return false;

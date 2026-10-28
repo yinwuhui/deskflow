@@ -9,6 +9,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QThread>
+#ifdef Q_OS_UNIX
+#include <sys/stat.h>
+#endif
 #include <iostream>
 #include <stdexcept>
 using namespace deskflow::display::infra;
@@ -205,6 +208,38 @@ static void registrationGates()
   writable.executable = QFileInfo(path).canonicalFilePath();
   WorkerProcess unsafe;
   require(!unsafe.launch(writable, b), "group-writable registered executable launched");
+  require(
+      ::chmod(QFile::encodeName(path).constData(), S_IRUSR | S_IWUSR | S_IXUSR | S_ISUID) == 0,
+      "set elevated fixture mode"
+  );
+  require(!validWorkerExecutable(writable), "setuid registered executable accepted");
+  require(
+      ::chmod(QFile::encodeName(path).constData(), S_IRUSR | S_IWUSR | S_IXUSR | S_ISGID) == 0,
+      "set group elevated fixture mode"
+  );
+  require(!validWorkerExecutable(writable), "setgid registered executable accepted");
+#ifdef Q_OS_MACOS
+  require(::chmod(QFile::encodeName(path).constData(), S_IRUSR | S_IWUSR | S_IXUSR) == 0, "restore fixture mode");
+  require(::chmod(QFile::encodeName(temp.path()).constData(), 0770) == 0, "make parent group writable");
+  require(!validWorkerExecutable(writable), "writable executable ancestor accepted");
+  require(::chmod(QFile::encodeName(temp.path()).constData(), 0700) == 0, "restore private directory");
+  require(validWorkerExecutable(writable), "secure executable under sticky temporary root rejected");
+  auto chmodAcl = [&](QStringList arguments) {
+    QProcess process;
+    process.start("/bin/chmod", arguments);
+    require(
+        process.waitForStarted(2000) && process.waitForFinished(2000) && process.exitCode() == 0,
+        "ACL fixture command failed"
+    );
+  };
+  chmodAcl({"+a", "everyone allow write", path});
+  require(!validWorkerExecutable(writable), "ACL-writable executable accepted");
+  chmodAcl({"-N", path});
+  chmodAcl({"+a", "everyone allow add_file", temp.path()});
+  require(!validWorkerExecutable(writable), "ACL-writable ancestor accepted");
+  chmodAcl({"-N", temp.path()});
+  require(validWorkerExecutable(writable), "restored private executable rejected");
+#endif
   const auto link = temp.path() + "/linked-worker";
   require(QFile::link(registration(b).executable, link), "create fixture symlink");
   auto linked = registration(b);

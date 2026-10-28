@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-28",
+  "scope": "Mac native capture under executable ancestry/ACL policy; no media certification",
+  "workerProcessSha256": "2aea7ab9bd8d0162493841fe154ea278c37f7a35ed56ed7c4800bd6977518a2e",
+  "runs": [
+    {
+      "mode": "capture",
+      "exitCode": 0,
+      "seconds": 7.823,
+      "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-wKPbSz/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+    },
+    {
+      "mode": "capture-cancel",
+      "exitCode": 0,
+      "seconds": 8.869,
+      "stdout": "{\"cpuBudgetReleased\":true,\"frameObserved\":false,\"mode\":\"capture-cancel\",\"resourceBound\":true,\"test\":\"native-mac-capture\"}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-cancel\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-jrShoh/ledger\n"
+    },
+    {
+      "mode": "capture-revoke",
+      "exitCode": 0,
+      "seconds": 3.837,
+      "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-revoke\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-revoke\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-JTMhDs/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+    }
+  ]
+}

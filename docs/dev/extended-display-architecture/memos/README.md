@@ -26,6 +26,7 @@
 | M018 | Linux 描述符执行/统一原生启动 | Linux 确定性路径替换测试通过；两端各 116/116，Mac 路径竞态仍在 | [描述符执行](M018-linux-descriptor-execution.zh-CN.md) |
 | M019 | Mac 活跃资源绑定与原生 CPU 采集 | 九项原生场景通过；CPU 租约排空通过，待隔离媒体 Worker/产品接入 | [Mac 采集源](M019-mac-capture-source.zh-CN.md) |
 | M020 | 媒体 Prepare v3 源身份/拓扑证据 | 源绑定与旧 bootstrap 拒绝测试；待真实媒体 Worker 核查/装配 | [媒体源证据](M020-media-source-binding.zh-CN.md) |
+| M021 | Worker 权限位/Mac 路径及 ACL 准入 | 两端权限回归、Mac 三项原生复测通过；待签名安装策略/原子执行 | [路径权限](M021-worker-path-permissions.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 
@@ -62,3 +63,5 @@ M010 最新完整相关回归：Mac/Ubuntu 各 109/109，通过；累计新增�
 M011 最新相关回归：Mac/Ubuntu 各 113/113；累计新增基础设施测试 75 项。Mac 原生输出生命周期有独立实测证据，持久平台提供者、采集/媒体和产品装配仍待完成。
 
 M013 最新相关回归：Mac/Ubuntu 各 115/115。Mac provider 已有独立原生/账本重开验证，仍不是整进程崩溃恢复、媒体或产品验收。
+
+M020/M021 当前相关自动回归为 Mac/Ubuntu 各 118 项通过。M019/M021 原生采集仅有独立模块证据，尚未接入隔离媒体 Worker、产品入口或跨机呈现。
