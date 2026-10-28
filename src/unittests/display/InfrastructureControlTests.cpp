@@ -27,6 +27,17 @@ static void strictJson()
   require(
       parseControlObject("{\"x\":\"\\ud83d\\ude00\",\"items\":[1,true,null]}", e).has_value(), "valid Unicode rejected"
   );
+  require(
+      parseControlObject("{\"s\":\"" + QByteArray(32768, 'x') + "\"}", e).has_value(), "32KiB decoded string rejected"
+  );
+  require(!parseControlObject("{\"s\":\"" + QByteArray(32769, 'x') + "\"}", e), "decoded string budget exceeded");
+  QByteArray escaped;
+  for (int i = 0; i < 10000; ++i)
+    escaped += "\\n";
+  require(
+      parseControlObject("{\"s\":\"" + escaped + "\"}", e).has_value(),
+      "JSON escapes incorrectly charged as decoded SDP bytes"
+  );
 }
 static void bindingAndReplay()
 {

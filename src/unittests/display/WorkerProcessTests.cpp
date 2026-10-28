@@ -33,10 +33,25 @@ static WorkerBinding binding(QString profile = "fixture.clean")
       {std::string(32, '1'), 1, 1, 1, std::string(32, '2'), std::string(32, '3')},
       "test.user",
       "infra1",
-      "fixture",
+      "webrtc",
       profile,
-      QString(64, 'a')
+      QString(64, 'a'),
+      QString(64, 'b'),
+      QString(64, 'c'),
+      QString(64, 'd'),
+      Direction::Send
   };
+}
+static WorkerPrepare preparation(TimePoint now)
+{
+  WorkerPrepare p;
+  p.sourceResource = QString(32, '4');
+  p.source = {NativeSourceKind::CgDisplay, 77, 0};
+  p.allowedPeerAddresses = {"10.20.1.71"};
+  p.startupDeadlineNanoseconds = uint64_t(
+      std::chrono::duration_cast<std::chrono::nanoseconds>((now + std::chrono::seconds(10)).time_since_epoch()).count()
+  );
+  return p;
 }
 static WorkerRegistration registration(const WorkerBinding &b)
 {
@@ -75,8 +90,10 @@ static int fixture(QCoreApplication &app)
     ++boot->parentPid;
   WorkerConnection connection(std::move(*boot));
   connection.onShutdown = [&] { app.exit(43); };
-  connection.onEstablished = [&] { connection.send(WorkerReady{}); };
+
   connection.onMessage = [&](const WorkerMessage &m) {
+    if (std::holds_alternative<WorkerPrepare>(m))
+      connection.send(WorkerReady{});
     if (std::holds_alternative<WorkerStart>(m)) {
       if (profile == "fixture.crash")
         std::_Exit(17);
@@ -89,6 +106,16 @@ static int fixture(QCoreApplication &app)
   };
   QTimer::singleShot(0, &connection, [&] { connection.connectToAgent(); });
   return app.exec();
+}
+static bool launchPrepared(WorkerProcess &p, const WorkerBinding &b)
+{
+  auto callback = p.onEstablished;
+  p.onEstablished = [&p, callback] {
+    require(p.send(preparation(Clock::now())), "prepare native worker");
+    if (callback)
+      callback();
+  };
+  return p.launch(registration(b), b);
 }
 static void lifecycle()
 {
@@ -111,7 +138,7 @@ static void lifecycle()
     exit = code;
     exited = true;
   };
-  require(p.launch(registration(b), b), "launch");
+  require(launchPrepared(p, b), "launch");
   require(until([&] { return exited; }), "worker did not exit");
   if (!p.error().isEmpty())
     std::cerr << p.error().toStdString() << '\n';
@@ -143,7 +170,7 @@ static void failures()
         p.send(WorkerStart{});
     };
     p.onExited = [&](int, QProcess::ExitStatus) { exited = true; };
-    require(p.launch(registration(b), b), "fixture launch");
+    require(launchPrepared(p, b), "fixture launch");
     require(until([&] { return exited; }, 5000), "failed worker survived");
     require(!p.error().isEmpty(), "failed worker reported successful exit");
   }
@@ -160,7 +187,7 @@ static void stopDeadline()
     }
   };
   p.onExited = [&](int, QProcess::ExitStatus) { exited = true; };
-  require(p.launch(registration(b), b), "launch ignoring worker");
+  require(launchPrepared(p, b), "launch ignoring worker");
   require(until([&] { return started; }, 2000), "no ready");
   QElapsedTimer timer;
   timer.start();
@@ -176,7 +203,7 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
   const auto &t = b.token;
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/1"},
+                 {"protocol", "display-worker-bootstrap/2"},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
                  {"secret", QString::fromLatin1(secret.toHex())},
@@ -192,7 +219,11 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
                       {"build", b.buildCompatibility},
                       {"backend", b.backend},
                       {"profile", b.profile},
-                      {"planHash", b.planHash}
+                      {"planHash", b.planHash},
+                      {"localIdentity", b.localIdentity},
+                      {"peerIdentity", b.peerIdentity},
+                      {"controlBinding", b.controlBinding},
+                      {"direction", int(b.direction)}
                   }}
              }
   ).toJson(QJsonDocument::Compact);

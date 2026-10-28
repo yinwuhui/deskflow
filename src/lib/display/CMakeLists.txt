@@ -30,6 +30,7 @@ if(TARGET Qt6::Core)
     control/ControlAdmission.cpp
     supervision/WorkerProtocol.cpp
     supervision/WorkerProcess.cpp
+    supervision/MediaWorkerContracts.cpp
     resource/DurableResourceLedger.cpp
     resource/ResourceExecutor.cpp)
   target_link_libraries(deskflow-display-infra-runtime PUBLIC deskflow-display-infra-core Qt6::Core Qt6::Network)

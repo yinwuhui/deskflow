@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "MediaWorkerContracts.h"
 #include "display/core/InfrastructureSession.h"
 #include <QByteArray>
 #include <QString>
@@ -12,6 +13,8 @@ struct WorkerBinding
 {
   SessionToken token;
   QString localUserSession, buildCompatibility, backend, profile, planHash;
+  QString localIdentity, peerIdentity, controlBinding;
+  Direction direction = Direction::Send;
   bool operator==(const WorkerBinding &) const = default;
 };
 enum class WorkerSide
@@ -66,7 +69,7 @@ struct WorkerFailure
 };
 using WorkerMessage = std::variant<
     WorkerStart, WorkerStop, WorkerHeartbeat, WorkerRefresh, WorkerReady, WorkerPresented, WorkerQuiesced,
-    WorkerFailure>;
+    WorkerFailure, WorkerPrepare, WorkerMediaSignal>;
 
 // Single event-loop owner. Both ends require an independently authenticated local
 // transport. A secret delivered over an inherited private channel authenticates
@@ -74,8 +77,9 @@ using WorkerMessage = std::variant<
 class WorkerProtocol
 {
 public:
-  static constexpr qsizetype MaxMessageBytes = 8192;
-  static constexpr qsizetype MaxPendingMessages = 32;
+  static constexpr qsizetype MaxMessageBytes = 65536;
+  static constexpr qsizetype MaxBootstrapBytes = 8192;
+  static constexpr qsizetype MaxPendingMessages = 72;
   WorkerProtocol(WorkerSide, WorkerBinding, QByteArray startupSecret, TimePoint now);
   ~WorkerProtocol();
   WorkerProtocol(const WorkerProtocol &) = delete;
@@ -100,7 +104,7 @@ public:
   } // Fixed local codes; no peer-provided strings.
 private:
   bool consume(const QByteArray &, TimePoint now);
-  bool acceptMessage(const WorkerMessage &, bool outbound);
+  bool acceptMessage(const WorkerMessage &, bool outbound, TimePoint now);
   void fail(const QString &);
   QByteArray context() const;
   WorkerSide m_side;
@@ -109,6 +113,9 @@ private:
   QString m_error;
   TimePoint m_handshakeDeadline, m_leaseDeadline;
   uint64_t m_tx = 0, m_rx = 0, m_lastFrame = 0;
+  std::optional<WorkerPrepare> m_configuration;
+  uint32_t m_agentIce = 0, m_workerIce = 0;
+  QString m_agentSdpDigest, m_workerSdpDigest;
   bool m_helloSent = false, m_established = false, m_ready = false, m_started = false, m_stopping = false,
        m_quiesced = false;
   std::vector<WorkerMessage> m_pending;

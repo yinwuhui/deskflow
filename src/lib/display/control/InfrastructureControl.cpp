@@ -98,18 +98,18 @@ private:
           return {};
         ++m_at;
       } else if (c == '"') {
-        if (m_at - start > 32768)
+        if (m_at - start > 6 * 32768 + 2)
           return {};
         QJsonParseError error;
         const auto d = QJsonDocument::fromJson("[" + m_data.mid(start, m_at - start) + "]", &error);
         if (error.error != QJsonParseError::NoError || !d.isArray() || !d.array().first().isString())
           return {};
         const auto s = d.array().first().toString();
-        if (!unicode(s))
+        if (!unicode(s) || s.toUtf8().size() > 32768)
           return {};
         return s;
       }
-      if (m_at - start > 32768)
+      if (m_at - start > 6 * 32768 + 2)
         return {};
     }
     return {};

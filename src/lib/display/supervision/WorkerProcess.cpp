@@ -56,7 +56,11 @@ QJsonObject bindingObject(const WorkerBinding &b)
       {"build", b.buildCompatibility},
       {"backend", b.backend},
       {"profile", b.profile},
-      {"planHash", b.planHash}
+      {"planHash", b.planHash},
+      {"localIdentity", b.localIdentity},
+      {"peerIdentity", b.peerIdentity},
+      {"controlBinding", b.controlBinding},
+      {"direction", int(b.direction)}
   };
 }
 std::optional<WorkerBinding> decodeBinding(const QJsonObject &o)
@@ -74,7 +78,11 @@ std::optional<WorkerBinding> decodeBinding(const QJsonObject &o)
       o.value("build").toString(),
       o.value("backend").toString(),
       o.value("profile").toString(),
-      o.value("planHash").toString()
+      o.value("planHash").toString(),
+      o.value("localIdentity").toString(),
+      o.value("peerIdentity").toString(),
+      o.value("controlBinding").toString(),
+      Direction(o.value("direction").toInt(-1))
   };
   if (bindingObject(b) != o)
     return {};
@@ -87,7 +95,7 @@ QByteArray bootstrapBytes(const WorkerBinding &b, const QString &endpoint, const
 {
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/1"},
+                 {"protocol", "display-worker-bootstrap/2"},
                  {"binding", bindingObject(b)},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
@@ -128,7 +136,7 @@ bool peerIdentity(QLocalSocket &socket, uint64_t expectedPid, bool agentSide)
 bool writeBounded(QLocalSocket *socket, const QByteArray &bytes)
 {
   return socket && socket->state() == QLocalSocket::ConnectedState && !bytes.isEmpty() &&
-         socket->bytesToWrite() + bytes.size() <= 2 * (WorkerProtocol::MaxMessageBytes + 4) &&
+         socket->bytesToWrite() + bytes.size() <= 4 * (WorkerProtocol::MaxMessageBytes + 4) &&
          socket->write(bytes) == bytes.size();
 }
 bool validExecutable(const WorkerRegistration &r)
@@ -157,10 +165,10 @@ std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
     error = "BootstrapInput";
     return {};
   }
-  auto bytes = input.read(WorkerProtocol::MaxMessageBytes + 1);
+  auto bytes = input.read(WorkerProtocol::MaxBootstrapBytes + 1);
   ControlError e;
-  auto o = parseBoundedObject(bytes, WorkerProtocol::MaxMessageBytes, e);
-  if (!o || o->size() != 5 || o->value("protocol") != "display-worker-bootstrap/1" || !o->value("binding").isObject() ||
+  auto o = parseBoundedObject(bytes, WorkerProtocol::MaxBootstrapBytes, e);
+  if (!o || o->size() != 5 || o->value("protocol") != "display-worker-bootstrap/2" || !o->value("binding").isObject() ||
       !o->value("endpoint").isString() || !o->value("parentPid").isString() || !o->value("secret").isString()) {
     erase(bytes);
     error = "BootstrapSchema";

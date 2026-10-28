@@ -15,6 +15,7 @@
 | M007 | 进程内帧描述/预算/租约 | Mac/Ubuntu，8 项行为测试通过；GPU 为模拟对象 | [帧模型](M007-frame-model.zh-CN.md) |
 | M008 | 通用资源执行器/恢复 SPI | Mac/Ubuntu，11 项测试通过；平台为受控模拟 | [资源执行](M008-resource-executor.zh-CN.md) |
 | M009 | 控制限频/命令幂等缓存 | Mac/Ubuntu，6 项测试通过；待网络装配 | [控制准入](M009-control-admission.zh-CN.md) |
+| M010 | 媒体准备/信令 IPC v2 | Mac/Ubuntu，新增 4 项；相关 17 项通过 | [媒体进程契约](M010-media-worker-contracts.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 
@@ -44,3 +45,6 @@ M009 另有 6 项独立测试通过，累计新增测试 67 项。
 ## 媒体实验（不计入已完成生产模块）
 
 - [E001：原生 WebRTC 软件管线](../experiments/E001-native-webrtc.zh-CN.md)：Mac/Ubuntu 本机 1080p BGRA 解码及真实 GCC→encoder 反馈通过；授权、真实副屏、呈现和双机认证仍待完成。
+
+
+M010 最新完整相关回归：Mac/Ubuntu 各 109/109，通过；累计新增基础设施测试 71 项。原生后端、平台资源和产品装配仍未完成。
