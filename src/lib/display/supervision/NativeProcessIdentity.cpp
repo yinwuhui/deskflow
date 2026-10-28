@@ -51,7 +51,11 @@ Observation observe(quint64 pid)
     struct stat st{};
     errno = 0;
     const auto status = ::stat(path.constData(), &st);
-    return {{}, status != 0 && errno == ENOENT};
+    const bool missing = status != 0 && errno == ENOENT;
+    // ENOENT also occurs when procfs is unavailable. Prove that this process
+    // can still inspect its own proc entry before inferring another is absent.
+    QFile self(QStringLiteral("/proc/self/stat"));
+    return {{}, missing && self.open(QIODevice::ReadOnly)};
   }
   const auto bytes = f.read(4097);
   const auto close = bytes.lastIndexOf(')');
