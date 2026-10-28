@@ -85,9 +85,10 @@ if(APPLE AND BUILD_OSX_BUNDLE AND TARGET busymouse-display-probe)
 endif()
 
 if(APPLE AND TARGET deskflow-display-infra-runtime)
-  add_library(deskflow-display-platform-macos STATIC platform/macos/MacVirtualOutput.mm platform/macos/MacResourceProvider.cpp)
+  add_library(deskflow-display-platform-macos STATIC platform/macos/MacVirtualOutput.mm platform/macos/MacResourceProvider.cpp platform/macos/MacCaptureSource.mm)
   target_link_libraries(deskflow-display-platform-macos PUBLIC deskflow-display-infra-runtime PRIVATE
-    "-framework Cocoa" "-framework CoreGraphics" "-framework IOKit" "-framework Security")
+    "-framework Cocoa" "-framework CoreGraphics" "-framework IOKit" "-framework Security"
+    "-framework ScreenCaptureKit" "-framework CoreMedia" "-framework CoreVideo")
   target_include_directories(deskflow-display-platform-macos PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/virtual-display-prototype/macos")
   set_target_properties(deskflow-display-platform-macos PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED ON)

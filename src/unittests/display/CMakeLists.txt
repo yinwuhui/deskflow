@@ -182,5 +182,5 @@ endif()
 
 if(TARGET deskflow-display-platform-macos)
   add_executable(MacResourceProviderSmoke MacResourceProviderSmoke.cpp)
-  target_link_libraries(MacResourceProviderSmoke PRIVATE deskflow-display-platform-macos)
+  target_link_libraries(MacResourceProviderSmoke PRIVATE deskflow-display-platform-macos Qt6::Gui)
 endif()

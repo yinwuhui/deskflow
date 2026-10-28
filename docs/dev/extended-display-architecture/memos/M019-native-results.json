@@ -1,0 +1,150 @@
+{
+  "attempts": [
+    {
+      "date": "2026-10-28",
+      "platform": "macOS arm64",
+      "scope": "native capture and owned output lifecycle; no media or cross-machine certification",
+      "sourceSha256": {
+        "src/lib/display/platform/macos/MacCaptureSource.mm": "1a7fd21800e2a6da1e3e7695538cc23ea172e8eb8d99ee5e1b4735312362b574",
+        "src/lib/display/platform/macos/MacCaptureSource.h": "0fc4404953eb7d02a6c5e6142fb09c8b6ef7d3e229c2fc31c2cced0e96e45e7a",
+        "src/lib/display/platform/macos/MacResourceProvider.cpp": "6fdfc22b6438488565bc85f84af4efa244a045d7dd10f40c33d30d83509611a3",
+        "src/unittests/display/MacResourceProviderSmoke.cpp": "11b0a1ae4365f06612d883648fc63a24c56f835a0742ee34675479223a6f27e9"
+      },
+      "runs": [
+        {
+          "mode": "capture",
+          "exitCode": -11,
+          "seconds": 9.61,
+          "stdout": "",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-cJumRQ/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "platform": "macOS arm64",
+      "label": "stop callback owns shared state by value",
+      "scope": "native capture and owned output lifecycle; no media/cross-machine certification",
+      "sourceSha256": {
+        "src/lib/display/platform/macos/MacCaptureSource.mm": "2633097ea670d57427dc834d5a7cf2de4387669ca84146061d5617777990ffd4",
+        "src/lib/display/platform/macos/MacCaptureSource.h": "0fc4404953eb7d02a6c5e6142fb09c8b6ef7d3e229c2fc31c2cced0e96e45e7a",
+        "src/lib/display/platform/macos/MacResourceProvider.cpp": "6fdfc22b6438488565bc85f84af4efa244a045d7dd10f40c33d30d83509611a3",
+        "src/unittests/display/MacResourceProviderSmoke.cpp": "11b0a1ae4365f06612d883648fc63a24c56f835a0742ee34675479223a6f27e9"
+      },
+      "runs": [
+        {
+          "mode": "capture",
+          "exitCode": 0,
+          "seconds": 11.76,
+          "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-uWrJmp/ledger\ncaptureSamples=3 complete=3 published=3 budgetDrops=0 status=0\n"
+        },
+        {
+          "mode": "capture-cancel",
+          "exitCode": 0,
+          "seconds": 9.326,
+          "stdout": "{\"cpuBudgetReleased\":true,\"frameObserved\":false,\"mode\":\"capture-cancel\",\"resourceBound\":true,\"test\":\"native-mac-capture\"}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-cancel\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-ARlVGY/ledger\n"
+        },
+        {
+          "mode": "capture-revoke",
+          "exitCode": 1,
+          "seconds": 12.458,
+          "stdout": "",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-vDXAeL/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\nnative capture stop not confirmed\n"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "platform": "macOS arm64",
+      "label": "final native validation with stopped delegate evidence",
+      "scope": "native capture and owned output lifecycle; no media/cross-machine certification",
+      "sourceSha256": {
+        "src/lib/display/platform/macos/MacCaptureSource.mm": "7194c3cb1b5e0efa0beb14544e8d477bcef475c12ea98f671ac6ba798e32667d",
+        "src/lib/display/platform/macos/MacCaptureSource.h": "d238160e8821560eb222e43ea12d567c24416651c8d1c9eecd7fc38c1c27acff",
+        "src/lib/display/platform/macos/MacResourceProvider.cpp": "6fdfc22b6438488565bc85f84af4efa244a045d7dd10f40c33d30d83509611a3",
+        "src/unittests/display/MacResourceProviderSmoke.cpp": "baa495096fd34fe2fa1b2f65b6b4cab8ab6a981e8a5a7a5435a7fab427950697"
+      },
+      "runs": [
+        {
+          "mode": "capture",
+          "exitCode": 0,
+          "seconds": 7.903,
+          "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-cdIPWm/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+        },
+        {
+          "mode": "capture-cancel",
+          "exitCode": 0,
+          "seconds": 8.087,
+          "stdout": "{\"cpuBudgetReleased\":true,\"frameObserved\":false,\"mode\":\"capture-cancel\",\"resourceBound\":true,\"test\":\"native-mac-capture\"}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-cancel\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-VJjOvl/ledger\n"
+        },
+        {
+          "mode": "capture-revoke",
+          "exitCode": 0,
+          "seconds": 7.533,
+          "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-revoke\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-revoke\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-BaPzfu/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+        },
+        {
+          "mode": "probe-timeout",
+          "exitCode": 0,
+          "seconds": 0.423,
+          "stdout": "{\"mode\":\"probe-timeout\",\"bounded\":true}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-DfXbtC/ledger\n"
+        },
+        {
+          "mode": "probe-invalid",
+          "exitCode": 0,
+          "seconds": 0.226,
+          "stdout": "{\"mode\":\"probe-invalid\",\"bounded\":true}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-tQUQua/ledger\n"
+        },
+        {
+          "mode": "normal",
+          "exitCode": 0,
+          "seconds": 8.356,
+          "stdout": "{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"normal\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-hPUyDX/ledger\nQProcess: Destroyed while process (\"/private/tmp/deskflow-build/bin/busymouse-display-platform-helper\") is still running.\n"
+        },
+        {
+          "mode": "recover",
+          "exitCode": 0,
+          "seconds": 9.568,
+          "stdout": "{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"recover\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-Fwlrhu/ledger\n"
+        },
+        {
+          "mode": "intent",
+          "exitCode": 0,
+          "seconds": 3.113,
+          "stdout": "{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"intent\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-WCXHvq/ledger\n"
+        },
+        {
+          "mode": "ambiguous",
+          "exitCode": 0,
+          "seconds": 0.316,
+          "stdout": "{\"test\":\"native-mac-resource-provider\",\"mode\":\"ambiguous\",\"blockedSafely\":true}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-TSMzDe/ledger\n"
+        }
+      ]
+    }
+  ],
+  "explainedFailures": [
+    {
+      "attempt": 0,
+      "cause": "stopNative took shared_ptr by reference; asynchronous Objective-C block retained a reference to stack storage",
+      "crashStack": "stopNative(shared_ptr<CaptureState> const&) block -> atomic<bool>::store",
+      "fix": "Pass shared_ptr by value so the asynchronous block owns state"
+    },
+    {
+      "attempt": 1,
+      "mode": "capture-revoke",
+      "cause": "Native stream had already stopped when display disappeared; subsequent stop request alone did not establish successful completion",
+      "fix": "Accept SCStreamDelegate didStopWithError as native stopped evidence, still require FramePool drained"
+    }
+  ]
+}

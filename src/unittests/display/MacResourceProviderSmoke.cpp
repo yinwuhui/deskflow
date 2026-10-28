@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QThread>
@@ -30,7 +31,9 @@ static bool until(const std::function<bool()> &f, int timeout)
 {
   QElapsedTimer timer;
   timer.start();
-  while (!f() && timer.elapsed() < timeout) {
+  while (timer.elapsed() < timeout) {
+    if (f())
+      return true;
     QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
     QThread::msleep(2);
   }
@@ -56,7 +59,11 @@ static ResourceRecord record(QString owner, QString session, QString plan, QStri
 }
 int main(int argc, char **argv)
 {
-  QCoreApplication app(argc, argv);
+  std::unique_ptr<QCoreApplication> application;
+  if (argc == 3 && std::string(argv[2]).starts_with("capture"))
+    application = std::make_unique<QGuiApplication>(argc, argv);
+  else
+    application = std::make_unique<QCoreApplication>(argc, argv);
   if (argc == 2 && QString(argv[1]) == "--display-platform-probe") {
     if (QCoreApplication::applicationFilePath().endsWith(".invalid")) {
       QFile out;
@@ -73,7 +80,8 @@ int main(int argc, char **argv)
     require(argc == 3, "usage: MacPlatformHelperSmoke <helper-executable> <graceful|terminate>");
     const auto mode = QString(argv[2]);
     require(
-        mode == "normal" || mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout" ||
+        mode == "capture-revoke" || mode == "capture-cancel" || mode == "capture" || mode == "normal" ||
+            mode == "recover" || mode == "intent" || mode == "ambiguous" || mode == "probe-timeout" ||
             mode == "probe-invalid",
         "unknown mode"
     );
@@ -148,6 +156,10 @@ int main(int argc, char **argv)
       return executor;
     };
     auto executor = makeExecutor();
+    require(
+        !provider->captureBinding(outputRecord.id, Clock::now() + std::chrono::seconds(1)),
+        "capture binding minted before durable Active output"
+    );
     ResourceAuthorization auth{
         owner,
         session,
@@ -194,7 +206,98 @@ int main(int argc, char **argv)
         std::cerr << output.primaryError.toStdString() << "/" << output.cleanupError.toStdString() << '\n';
       require(output.outcome == ResourceOutcome::Active, "output not active");
     }
-    if (mode != "normal") {
+    if (mode.startsWith("capture")) {
+      QString bindingError;
+      auto source = provider->captureBinding(outputRecord.id, Clock::now() + std::chrono::seconds(3), &bindingError);
+      if (!source)
+        std::cerr << "bindingError=" << bindingError.toStdString() << '\n';
+      require(bool(source), "live capture binding missing");
+      require(!provider->captureBinding(id(), Clock::now() + std::chrono::seconds(1)), "foreign capture binding");
+      MacCaptureSource capture;
+      const bool started = capture.start(*source, Clock::now() + std::chrono::seconds(8));
+      if (!started)
+        std::cerr << "captureError=" << capture.error().toStdString() << '\n';
+      require(started, "native capture failed to start");
+      MacCaptureSource duplicate;
+      require(
+          !duplicate.start(*source, Clock::now() + std::chrono::seconds(2)) &&
+              duplicate.error() == "CaptureBindingRevokedOrUsed",
+          "capture binding reused"
+      );
+      if (mode == "capture-cancel")
+        capture.stop();
+      std::optional<ReadFrame> frame;
+      if (mode != "capture-cancel") {
+        const bool received = until(
+            [&] {
+              capture.poll();
+              frame = capture.readNewest();
+              return frame.has_value() || !capture.error().isEmpty();
+            },
+            9000
+        );
+        if (!capture.error().isEmpty())
+          std::cerr << "captureError=" << capture.error().toStdString() << '\n';
+        const auto stats = capture.statistics();
+        std::cerr << "captureSamples=" << stats.samples << " complete=" << stats.complete
+                  << " published=" << stats.published << " budgetDrops=" << stats.budgetDrops
+                  << " status=" << stats.lastStatus << '\n';
+        require(received && frame.has_value(), "no valid native frame");
+        require(
+            frame->descriptor.sourceResource == outputRecord.id.toStdString() &&
+                frame->descriptor.session == session.toStdString() && frame->descriptor.width == 1920 &&
+                frame->descriptor.height == 1080 && frame->descriptor.captureTimeValid && frame->owner,
+            "native frame resource/format binding"
+        );
+        const auto ticket = frame->ticket;
+        if (mode == "capture-revoke") {
+          require(
+              provider->quiesce(ledger->records().value(outputRecord.id), Clock::now() + std::chrono::seconds(5)),
+              "revoke owned helper"
+          );
+          require(!capture.readNewest(), "revoked source still delivers frames");
+          capture.poll();
+          require(!capture.error().isEmpty(), "revocation not surfaced");
+        }
+        capture.stop();
+        require(!capture.stopped(), "capture declared drained with borrowed frame");
+        frame.reset();
+        require(capture.releaseRead(ticket), "native frame lease not released");
+      }
+      const bool stopped = until([&] { return capture.stopped(); }, 5000);
+      if (!stopped)
+        std::cerr << "captureStopError=" << capture.statistics().stopError
+                  << " nativeStopped=" << capture.statistics().nativeStopped
+                  << " error=" << capture.error().toStdString() << '\n';
+      require(stopped, "native capture stop not confirmed");
+      if (mode == "capture-cancel") {
+        // Pump late content/start callbacks: cancellation must never re-enable capture.
+        QElapsedTimer settle;
+        settle.start();
+        while (settle.elapsed() < 500) {
+          QCoreApplication::processEvents();
+          QThread::msleep(2);
+        }
+        require(
+            !capture.readNewest() && capture.statistics().published == 0, "cancelled preparation published a frame"
+        );
+      }
+      require(capture.usage().bytes == 0 && capture.usage().surfaces == 0, "CPU capture allocation not retired");
+      QJsonObject captureReport{
+          {"test", "native-mac-capture"},
+          {"mode", mode},
+          {"frameObserved", mode != "capture-cancel"},
+          {"resourceBound", true},
+          {"cpuBudgetReleased", true}
+      };
+      if (mode != "capture-cancel") {
+        captureReport.insert("width", 1920);
+        captureReport.insert("height", 1080);
+        captureReport.insert("borrowedFrameBlocksDrain", true);
+      }
+      std::cout << QJsonDocument(captureReport).toJson(QJsonDocument::Compact).constData() << '\n';
+    }
+    if (mode != "normal" && !mode.startsWith("capture")) {
       executor.reset();
       provider.reset(); // Destroy only the live owned helper, retain durable records.
       ledger.reset();

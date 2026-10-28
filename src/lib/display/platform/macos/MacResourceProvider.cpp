@@ -65,6 +65,9 @@ std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoi
     return {};
   QByteArray bytes;
   while (process.state() != QProcess::NotRunning && Clock::now() < deadline) {
+    // Keep the owned helper's lease/IPC alive while the separate probe runs.
+    // ResourceExecutor already rejects reentrant mutations on this thread.
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 2);
     process.waitForReadyRead(std::min(remaining(), 50));
     bytes += process.read(65537 - bytes.size());
     if (bytes.size() > 65536)
@@ -140,11 +143,57 @@ MacResourceProvider::MacResourceProvider(DurableResourceLedger &l, WorkerRegistr
       m_thread(QThread::currentThreadId())
 {
 }
-MacResourceProvider::~MacResourceProvider() = default;
+MacResourceProvider::~MacResourceProvider()
+{
+  m_captureLive->store(false);
+}
 ProviderRegistration MacResourceProvider::registration()
 {
   // Caller supplies shared ownership explicitly; no hidden raw-this ownership.
   return {providerId, "1", policy, {"worker", "virtualOutput"}, {}, {}};
+}
+std::optional<MacCaptureBinding>
+MacResourceProvider::captureBinding(const QString &resource, TimePoint deadline, QString *error)
+{
+  if (error)
+    error->clear();
+  auto reject = [&](const char *why) -> std::optional<MacCaptureBinding> {
+    if (error)
+      *error = why;
+    return {};
+  };
+  if (m_thread != QThread::currentThreadId() || m_stopping || m_exited || !m_process || !m_process->running() ||
+      !m_claim || !m_outputReady || resource != m_outputId)
+    return reject("CaptureLiveOwnerUnavailable");
+  const auto it = m_ledger.records().constFind(resource);
+  if (it == m_ledger.records().cend() || !scope(*it) || it->kind != "virtualOutput" ||
+      it->phase != ResourcePhase::Active || it->platformReference != outputReference(*m_claim))
+    return reject("CaptureResourceNotActive");
+  const auto snapshot = probe(m_registration, deadline);
+  if (!snapshot || !snapshot->desktop.onConsole || !snapshot->desktop.lockKnown || snapshot->desktop.locked)
+    return reject("CaptureDesktopUnproven");
+  if (m_stopping || m_exited || !m_process->running() || !m_captureLive->load())
+    return reject("CaptureLiveOwnerUnavailable");
+  const auto display = std::find_if(
+      snapshot->inventory.displays.begin(), snapshot->inventory.displays.end(),
+      [&](const MacDisplayRecord &d) {
+        return d.id == m_claim->source.primary && d.identity == m_claim->nativeIdentity && d.active && !d.mirrored &&
+               d.pixelWidth == 1920 && d.pixelHeight == 1080 && d.bounds.width() == 1920 && d.bounds.height() == 1080;
+      }
+  );
+  if (display == snapshot->inventory.displays.end())
+    return reject("CaptureIdentityUnproven");
+  MacCaptureBinding binding;
+  binding.m_live = m_captureLive;
+  binding.m_claimed = m_captureClaimed;
+  binding.m_resource = resource.toStdString();
+  binding.m_session = m_binding.token.session;
+  binding.m_identity = display->identity;
+  binding.m_display = display->id;
+  binding.m_epoch = m_binding.token.epoch;
+  binding.m_generation = m_claim->topologyGeneration;
+  binding.m_topologyDigest = snapshot->inventory.digest;
+  return binding;
 }
 bool MacResourceProvider::scope(const ResourceRecord &r) const
 {
@@ -197,7 +246,10 @@ NativeCreation MacResourceProvider::create(const ResourceRecord &r, TimePoint de
     m_workerId = r.id;
     m_process = std::make_unique<WorkerProcess>();
     m_process->onEstablished = [this] { m_established = true; };
-    m_process->onExited = [this](int, QProcess::ExitStatus) { m_exited = true; };
+    m_process->onExited = [this](int, QProcess::ExitStatus) {
+      m_captureLive->store(false);
+      m_exited = true;
+    };
     m_process->onMessage = [this](const WorkerMessage &m) {
       if (std::holds_alternative<WorkerReady>(m))
         m_ready = true;
@@ -247,6 +299,7 @@ bool MacResourceProvider::configure(const ResourceRecord &r, TimePoint deadline)
 }
 bool MacResourceProvider::stop(TimePoint deadline)
 {
+  m_captureLive->store(false);
   m_stopping = true;
   if (!m_process || m_exited)
     return true;

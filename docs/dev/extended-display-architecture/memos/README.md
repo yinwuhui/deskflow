@@ -24,6 +24,7 @@
 | M016 | Worker 可执行文件描述符校验 | Mac/Ubuntu 各 6 项监督器回归；执行前替换竞态仍待解决 | [可执行文件校验](M016-worker-executable-validation.zh-CN.md) |
 | M017 | 既有清理探测回归期限 | 修正测试等待，增加合法输出后挂起场景；Mac/Ubuntu 各 115/115 | [清理探测期限](M017-cleanup-probe-test-deadline.zh-CN.md) |
 | M018 | Linux 描述符执行/统一原生启动 | Linux 确定性路径替换测试通过；两端各 116/116，Mac 路径竞态仍在 | [描述符执行](M018-linux-descriptor-execution.zh-CN.md) |
+| M019 | Mac 活跃资源绑定与原生 CPU 采集 | 九项原生场景通过；CPU 租约排空通过，待隔离媒体 Worker/产品接入 | [Mac 采集源](M019-mac-capture-source.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 
