@@ -150,6 +150,31 @@ static void lifecycle(bool finalClose = false)
   );
   require(!p.launch(registration(b), b), "supervisor reused launch identity");
 }
+static void executableBinding()
+{
+  auto b = binding();
+  auto r = registration(b);
+  QProcess process;
+  require(prepareWorkerProcess(process, r, {"--execution-marker"}), "prepare registered image");
+#ifdef Q_OS_LINUX
+  // Replace the pathname after validation, before start. The replacement must
+  // never run: the descriptor refers to the original now-unlinked executable.
+  const auto original = r.executable + ".original";
+  require(QFile::rename(r.executable, original), "move validated executable");
+  QFile replacement(r.executable);
+  require(replacement.open(QIODevice::WriteOnly), "replacement fixture");
+  require(replacement.write("#!/bin/sh\nexit 91\n") > 0, "write replacement");
+  replacement.close();
+  require(replacement.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner), "replacement mode");
+#endif
+  process.start();
+  require(process.waitForStarted(2000), "start registered image");
+  require(process.waitForFinished(3000), "registered image did not exit");
+  require(
+      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 73,
+      "executed replacement instead of registered image"
+  );
+}
 static void registrationGates()
 {
   auto b = binding();
@@ -299,6 +324,8 @@ int main(int argc, char **argv)
   QCoreApplication app(argc, argv);
   if (argc == 2 && QString(argv[1]) == "--display-worker")
     return fixture(app);
+  if (argc == 2 && QString(argv[1]) == "--execution-marker")
+    return 73;
   try {
     require(argc == 2, "case required");
     const std::string c = argv[1];
@@ -306,6 +333,8 @@ int main(int argc, char **argv)
       lifecycle();
     else if (c == "WorkerFinalDrain")
       lifecycle(true);
+    else if (c == "WorkerExecutableBinding")
+      executableBinding();
     else if (c == "WorkerRegistration")
       registrationGates();
     else if (c == "WorkerProcessFailures")

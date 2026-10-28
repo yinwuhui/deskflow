@@ -25,6 +25,9 @@ struct WorkerBootstrap
   QByteArray secret;
 };
 bool validWorkerExecutable(const WorkerRegistration &);
+// Configure, then start this process without changing its environment/arguments.
+// Linux executes the validated descriptor. Other platforms retain path execution.
+bool prepareWorkerProcess(QProcess &, const WorkerRegistration &, const QStringList &arguments);
 // Only read from inherited stdin, never from a network message or arbitrary file.
 std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error);
 

@@ -48,11 +48,11 @@ bool validProbeFraming(const QByteArray &bytes)
 }
 std::optional<ProbeResult> probe(const WorkerRegistration &registration, TimePoint deadline)
 {
-  if (Clock::now() >= deadline || !validWorkerExecutable(registration))
+  if (Clock::now() >= deadline)
     return {};
   QProcess process;
-  process.setProgram(registration.executable);
-  process.setArguments({"--display-platform-probe"});
+  if (!prepareWorkerProcess(process, registration, {"--display-platform-probe"}))
+    return {};
   process.setStandardErrorFile(QProcess::nullDevice());
   process.start();
   auto remaining = [&] {

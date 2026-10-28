@@ -12,6 +12,7 @@
 #include <QRandomGenerator>
 #include <QtEndian>
 #ifdef Q_OS_UNIX
+#include <cerrno>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/socket.h>
@@ -142,7 +143,7 @@ bool writeBounded(QLocalSocket *socket, const QByteArray &bytes)
          socket->bytesToWrite() + bytes.size() <= 4 * (WorkerProtocol::MaxMessageBytes + 4) &&
          socket->write(bytes) == bytes.size();
 }
-bool validExecutable(const WorkerRegistration &r)
+bool validExecutable(const WorkerRegistration &r, QFile *pinned = nullptr)
 {
   QFileInfo f(r.executable);
   if (!f.isAbsolute() || !f.isFile() || f.isSymLink() || f.canonicalFilePath() != r.executable || !f.isExecutable() ||
@@ -174,8 +175,20 @@ bool validExecutable(const WorkerRegistration &r)
       after.st_ino != named.st_ino || after.st_mode != named.st_mode || after.st_uid != named.st_uid ||
       after.st_size != named.st_size)
     return false;
-  return QString::fromLatin1(hash.result().toHex()) == r.sha256;
+  if (QString::fromLatin1(hash.result().toHex()) != r.sha256)
+    return false;
+  if (pinned) {
+    const int copy = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+    if (copy < 0)
+      return false;
+    if (!pinned->open(copy, QIODevice::ReadOnly, QFileDevice::AutoCloseHandle)) {
+      ::close(copy);
+      return false;
+    }
+  }
+  return true;
 #else
+  Q_UNUSED(pinned);
   QFile file(r.executable);
   if (!file.open(QIODevice::ReadOnly))
     return false;
@@ -188,6 +201,56 @@ bool validWorkerExecutable(const WorkerRegistration &r)
 {
   return validExecutable(r);
 }
+bool prepareWorkerProcess(QProcess &process, const WorkerRegistration &r, const QStringList &arguments)
+{
+  if (process.state() != QProcess::NotRunning)
+    return false;
+  auto env = QProcessEnvironment::systemEnvironment();
+  for (const auto &key : env.keys())
+    if (key.startsWith("DYLD_") || key.startsWith("LD_") || key.startsWith("GST_"))
+      env.remove(key);
+#ifdef Q_OS_LINUX
+  struct Image
+  {
+    QFile file;
+    std::vector<QByteArray> arguments, environment;
+    std::vector<char *> argv, envp;
+  };
+  auto image = std::make_shared<Image>();
+  if (!validExecutable(r, &image->file))
+    return false;
+  image->arguments.push_back(QFile::encodeName(r.executable));
+  for (const auto &argument : arguments)
+    image->arguments.push_back(argument.toLocal8Bit());
+  for (const auto &entry : env.toStringList())
+    image->environment.push_back(entry.toLocal8Bit());
+  for (auto &argument : image->arguments)
+    image->argv.push_back(argument.data());
+  image->argv.push_back(nullptr);
+  for (auto &entry : image->environment)
+    image->envp.push_back(entry.data());
+  image->envp.push_back(nullptr);
+  const int fd = image->file.handle();
+  process.setChildProcessModifier([image, fd, &process] {
+    // All storage was built before fork. Do not allocate or call Qt in the child.
+    // CLOEXEC also prevents the executable descriptor reaching the new image.
+    ::fexecve(fd, image->argv.data(), image->envp.data());
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    process.failChildProcessModifier("fexecve registered worker", errno);
+#else
+    ::_exit(127);
+#endif
+  });
+#else
+  if (!validExecutable(r))
+    return false;
+#endif
+  process.setProgram(r.executable);
+  process.setArguments(arguments);
+  process.setProcessEnvironment(env);
+  return true;
+}
+
 std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
 {
   QFile input;
@@ -330,8 +393,7 @@ bool WorkerProcess::launch(const WorkerRegistration &r, const WorkerBinding &b)
   if (m_launched || !m_error.isEmpty())
     return false;
   m_launched = true;
-  if (r.purpose != b.purpose || r.backend != b.backend || r.profile != b.profile || !validExecutable(r) ||
-      !m_directory.isValid()) {
+  if (r.purpose != b.purpose || r.backend != b.backend || r.profile != b.profile || !m_directory.isValid()) {
     fail("WorkerRegistration");
     return false;
   }
@@ -367,14 +429,10 @@ bool WorkerProcess::launch(const WorkerRegistration &r, const WorkerBinding &b)
     fail("WorkerEndpoint");
     return false;
   }
-  m_process.setProgram(r.executable);
-  m_process.setArguments({"--display-worker"});
-  // Never inherit dynamic loader or GStreamer plugin overrides from a caller.
-  auto env = QProcessEnvironment::systemEnvironment();
-  for (const auto &k : env.keys())
-    if (k.startsWith("DYLD_") || k.startsWith("LD_") || k.startsWith("GST_"))
-      env.remove(k);
-  m_process.setProcessEnvironment(env);
+  if (!prepareWorkerProcess(m_process, r, {"--display-worker"})) {
+    fail("WorkerRegistration");
+    return false;
+  }
   m_timer.start();
   m_process.start();
   return true;
