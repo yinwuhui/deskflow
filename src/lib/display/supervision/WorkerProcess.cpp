@@ -99,7 +99,7 @@ QByteArray bootstrapBytes(const WorkerBinding &b, const QString &endpoint, const
   return QJsonDocument(
              QJsonObject{
                  {"protocol",
-                  b.purpose == WorkerPurpose::Platform ? "display-platform-bootstrap/1" : "display-worker-bootstrap/2"},
+                  b.purpose == WorkerPurpose::Platform ? "display-platform-bootstrap/1" : "display-worker-bootstrap/3"},
                  {"binding", bindingObject(b)},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
@@ -262,7 +262,7 @@ std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
   ControlError e;
   auto o = parseBoundedObject(bytes, WorkerProtocol::MaxBootstrapBytes, e);
   if (!o || o->size() != 5 ||
-      (o->value("protocol") != "display-worker-bootstrap/2" && o->value("protocol") != "display-platform-bootstrap/1"
+      (o->value("protocol") != "display-worker-bootstrap/3" && o->value("protocol") != "display-platform-bootstrap/1"
       ) ||
       !o->value("binding").isObject() || !o->value("endpoint").isString() || !o->value("parentPid").isString() ||
       !o->value("secret").isString()) {

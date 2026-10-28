@@ -3,6 +3,7 @@
 #include "MediaWorkerContracts.h"
 #include <QHostAddress>
 #include <QSet>
+#include <QUuid>
 #include <algorithm>
 namespace deskflow::display::infra {
 bool validMediaSignal(const WorkerMediaSignal &s)
@@ -49,11 +50,16 @@ bool validWorkerPrepare(const WorkerPrepare &p, Direction local, TimePoint now)
     addresses.insert(address);
   }
   if (local == Direction::Receive)
-    return p.sourceResource.isEmpty() && p.source == NativeSourceReference{};
-  if (local != Direction::Send || !validId(p.sourceResource.toStdString(), 16) || !p.source.primary)
+    return p.sourceResource.isEmpty() && p.source == NativeSourceReference{} && p.sourceIdentity.isEmpty() &&
+           p.sourceContextDigest.isEmpty() && p.sourceTopologyGeneration == 0;
+  if (local != Direction::Send || !validId(p.sourceResource.toStdString(), 16) || !p.source.primary ||
+      !p.sourceTopologyGeneration || !validId(p.sourceContextDigest.toStdString(), 32) ||
+      !validName(p.sourceIdentity.toStdString(), 128))
     return false;
   switch (p.source.kind) {
   case NativeSourceKind::CgDisplay:
+    return p.source.primary <= UINT32_MAX && p.source.secondary == 0 && !QUuid(p.sourceIdentity).isNull() &&
+           QUuid(p.sourceIdentity).toString(QUuid::WithoutBraces).toLower() == p.sourceIdentity;
   case NativeSourceKind::PipeWireNode:
     return p.source.primary <= UINT32_MAX && p.source.secondary == 0;
   case NativeSourceKind::WindowsDisplay:

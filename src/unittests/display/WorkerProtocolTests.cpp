@@ -32,9 +32,15 @@ static WorkerPrepare preparation(TimePoint now, Direction direction = Direction:
   WorkerPrepare p;
   p.sourceResource = QString(32, '4');
   p.source = {NativeSourceKind::CgDisplay, 77, 0};
+  p.sourceIdentity = "11111111-2222-3333-4444-555555555555";
+  p.sourceContextDigest = QString(64, 'a');
+  p.sourceTopologyGeneration = 1;
   if (direction == Direction::Receive) {
     p.sourceResource.clear();
     p.source = {};
+    p.sourceIdentity.clear();
+    p.sourceContextDigest.clear();
+    p.sourceTopologyGeneration = 0;
   }
   p.allowedPeerAddresses = {"10.20.1.71"};
   p.startupDeadlineNanoseconds = uint64_t(
@@ -283,6 +289,56 @@ static void prepareContract()
   once.start();
   require(once.a.encode(valid, now).isEmpty(), "configuration replaced after ready");
 }
+static void sourceBindingContract()
+{
+  TimePoint now{};
+  const auto source = preparation(now);
+  Pair pair;
+  pair.connect();
+  require(pair.w.feed(pair.a.encode(source, now), true, now), "source evidence IPC rejected");
+  const auto messages = pair.w.takeMessages();
+  require(
+      messages.size() == 1 && std::get<WorkerPrepare>(messages.front()) == source,
+      "source identity/topology evidence changed across IPC"
+  );
+  for (int i = 0; i < 7; ++i) {
+    auto p = source;
+    switch (i) {
+    case 0:
+      p.sourceIdentity.clear();
+      break;
+    case 1:
+      p.sourceIdentity = "../../display";
+      break;
+    case 2:
+      p.sourceIdentity = "11111111-2222-3333-4444-55555555555z";
+      break;
+    case 3:
+      p.sourceIdentity = "{11111111-2222-3333-4444-555555555555}";
+      break;
+    case 4:
+      p.sourceContextDigest.clear();
+      break;
+    case 5:
+      p.sourceContextDigest = QString(64, 'z');
+      break;
+    case 6:
+      p.sourceTopologyGeneration = 0;
+      break;
+    }
+    require(!validWorkerPrepare(p, Direction::Send, now), "unbound capture source accepted");
+  }
+  auto receiver = preparation(now, Direction::Receive);
+  receiver.sourceIdentity = source.sourceIdentity;
+  require(!validWorkerPrepare(receiver, Direction::Receive, now), "receiver accepted source identity");
+  receiver = preparation(now, Direction::Receive);
+  receiver.sourceTopologyGeneration = 1;
+  require(!validWorkerPrepare(receiver, Direction::Receive, now), "receiver accepted topology authority");
+  auto linuxSource = source;
+  linuxSource.source.kind = NativeSourceKind::PipeWireNode;
+  linuxSource.sourceIdentity = "pipewire.node.serial.42";
+  require(validWorkerPrepare(linuxSource, Direction::Send, now), "typed PipeWire evidence rejected");
+}
 static void signalBudgets()
 {
   Pair p;
@@ -475,6 +531,8 @@ int main(int argc, char **argv)
       queueBudget();
     else if (c == "WorkerPreparationContract")
       prepareContract();
+    else if (c == "WorkerSourceBinding")
+      sourceBindingContract();
     else if (c == "WorkerSignalBudgets")
       signalBudgets();
     else if (c == "WorkerSignalDirection")

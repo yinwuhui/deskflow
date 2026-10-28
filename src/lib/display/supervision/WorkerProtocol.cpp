@@ -99,6 +99,9 @@ QJsonObject prepareBody(const WorkerPrepare &p)
       {"source",
        QJsonObject{
            {"kind", int(p.source.kind)},
+           {"identity", p.sourceIdentity},
+           {"contextDigest", p.sourceContextDigest},
+           {"topologyGeneration", counter(p.sourceTopologyGeneration)},
            {"primary", counter(p.source.primary)},
            {"secondary", double(p.source.secondary)}
        }},
@@ -137,6 +140,11 @@ std::optional<WorkerPrepare> prepareMessage(const QJsonObject &o)
              cursor = integer(video.value("cursor")), kind = integer(source.value("kind")),
              secondary = integer(source.value("secondary")), slots = integer(o.value("rawFrameSlots")),
              frames = integer(o.value("encodedQueueFrames"));
+  if (!source.value("identity").isString() || !source.value("contextDigest").isString())
+    return {};
+  const auto generation = zeroCounter(source.value("topologyGeneration"));
+  if (!generation)
+    return {};
   const auto primary = zeroCounter(source.value("primary")), deadline = number(o.value("startupDeadlineNanoseconds")),
              rawBytes = number(o.value("rawFrameBytes")), encodedBytes = number(o.value("encodedQueueBytes"));
   if (!protocol || *protocol > uint32_t(WireProtocol::WebRtc) || !security ||
@@ -152,6 +160,9 @@ std::optional<WorkerPrepare> prepareMessage(const QJsonObject &o)
   p.video = {*width, *height, *fn, *fd, GraphicsMode(*graphics), ColorProfile(*color), CursorMode(*cursor)};
   p.sourceResource = o.value("sourceResource").toString();
   p.source = {NativeSourceKind(*kind), *primary, *secondary};
+  p.sourceIdentity = source.value("identity").toString();
+  p.sourceContextDigest = source.value("contextDigest").toString();
+  p.sourceTopologyGeneration = *generation;
   const auto addresses = o.value("allowedPeerAddresses").toArray();
   if (addresses.size() > 16)
     return {};
@@ -344,7 +355,7 @@ QByteArray WorkerProtocol::context() const
 {
   const auto &t = m_binding.token;
   return json(
-      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/2"},
+      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/3"},
        {"session", QString::fromStdString(t.session)},
        {"attempt", counter(t.attempt)},
        {"generation", counter(t.generation)},

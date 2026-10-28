@@ -47,6 +47,9 @@ static WorkerPrepare preparation(TimePoint now)
   WorkerPrepare p;
   p.sourceResource = QString(32, '4');
   p.source = {NativeSourceKind::CgDisplay, 77, 0};
+  p.sourceIdentity = "11111111-2222-3333-4444-555555555555";
+  p.sourceContextDigest = QString(64, 'a');
+  p.sourceTopologyGeneration = 1;
   p.allowedPeerAddresses = {"10.20.1.71"};
   p.startupDeadlineNanoseconds = uint64_t(
       std::chrono::duration_cast<std::chrono::nanoseconds>((now + std::chrono::seconds(10)).time_since_epoch()).count()
@@ -254,7 +257,7 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
   const auto &t = b.token;
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/2"},
+                 {"protocol", "display-worker-bootstrap/3"},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
                  {"secret", QString::fromLatin1(secret.toHex())},
@@ -278,6 +281,22 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
                   }}
              }
   ).toJson(QJsonDocument::Compact);
+}
+static void legacyBootstrap()
+{
+  const auto b = binding();
+  QProcess process;
+  require(prepareWorkerProcess(process, registration(b), {"--display-worker"}), "prepare legacy rejection fixture");
+  process.start();
+  require(process.waitForStarted(2000), "start legacy fixture");
+  auto bytes = boot(b, "/unreachable-display-fixture", QByteArray(32, 'x'));
+  bytes.replace("display-worker-bootstrap/3", "display-worker-bootstrap/2");
+  require(process.write(bytes) == bytes.size(), "legacy bootstrap write");
+  process.closeWriteChannel();
+  require(process.waitForFinished(2000), "legacy bootstrap did not fail closed");
+  require(
+      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 42, "legacy bootstrap accepted by v3 worker"
+  );
 }
 static void parentEof()
 {
@@ -341,6 +360,8 @@ int main(int argc, char **argv)
       failures();
     else if (c == "WorkerStopDeadline")
       stopDeadline();
+    else if (c == "WorkerLegacyBootstrap")
+      legacyBootstrap();
     else if (c == "WorkerParentEof")
       parentEof();
     else

@@ -28,6 +28,9 @@ struct WorkerPrepare
   SecurityProfile security = SecurityProfile::WebRtcAuthenticatedDtlsSrtp;
   QString sourceResource;
   NativeSourceReference source;
+  // Stable platform identity and current topology evidence, never a name/path.
+  QString sourceIdentity, sourceContextDigest;
+  uint64_t sourceTopologyGeneration = 0;
   QStringList allowedPeerAddresses;
   bool allowLoopbackDiagnostics = false;
   uint64_t startupDeadlineNanoseconds = 0; // Same-host steady clock, not a network timestamp.
