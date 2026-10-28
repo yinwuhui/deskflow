@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QJsonArray>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -48,7 +49,10 @@ int main(int argc,char** argv) {
         DisplayService display(caps(),{});MediaRuntime runtime;runtime.source=source;runtime.macosProbe=probe;
         MediaSupervisor media(&display,runtime,resources);check(display.snapshot().value("state")=="CleanupRequired","claim not restored");
         check(display.retryManagedCleanup(display.currentKey()).accepted,"retry rejected");
-        for(int n=0;n<100&&display.snapshot().value("state")=="Stopping";++n)QTest::qWait(10);
+        // The production probe has a four-second deadline. Wait for its result,
+        // including timeout, rather than destroying it after only one second.
+        QElapsedTimer wait;wait.start();
+        while(display.snapshot().value("state")=="Stopping"&&wait.elapsed()<6000)QTest::qWait(10);
         check(display.snapshot().value("state")== (expected?"Idle":"CleanupRequired"),"unexpected cleanup result");
         check(media.journalStatus()==(expected?ResourceJournal::Status::Empty:ResourceJournal::Status::Pending),"unverified record retired");
         check(!display.snapshot().value("firstFramePresented").toBool(),"cleanup started streaming");
@@ -62,6 +66,9 @@ int main(int argc,char** argv) {
       exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"gnome");
       exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"macos","exit 1\n");
       exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"macos","kill -TERM $$\n");
+      // Valid bytes are insufficient while the probe remains alive. The deadline
+      // must leave the ownership journal pending and reap the direct child.
+      exercise("{\"deskflowVirtualDisplays\":[]}",false,Role::Host,"macos","exec /bin/sleep 10\n");
     }else if(name=="BluetoothPolicyGatesLowerService") {
       service.authenticatedPeer(peer());service.setPeerNetworkPolicy(QString(64,'a'),false);
       SessionId request{};request[0]=1;check(service.requestManagedSession(QString(64,'a'),request).reason==Reason::BluetoothOnlyMode,"managed API bypassed policy");
