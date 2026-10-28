@@ -209,6 +209,11 @@ WorkerProcess::WorkerProcess(QObject *parent) : QObject(parent), m_directory(QDi
   m_server.setSocketOptions(QLocalServer::UserAccessOption);
   connect(&m_server, &QLocalServer::newConnection, this, [this] { accept(); });
   connect(&m_process, &QProcess::started, this, [this] {
+    m_nativeIdentity = nativeProcessIdentity(m_process.processId());
+    if (!m_nativeIdentity) {
+      fail("WorkerNativeIdentityUnavailable");
+      return;
+    }
 #ifdef Q_OS_WIN
     const auto handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, FALSE, DWORD(m_process.processId()));
     const bool assigned = handle && AssignProcessToJobObject(static_cast<HANDLE>(m_job), handle);
@@ -456,7 +461,10 @@ void WorkerProcess::terminateOwnedProcess()
     return;
 #ifdef Q_OS_UNIX
   const auto pid = m_process.processId();
-  if (pid > 0)
+  // The live QProcess owns/reaps the child on this thread. A persisted PID
+  // alone must never authorize a group signal. Unknown birth evidence denies it.
+  if (pid > 0 && m_nativeIdentity && m_nativeIdentity->pid == quint64(pid) &&
+      nativeProcessPresence(*m_nativeIdentity) == NativeProcessPresence::Exact)
     ::kill(-pid, SIGKILL);
 #elif defined(Q_OS_WIN)
   if (m_job)

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "NativeProcessIdentity.h"
 #include "WorkerProtocol.h"
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -43,6 +44,10 @@ public:
   {
     return m_process.processId();
   }
+  std::optional<NativeProcessIdentity> nativeIdentity() const
+  {
+    return m_nativeIdentity;
+  }
   QString error() const
   {
     return m_error;
@@ -59,6 +64,7 @@ private:
   void fail(const QString &);
   void terminateOwnedProcess();
   QProcess m_process;
+  std::optional<NativeProcessIdentity> m_nativeIdentity;
   QLocalServer m_server;
   QLocalSocket *m_socket = nullptr;
   QTemporaryDir m_directory;

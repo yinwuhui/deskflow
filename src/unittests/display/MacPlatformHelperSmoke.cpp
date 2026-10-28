@@ -72,6 +72,8 @@ int main(int argc, char **argv)
                );
     QTemporaryDir temporary;
     require(temporary.isValid(), "private ledger directory");
+    temporary.setAutoRemove(false); // Preserve durable evidence on every failure.
+    std::cerr << "auditLedger=" << temporary.path().toStdString() << "/ledger\n";
     DurableResourceLedger ledger(temporary.path() + "/ledger");
     auto workerRecord = record(owner, session, plan, "worker"),
          outputRecord = record(owner, session, plan, "virtualOutput");
@@ -105,8 +107,8 @@ int main(int argc, char **argv)
     QString failure, identity, reference, processReference;
     uint32_t displayId = 0;
     process.onEstablished = [&] {
-      processReference =
-          QString("native-child.%1.%2").arg(process.processId()).arg(QString::fromStdString(binding.token.worker));
+      require(bool(process.nativeIdentity()), "native process birth identity");
+      processReference = process.nativeIdentity()->encode();
       const ResourceEvidence ownership{
           "nativeObjectOwnership", QString::fromStdString(binding.token.worker), "verified"
       };
@@ -239,6 +241,7 @@ int main(int argc, char **argv)
         {"scope", "real output/resource lifecycle; no capture, media or presentation certification"}
     };
     std::cout << QJsonDocument(result).toJson(QJsonDocument::Compact).constData() << '\n';
+    temporary.setAutoRemove(true); // Ledger/lock destruct before the directory.
     return 0;
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-28",
+  "scope": "Mac real output lifecycle using native process birth record; no media certification",
+  "sourceSha256": {
+    "src/lib/display/supervision/NativeProcessIdentity.cpp": "2fa82bbee3b86644452f04a075912e8cf895dca3ebed4fa0d87cad3481ebccc9",
+    "src/lib/display/supervision/WorkerProcess.cpp": "b437faa28bc470b30f76ec0c5ae4a7b5103dfcf1c8265a33586fc4533f1e57fc",
+    "src/unittests/display/MacPlatformHelperSmoke.cpp": "3a4fa21d8feb823a9beaf63fbd13fb289ae40cd7b6e26c02f177a288ea0d728b"
+  },
+  "results": [
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "graceful",
+      "nativeDisplayId": 108,
+      "nativeIdentity": "82ce7ffe-8fd7-4a23-a975-3b15f5c4db38",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": true,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "",
+      "test": "native-mac-platform-helper"
+    },
+    {
+      "active": true,
+      "cleanupVerified": true,
+      "displaysAfter": 1,
+      "displaysBefore": 1,
+      "helperExited": true,
+      "mode": "terminate",
+      "nativeDisplayId": 109,
+      "nativeIdentity": "e49577af-3f36-482d-99b8-7912215944ec",
+      "observed": true,
+      "ownerClosed": true,
+      "quiescedMessage": false,
+      "scope": "real output/resource lifecycle; no capture, media or presentation certification",
+      "supervisorCause": "WorkerTerminatedBySupervisor",
+      "test": "native-mac-platform-helper"
+    }
+  ]
+}
