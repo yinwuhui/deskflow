@@ -1,0 +1,69 @@
+{
+  "scope": "Actual AVC profile-header verification plus local synthetic standard media; no isolated Worker/product/cross-machine certification",
+  "Mac": {
+    "hashes": {
+      "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "85f7be8c686131d9980a02a0cdd465ff5533fa2280f326926ec6b3582fba9a92",
+      "src/lib/display/media/gstreamer/H264CodecEvidence.h": "8788faba139bc6b68836f11ff726c20cfd594a491c890e5a2e6030f1f896fff2",
+      "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "0c0ca9982e955b2bb3a88b00e9b2a1f9872073c43cf6c5ed20bc184cb9a85740",
+      "/private/tmp/deskflow-build/bin/NativeWebRtcLoopback": "33cdf718e7ee32ef680c4d31ab3e9683bf66bf6275140a027a5c509f9b8ec2cb"
+    },
+    "runs": [
+      {
+        "mode": "policy",
+        "exitCode": 0,
+        "seconds": 0.854,
+        "stdout": "{\"policyChecks\":17,\"passed\":true}\n",
+        "stderr": ""
+      },
+      {
+        "mode": "synthetic",
+        "exitCode": 0,
+        "seconds": 8.519,
+        "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"213\",\"encoderUpdates\":\"51\",\"gccUpdates\":\"50\",\"inputFrames\":\"227\",\"leaseBlockedStop\":true,\"markerFrames\":\"213\",\"receiverCompatibleProfileLabels\":\"0\",\"receiverPublished\":\"216\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "Ubuntu": {
+    "hashes": {
+      "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "85f7be8c686131d9980a02a0cdd465ff5533fa2280f326926ec6b3582fba9a92",
+      "src/lib/display/media/gstreamer/H264CodecEvidence.h": "8788faba139bc6b68836f11ff726c20cfd594a491c890e5a2e6030f1f896fff2",
+      "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "0c0ca9982e955b2bb3a88b00e9b2a1f9872073c43cf6c5ed20bc184cb9a85740",
+      "build/bin/NativeWebRtcLoopback": "b419939d5554e9cbd80674dcd6e32777a035880c94d0f3e1971571edb6e78f7c"
+    },
+    "runs": [
+      {
+        "mode": "policy",
+        "exitCode": 0,
+        "seconds": 3.526,
+        "stdout": "{\"policyChecks\":17,\"passed\":true}\n",
+        "stderr": ""
+      },
+      {
+        "mode": "synthetic",
+        "exitCode": 0,
+        "seconds": 11.481,
+        "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"222\",\"encoderUpdates\":\"27\",\"gccUpdates\":\"26\",\"inputFrames\":\"238\",\"leaseBlockedStop\":true,\"markerFrames\":\"222\",\"receiverCompatibleProfileLabels\":\"0\",\"receiverPublished\":\"224\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "remoteSync": {
+    "src/lib/display/CMakeLists.txt": {
+      "baseline": "ab3335eae4cde218197724665e59424e1f33aaea9d9802bd85d76b6fa827f586",
+      "synced": "241f585ee25ad889b21e5301052a147ed129e8a23978e7c7407ea6b32266e764"
+    },
+    "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": {
+      "baseline": "49c6f2fa0e9a34d3c44f4361839d0136a3f275b9d0e2ae1c07411e48fc56af17",
+      "synced": "6bdd68c68aa8bb04b10772eacb6b6db8c8dbc42da3dcdfff711b1a2ea6c2e2d9"
+    },
+    "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": {
+      "baseline": "8d0a563185bdf8a34bcda638f5e8161b43f999ec7f006d43c770288d157afec7",
+      "synced": "23213458eea108f8b6f6adff47cd0a3f2405af9ba1a79ff2a04a5d65a7342dbf"
+    },
+    "src/lib/display/media/gstreamer/H264CodecEvidence.h": {
+      "baseline": null,
+      "synced": "8788faba139bc6b68836f11ff726c20cfd594a491c890e5a2e6030f1f896fff2"
+    }
+  }
+}

@@ -26,6 +26,7 @@ struct NativeWebRtcStatistics
   uint64_t inputFrames = 0, decodedFrames = 0, gccUpdates = 0, encoderUpdates = 0, deniedPackets = 0;
   uint32_t estimatedBitrate = 0, encoderKbitrate = 0;
   bool constrainedBaseline = false, addressPairApproved = false;
+  uint64_t compatibleProfileLabels = 0;
 };
 // Isolated-worker engine SPI. No device authorization or capability publication.
 // Caller supplies authenticated plan/signaling, exact capture, and presentation.

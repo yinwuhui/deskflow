@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "NativeWebRtcEngine.h"
 #include "GStreamerBuildManifest.h"
+#include "H264CodecEvidence.h"
 #include "display/supervision/WorkerProcess.h"
 #include <QCryptographicHash>
 #include <QDir>
@@ -16,6 +17,7 @@
 #include <dlfcn.h>
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/pbutils/codec-utils.h>
 #include <gst/rtp/rtp.h>
 #include <gst/video/video.h>
 #include <gst/webrtc/webrtc.h>
@@ -23,6 +25,41 @@
 #include <mutex>
 #include <nice/agent.h>
 namespace deskflow::display::infra {
+H264CodecEvidence inspectH264CodecEvidence(const GstCaps *caps)
+{
+  H264CodecEvidence result;
+  if (!caps || !gst_caps_is_fixed(caps) || gst_caps_get_size(caps) != 1)
+    return result;
+  const auto *structure = gst_caps_get_structure(caps, 0);
+  if (!gst_structure_has_name(structure, "video/x-h264") ||
+      g_strcmp0(gst_structure_get_string(structure, "stream-format"), "avc") ||
+      g_strcmp0(gst_structure_get_string(structure, "alignment"), "au"))
+    return result;
+  const auto *value = gst_structure_get_value(structure, "codec_data");
+  if (!value) {
+    result.state = H264Evidence::Pending;
+    return result;
+  }
+  if (!GST_VALUE_HOLDS_BUFFER(value))
+    return result;
+  auto *buffer = gst_value_get_buffer(value);
+  const auto bytes = buffer ? gst_buffer_get_size(buffer) : 0;
+  if (bytes < 7 || bytes > 65536)
+    return result;
+  GstMapInfo map = GST_MAP_INFO_INIT;
+  if (!gst_buffer_map(buffer, &map, GST_MAP_READ))
+    return result;
+  const bool parsed = gst_codec_utils_h264_get_profile_flags_level(
+      map.data, guint(map.size), &result.profile, &result.flags, &result.level
+  );
+  gst_buffer_unmap(buffer, &map);
+  const guint8 header[] = {result.profile, result.flags, result.level};
+  if (parsed && !g_strcmp0(gst_codec_utils_h264_get_profile(header, sizeof(header)), "constrained-baseline") &&
+      gst_codec_utils_h264_get_level(header, sizeof(header)))
+    result.state = H264Evidence::ConstrainedBaseline;
+  return result;
+}
+
 namespace {
 using RtpKey = std::pair<uint32_t, uint32_t>;
 struct State;
@@ -56,6 +93,7 @@ struct State
   std::atomic<const char *> failure{nullptr};
   std::atomic<uint64_t> inputFrames{0}, decodedFrames{0}, gccUpdates{0}, encoderUpdates{0}, deniedPackets{0};
   std::atomic<uint32_t> estimated{0}, encoderRate{0};
+  std::atomic<uint64_t> compatibleProfileLabels{0};
   std::mutex mutex, connectionsMutex, parserMutex;
   std::vector<Connection> connections;
   std::vector<Probe> probes;
@@ -301,15 +339,17 @@ GstPadProbeReturn encoderProbe(GstPad *, GstPadProbeInfo *info, gpointer data)
     if (GST_EVENT_TYPE(event) == GST_EVENT_CAPS) {
       GstCaps *caps = nullptr;
       gst_event_parse_caps(event, &caps);
-      const char *profile = gst_structure_get_string(gst_caps_get_structure(caps, 0), "profile");
-      if (!profile) {
-        s->profile.store(false); // Negotiation caps may precede the first SPS.
-      } else if (g_strcmp0(profile, "constrained-baseline")) {
+      const auto evidence = inspectH264CodecEvidence(caps);
+      s->profile.store(evidence.state == H264Evidence::ConstrainedBaseline);
+      if (evidence.state == H264Evidence::ConstrainedBaseline &&
+          g_strcmp0(gst_structure_get_string(gst_caps_get_structure(caps, 0), "profile"), "constrained-baseline"))
+        ++s->compatibleProfileLabels;
+      if (evidence.state == H264Evidence::Rejected) {
         std::lock_guard lock(s->mutex);
-        s->pipelineDiagnostic = "h264-profile/" + QString::fromLatin1(profile).left(64);
+        s->pipelineDiagnostic =
+            QString("h264-header/%1/%2/%3").arg(evidence.profile).arg(evidence.flags).arg(evidence.level);
         s->fail("EncodedProfileMismatch");
-      } else
-        s->profile.store(true);
+      }
     }
   }
   if ((GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) &&
@@ -618,7 +658,7 @@ bool NativeWebRtcEngine::initializeRuntime(const QString &root, QString &error)
     error = "NativeRuntimeAlreadyBound";
     return false;
   }
-  for (const char *symbol : {"gst_version", "nice_agent_new"}) {
+  for (const char *symbol : {"gst_version", "nice_agent_new", "gst_codec_utils_h264_get_profile_flags_level"}) {
     Dl_info image{};
     const auto address = dlsym(RTLD_DEFAULT, symbol);
     if (!address || !dladdr(address, &image) || !image.dli_fname ||
@@ -746,10 +786,10 @@ bool NativeWebRtcEngine::prepare(const NativeWebRtcConfiguration &config)
   GError *failure = nullptr;
   const bool sender = b.direction == Direction::Send;
   const char *graph =
-      sender
-          ? "appsrc name=input ! videoconvert ! video/x-raw,format=I420,colorimetry=bt709 ! webrtcsink name=endpoint"
-          : "webrtcsrc name=endpoint ! rtph264depay name=depay ! h264parse name=parser ! avdec_h264 ! videoconvert ! "
-            "appsink name=output";
+      sender ? "appsrc name=input ! videoconvert ! video/x-raw,format=I420,colorimetry=bt709 ! webrtcsink name=endpoint"
+             : "webrtcsrc name=endpoint ! rtph264depay name=depay ! h264parse name=parser ! "
+               "video/x-h264,stream-format=avc,alignment=au ! avdec_h264 ! videoconvert ! "
+               "appsink name=output";
   s->pipeline = gst_parse_launch(graph, &failure);
   if (!s->pipeline || failure) {
     if (failure)
@@ -777,7 +817,8 @@ bool NativeWebRtcEngine::prepare(const NativeWebRtcConfiguration &config)
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(s->signallingElement), property))
       g_object_set(s->signallingElement, property, FALSE, nullptr);
   if (sender) {
-    GstCaps *video = gst_caps_from_string("video/x-h264,profile=constrained-baseline"), *audio = gst_caps_new_empty();
+    GstCaps *video = gst_caps_from_string("video/x-h264,profile=constrained-baseline,stream-format=avc,alignment=au"),
+            *audio = gst_caps_new_empty();
     g_object_set(
         s->signallingElement, "video-caps", video, "audio-caps", audio, "congestion-control", 2, "min-bitrate", 500000u,
         "max-bitrate", 8000000u, "start-bitrate", 2000000u, nullptr
@@ -1210,8 +1251,10 @@ QString NativeWebRtcEngine::error() const
 NativeWebRtcStatistics NativeWebRtcEngine::statistics() const
 {
   auto s = m_impl->state;
-  return {s->inputFrames.load(),    s->decodedFrames.load(), s->gccUpdates.load(),
-          s->encoderUpdates.load(), s->deniedPackets.load(), s->estimated.load(),
-          s->encoderRate.load(),    s->profile.load(),       s->pairApproved.load()};
+  return {s->inputFrames.load(),   s->decodedFrames.load(),
+          s->gccUpdates.load(),    s->encoderUpdates.load(),
+          s->deniedPackets.load(), s->estimated.load(),
+          s->encoderRate.load(),   s->profile.load(),
+          s->pairApproved.load(),  s->compatibleProfileLabels.load()};
 }
 } // namespace deskflow::display::infra

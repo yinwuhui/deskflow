@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Manual developer fixture: synthetic frames, local signaling and loopback only.
+#include "display/media/gstreamer/H264CodecEvidence.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -52,6 +53,44 @@ static NativeWebRtcConfiguration configuration(Direction direction)
 static void policyChecks()
 {
   uint32_t checks = 0;
+  // Header-only metadata fixtures, not complete coded-frame/SPS certification.
+  const QByteArray constrained = QByteArray::fromHex("0142c028ffe100");
+  auto headerEvidence = [](const QByteArray &bytes, const char *label = "baseline") {
+    auto *caps = gst_caps_new_simple(
+        "video/x-h264", "stream-format", G_TYPE_STRING, "avc", "alignment", G_TYPE_STRING, "au", "profile",
+        G_TYPE_STRING, label, nullptr
+    );
+    auto *buffer = gst_buffer_new_allocate(nullptr, bytes.size(), nullptr);
+    gst_buffer_fill(buffer, 0, bytes.constData(), bytes.size());
+    gst_caps_set_simple(caps, "codec_data", GST_TYPE_BUFFER, buffer, nullptr);
+    gst_buffer_unref(buffer);
+    const auto result = inspectH264CodecEvidence(caps);
+    gst_caps_unref(caps);
+    return result;
+  };
+  require(
+      headerEvidence(constrained).state == H264Evidence::ConstrainedBaseline,
+      "compatible label hid actual constrained baseline header"
+  );
+  ++checks;
+  for (auto bytes :
+       {QByteArray::fromHex("01428028ffe100"), QByteArray::fromHex("01640028ffe100"),
+        QByteArray::fromHex("0042c028ffe100"), QByteArray::fromHex("0142c000ffe100"), constrained.left(6),
+        QByteArray(65537, 'x')}) {
+    require(
+        headerEvidence(bytes, "constrained-baseline").state == H264Evidence::Rejected,
+        "declared constrained baseline bypassed actual header gate"
+    );
+    ++checks;
+  }
+  auto *pending = gst_caps_from_string("video/x-h264,stream-format=avc,alignment=au,profile=constrained-baseline");
+  require(
+      inspectH264CodecEvidence(pending).state == H264Evidence::Pending,
+      "missing header treated as actual profile evidence"
+  );
+  gst_caps_unref(pending);
+  ++checks;
+
   {
     NativeWebRtcEngine engine;
     auto c = configuration(Direction::Send);
@@ -221,6 +260,7 @@ int main(int argc, char **argv)
         {"leaseBlockedStop", leaseBlockedStop},
         {"inputFrames", QString::number(stats.inputFrames)},
         {"receiverPublished", QString::number(received.decodedFrames)},
+        {"receiverCompatibleProfileLabels", QString::number(received.compatibleProfileLabels)},
         {"constrainedBaseline", stats.constrainedBaseline},
         {"addressPairApproved", stats.addressPairApproved},
         {"gccUpdates", QString::number(stats.gccUpdates)},

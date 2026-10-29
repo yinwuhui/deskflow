@@ -113,7 +113,7 @@ if(DESKFLOW_GSTREAMER_SDK AND TARGET deskflow-display-infra-runtime AND NOT WIN3
   set(display_pc_dirs "${DESKFLOW_GSTREAMER_SDK}/lib/pkgconfig" ${display_pc_arch_dirs})
   list(JOIN display_pc_dirs ":" display_pc_path)
   set(ENV{PKG_CONFIG_PATH} "${display_pc_path}")
-  pkg_check_modules(DISPLAY_GST REQUIRED IMPORTED_TARGET gstreamer-app-1.0 gstreamer-video-1.0 gstreamer-rtp-1.0 gstreamer-webrtc-1.0 gstreamer-sdp-1.0)
+  pkg_check_modules(DISPLAY_GST REQUIRED IMPORTED_TARGET gstreamer-app-1.0 gstreamer-video-1.0 gstreamer-rtp-1.0 gstreamer-webrtc-1.0 gstreamer-sdp-1.0 gstreamer-pbutils-1.0)
   set(ENV{PKG_CONFIG_PATH} "${display_saved_pkg_path}")
   # libnice's public headers need GLib only; distro nice.pc also requires
   # unrelated static/UPnP development packages. Bind the explicit shared SDK
@@ -159,7 +159,7 @@ if(DESKFLOW_GSTREAMER_SDK AND TARGET deskflow-display-infra-runtime AND NOT WIN3
   target_include_directories(deskflow-display-native-webrtc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/gstreamer" "${DISPLAY_NICE_INCLUDE}")
   target_compile_definitions(deskflow-display-native-webrtc PRIVATE GST_USE_UNSTABLE_API)
   add_executable(NativeWebRtcLoopback "${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp")
-  target_link_libraries(NativeWebRtcLoopback PRIVATE deskflow-display-native-webrtc)
+  target_link_libraries(NativeWebRtcLoopback PRIVATE deskflow-display-native-webrtc PkgConfig::DISPLAY_GST)
   set_target_properties(NativeWebRtcLoopback PROPERTIES BUILD_RPATH "${DESKFLOW_GSTREAMER_RUNTIME}/lib")
   if(UNIX AND NOT APPLE)
     # The private SDK has transitive shared dependencies outside system paths.
