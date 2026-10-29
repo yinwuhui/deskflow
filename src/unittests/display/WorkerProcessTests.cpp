@@ -292,7 +292,7 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
   const auto &t = b.token;
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/3"},
+                 {"protocol", "display-worker-bootstrap/4"},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
                  {"secret", QString::fromLatin1(secret.toHex())},
@@ -325,12 +325,12 @@ static void legacyBootstrap()
   process.start();
   require(process.waitForStarted(2000), "start legacy fixture");
   auto bytes = boot(b, "/unreachable-display-fixture", QByteArray(32, 'x'));
-  bytes.replace("display-worker-bootstrap/3", "display-worker-bootstrap/2");
+  bytes.replace("display-worker-bootstrap/4", "display-worker-bootstrap/3");
   require(process.write(bytes) == bytes.size(), "legacy bootstrap write");
   process.closeWriteChannel();
   require(process.waitForFinished(2000), "legacy bootstrap did not fail closed");
   require(
-      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 42, "legacy bootstrap accepted by v3 worker"
+      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 42, "legacy bootstrap accepted by v4 worker"
   );
 }
 static void parentEof()

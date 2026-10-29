@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 // SPDX-License-Identifier: MIT
 #include "WorkerProtocol.h"
+#include "display/control/ControlBodyRegistry.h"
 #include "display/control/InfrastructureControl.h"
+#include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMessageAuthenticationCode>
@@ -214,6 +216,20 @@ QJsonObject body(const WorkerMessage &message)
         if constexpr (std::is_same_v<T, WorkerMediaSignal>)
           return {{"type", "MediaSignal"},    {"kind", int(m.kind)}, {"description", m.description},
                   {"candidate", m.candidate}, {"mid", m.mid},        {"mediaLine", double(m.mediaLine)}};
+        if constexpr (std::is_same_v<T, WorkerReceiveBinding>)
+          return {
+              {"type", "ReceiveBinding"},
+              {"localAddress", m.localAddress},
+              {"sourceResource", m.sourceResource},
+              {"targetResource", m.targetResource},
+              {"topologyGeneration", counter(m.topologyGeneration)}
+          };
+        if constexpr (std::is_same_v<T, WebRtcFrameCorrelation>) {
+          ControlError error;
+          auto result = encodeFrameCorrelationBody(m, error);
+          result.insert("type", "FrameCorrelation");
+          return result;
+        }
         if constexpr (std::is_same_v<T, WorkerStart>)
           return {{"type", "Start"}};
         if constexpr (std::is_same_v<T, WorkerStop>)
@@ -290,6 +306,23 @@ std::optional<WorkerMessage> message(const QJsonObject &o)
         WebRtcSignalKind(*k), o.value("description").toString(), o.value("candidate").toString(),
         o.value("mid").toString(), *line
     };
+  } else if (type == "ReceiveBinding") {
+    const auto generation = number(o.value("topologyGeneration"));
+    if (!generation || !o.value("localAddress").isString() || !o.value("sourceResource").isString() ||
+        !o.value("targetResource").isString())
+      return {};
+    value = WorkerReceiveBinding{
+        o.value("localAddress").toString(), o.value("sourceResource").toString(), o.value("targetResource").toString(),
+        *generation
+    };
+  } else if (type == "FrameCorrelation") {
+    auto payload = o;
+    payload.remove("type");
+    ControlError error;
+    auto correlation = decodeFrameCorrelationBody(payload, error);
+    if (!correlation)
+      return {};
+    value = *correlation;
   } else if (type == "Start")
     value = WorkerStart{};
   else if (type == "Stop") {
@@ -360,7 +393,7 @@ QByteArray WorkerProtocol::context() const
 {
   const auto &t = m_binding.token;
   return json(
-      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/3"},
+      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/4"},
        {"session", QString::fromStdString(t.session)},
        {"attempt", counter(t.attempt)},
        {"generation", counter(t.generation)},
@@ -577,6 +610,22 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
       return false;
     m_outputObserved = true;
     return true;
+  }
+  if (const auto *target = std::get_if<WorkerReceiveBinding>(&m)) {
+    QHostAddress local(target->localAddress);
+    if (!agent || m_binding.direction != Direction::Receive || !m_configuration || m_receiveBinding || m_ready ||
+        local.isNull() || local.isMulticast() || local == QHostAddress::AnyIPv4 || local == QHostAddress::AnyIPv6 ||
+        local == QHostAddress::Broadcast || (local.isLoopback() && !m_configuration->allowLoopbackDiagnostics) ||
+        !id(target->sourceResource, 32) || !id(target->targetResource, 32) || !target->topologyGeneration)
+      return false;
+    m_receiveBinding = *target;
+    return true;
+  }
+  if (const auto *map = std::get_if<WebRtcFrameCorrelation>(&m)) {
+    return agent && m_binding.direction == Direction::Receive && m_started && m_receiveBinding &&
+           validFrameCorrelation(*map) && map->epoch == m_binding.token.epoch &&
+           map->sourceResource == m_receiveBinding->sourceResource &&
+           map->topologyGeneration == m_receiveBinding->topologyGeneration;
   }
   if (const auto *signal = std::get_if<WorkerMediaSignal>(&m)) {
     if (!m_configuration || m_binding.backend != "webrtc" || !validMediaSignal(*signal) ||

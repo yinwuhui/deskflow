@@ -609,13 +609,59 @@ static void mediaPermit()
     t.join();
   require(!permit->active(now) && !permit->matches(c, now) && !capture(1), "revocation reversed");
 }
+static void receiverBinding()
+{
+  auto setup = [](Pair &p) {
+    p.connect();
+    require(p.w.feed(p.a.encode(preparation(p.now, Direction::Receive), p.now), true, p.now), "prepare");
+    p.w.takeMessages();
+    require(
+        p.w.feed(
+            p.a.encode(WorkerReceiveBinding{"10.20.1.72", QString(32, '4'), QString(32, '5'), 1}, p.now), true, p.now
+        ),
+        "target"
+    );
+    require(
+        std::get<WorkerReceiveBinding>(p.w.takeMessages().front()).targetResource == QString(32, '5'),
+        "target roundtrip"
+    );
+    require(p.a.feed(p.w.encode(WorkerReady{}, p.now), true, p.now), "ready");
+    p.a.takeMessages();
+    require(p.w.feed(p.a.encode(WorkerStart{}, p.now), true, p.now), "start");
+    p.w.takeMessages();
+  };
+  WebRtcFrameCorrelation map{QString(32, '4'), "capture.clock", 1, 1, 1, 1, 1, 0, UINT32_MAX, false};
+  Pair valid(Direction::Receive);
+  setup(valid);
+  require(valid.w.feed(valid.a.encode(map, valid.now), true, valid.now), "correlation wire");
+  require(std::get<WebRtcFrameCorrelation>(valid.w.takeMessages().front()) == map, "correlation roundtrip");
+  require(valid.w.feed(valid.a.encode(WorkerStop{}, valid.now), true, valid.now), "stop");
+  require(valid.a.encode(map, valid.now).isEmpty(), "correlation after stop");
+  for (int field = 0; field < 3; ++field) {
+    Pair wrong(Direction::Receive);
+    setup(wrong);
+    auto bad = map;
+    if (field == 0)
+      bad.sourceResource = QString(32, '6');
+    if (field == 1)
+      ++bad.topologyGeneration;
+    if (field == 2)
+      ++bad.epoch;
+    require(wrong.a.encode(bad, wrong.now).isEmpty(), "wrong correlation scope");
+  }
+  Pair early(Direction::Receive);
+  early.start();
+  require(early.a.encode(map, early.now).isEmpty(), "unbound correlation");
+}
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
   try {
     require(argc == 2, "case required");
     const std::string c = argv[1];
-    if (c == "MediaWorkPermit")
+    if (c == "WorkerReceiveBinding")
+      receiverBinding();
+    else if (c == "MediaWorkPermit")
       mediaPermit();
     else if (c == "WorkerHandshake")
       handshake();

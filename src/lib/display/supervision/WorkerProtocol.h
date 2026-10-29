@@ -39,6 +39,13 @@ enum class StopReason
   Deadline,
   Shutdown
 };
+// Trusted local owner requests a worker-owned window, never an imported OS handle.
+struct WorkerReceiveBinding
+{
+  QString localAddress, sourceResource, targetResource;
+  uint64_t topologyGeneration = 0;
+  bool operator==(const WorkerReceiveBinding &) const = default;
+};
 struct WorkerStart
 {
   bool operator==(const WorkerStart &) const = default;
@@ -78,8 +85,8 @@ struct WorkerFailure
 };
 using WorkerMessage = std::variant<
     WorkerStart, WorkerStop, WorkerHeartbeat, WorkerRefresh, WorkerReady, WorkerPresented, WorkerQuiesced,
-    WorkerFailure, WorkerPrepare, WorkerMediaSignal, WorkerPrepareOutput, WorkerOutputObserved, WorkerConfigureOutput,
-    WorkerOutputReady>;
+    WorkerFailure, WorkerPrepare, WorkerMediaSignal, WorkerReceiveBinding, WebRtcFrameCorrelation, WorkerPrepareOutput,
+    WorkerOutputObserved, WorkerConfigureOutput, WorkerOutputReady>;
 
 // Single event-loop owner. Both ends require an independently authenticated local
 // transport. A secret delivered over an inherited private channel authenticates
@@ -125,6 +132,7 @@ private:
   uint64_t m_tx = 0, m_rx = 0, m_lastFrame = 0;
   std::optional<WorkerPrepare> m_configuration;
   std::optional<WorkerPrepareOutput> m_outputConfiguration;
+  std::optional<WorkerReceiveBinding> m_receiveBinding;
   bool m_outputObserved = false, m_outputConfigureRequested = false, m_outputReady = false;
   uint32_t m_agentIce = 0, m_workerIce = 0;
   QString m_agentSdpDigest, m_workerSdpDigest;
