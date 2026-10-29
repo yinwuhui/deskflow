@@ -188,6 +188,9 @@ MacResourceProvider::captureBinding(const QString &resource, TimePoint deadline,
   binding.m_claimed = m_captureClaimed;
   binding.m_resource = resource.toStdString();
   binding.m_session = m_binding.token.session;
+  binding.m_owner = m_binding.token.owner;
+  binding.m_planHash = m_binding.planHash;
+  binding.m_userSession = m_binding.localUserSession;
   binding.m_identity = display->identity;
   binding.m_display = display->id;
   binding.m_epoch = m_binding.token.epoch;

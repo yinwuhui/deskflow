@@ -322,11 +322,22 @@ int main(int argc, char **argv)
             .count()
     );
     receive.preparation.startupDeadlineNanoseconds = send.preparation.startupDeadlineNanoseconds;
+    LabControlLoopback control(send, receive);
+    require(!captureBinding->withMediaPermit(receive.permit), "receiver permit authorized capture");
+    auto wrongContext = static_cast<const MediaWorkContext &>(send);
+    wrongContext.binding.token.owner = std::string(32, '9');
+    auto wrongPermit = MediaWorkPermit::issue(wrongContext, Clock::now() + std::chrono::seconds(30));
+    require(bool(wrongPermit) && !captureBinding->withMediaPermit(wrongPermit), "foreign owner authorized capture");
+    auto revokedPermit = MediaWorkPermit::issue(send, Clock::now() + std::chrono::seconds(30));
+    require(bool(revokedPermit), "revocation fixture permit");
+    revokedPermit->revoke();
+    require(!captureBinding->withMediaPermit(revokedPermit), "revoked permit authorized capture");
+    auto scopedBinding = captureBinding->withMediaPermit(send.permit);
+    require(bool(scopedBinding), "capture media scope rejected");
     MacCaptureSource capture;
     mediaQuiesced->store(false, std::memory_order_release);
-    if (!capture.start(*captureBinding, Clock::now() + std::chrono::seconds(8)))
+    if (!capture.start(*scopedBinding, Clock::now() + std::chrono::seconds(8)))
       throw std::runtime_error(capture.error().toStdString());
-    LabControlLoopback control(send, receive);
     NativeWebRtcEngine tx, rx;
     if (!tx.prepare(send) || !rx.prepare(receive))
       throw std::runtime_error((tx.error() + rx.error()).toStdString());
@@ -334,6 +345,7 @@ int main(int argc, char **argv)
     QElapsedTimer run;
     run.start();
     qint64 next = 0;
+    std::shared_ptr<CpuFrameLease> heldCapture;
     uint64_t decoded = 0, markers = 0;
     uint32_t lastPixel = 0, rawPixel = 0;
     uint64_t rawMarkers = 0;
@@ -355,6 +367,7 @@ int main(int argc, char **argv)
         std::memcpy(&rawPixel, raw, 4);
         if (raw[1] > 100 && raw[1] > raw[0] + 40 && raw[1] > raw[2] + 40)
           ++rawMarkers;
+        heldCapture = frame;
         if (!tx.submit(std::move(frame)))
           throw std::runtime_error(tx.error().toStdString());
       }
@@ -393,6 +406,13 @@ int main(int argc, char **argv)
             windowOnScreen && stats.constrainedBaseline && stats.addressPairApproved,
         "native display evidence incomplete"
     );
+    require(bool(heldCapture), "missing capture lease for revoke test");
+    send.permit->revoke();
+    require(!capture.takeCpuLease() && !capture.readNewest(), "revoked capture exposed frame");
+    capture.poll();
+    require(capture.error() == "CaptureMediaPermitInactive" && !capture.stopped(), "capture revocation failed");
+    heldCapture.reset();
+    receive.permit->revoke();
     capture.stop();
     tx.stop();
     rx.stop();
@@ -425,6 +445,7 @@ int main(int argc, char **argv)
         {"receiverCompatibleProfileLabels", QString::number(rx.statistics().compatibleProfileLabels)},
         {"guiTicksDuringCreate", QString::number(guiTicksDuringCreate)},
         {"serializedCorrelations", QString::number(control.serializedCorrelations())},
+        {"capturePermitRevocationVerified", true},
         {"capturedFrames", QString::number(captured.published)},
         {"decodedFrames", QString::number(decoded)},
         {"markerFrames", QString::number(markers)},

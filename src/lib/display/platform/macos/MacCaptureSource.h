@@ -7,6 +7,7 @@
 namespace deskflow::display::infra {
 class MacResourceProvider;
 struct WorkerPrepare;
+class MediaWorkPermit;
 struct MacCaptureStatistics
 {
   uint64_t samples = 0, complete = 0, published = 0, budgetDrops = 0;
@@ -21,6 +22,7 @@ public:
   // Describes this live source for a trusted local Worker Prepare. Does not
   // grant network authority or consume the capture claim.
   bool fillWorkerSource(WorkerPrepare &) const;
+  std::optional<MacCaptureBinding> withMediaPermit(std::shared_ptr<MediaWorkPermit>) const;
   const std::string &resource() const
   {
     return m_resource;
@@ -30,7 +32,9 @@ private:
   friend class MacResourceProvider;
   friend class MacCaptureSource;
   MacCaptureBinding() = default;
-  std::string m_resource, m_session;
+  std::string m_resource, m_session, m_owner;
+  QString m_planHash, m_userSession;
+  std::shared_ptr<MediaWorkPermit> m_permit;
   QString m_identity, m_topologyDigest;
   std::shared_ptr<std::atomic<bool>> m_live, m_claimed;
   uint32_t m_display = 0, m_epoch = 0;

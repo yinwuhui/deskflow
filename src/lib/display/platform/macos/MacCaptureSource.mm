@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "MacCaptureSource.h"
 #include "MacVirtualOutput.h"
+#include "display/supervision/MediaWorkPermit.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreVideo/CoreVideo.h>
 #include <QCoreApplication>
@@ -24,9 +25,14 @@ struct CaptureState
   SCStream *__strong stream = nil;
   id<SCStreamOutput> __strong sink = nil;
   std::shared_ptr<std::atomic<bool>> live;
+  std::shared_ptr<MediaWorkPermit> permit;
+  bool permitted() const
+  {
+    return !permit || permit->active();
+  }
   bool valid() const
   {
-    return accepting.load() && !invalidated.load() && live && live->load();
+    return permitted() && accepting.load() && !invalidated.load() && live && live->load();
   }
   std::atomic<uint64_t> samples{0}, complete{0}, published{0}, budgetDrops{0};
   std::atomic<int> lastStatus{-1}, stopError{0};
@@ -177,7 +183,7 @@ void topologyChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags, void *conte
 namespace deskflow::display::infra {
 bool MacCaptureBinding::fillWorkerSource(WorkerPrepare &p) const
 {
-  if (!m_live || !m_live->load() || !m_claimed || m_claimed->load())
+  if ((m_permit && !m_permit->active()) || !m_live || !m_live->load() || !m_claimed || m_claimed->load())
     return false;
   p.sourceResource = QString::fromStdString(m_resource);
   p.source = {NativeSourceKind::CgDisplay, m_display, 0};
@@ -185,6 +191,18 @@ bool MacCaptureBinding::fillWorkerSource(WorkerPrepare &p) const
   p.sourceContextDigest = m_topologyDigest;
   p.sourceTopologyGeneration = m_generation;
   return true;
+}
+std::optional<MacCaptureBinding> MacCaptureBinding::withMediaPermit(std::shared_ptr<MediaWorkPermit> permit) const
+{
+  if (m_permit || !m_live || !m_live->load() || !m_claimed || m_claimed->load() || !permit ||
+      !permit->allowsCapture(
+          m_owner, m_session, m_epoch, m_planHash, m_userSession, QString::fromStdString(m_resource),
+          {NativeSourceKind::CgDisplay, m_display, 0}, m_identity, m_topologyDigest, m_generation
+      ))
+    return {};
+  auto copy = *this;
+  copy.m_permit = std::move(permit);
+  return copy;
 }
 struct MacCaptureSource::Impl
 {
@@ -213,6 +231,11 @@ bool MacCaptureSource::start(const MacCaptureBinding &binding, TimePoint deadlin
   }
   deadline = std::min(deadline, Clock::now() + std::chrono::seconds(10));
   m_impl->deadline = deadline;
+  s->permit = binding.m_permit;
+  if (!s->permitted()) {
+    s->fail("CaptureMediaPermitInactive");
+    return false;
+  }
   bool claimed = false;
   if (!binding.m_live || !binding.m_live->load() || !binding.m_claimed ||
       !binding.m_claimed->compare_exchange_strong(claimed, true)) {
@@ -263,7 +286,8 @@ bool MacCaptureSource::start(const MacCaptureBinding &binding, TimePoint deadlin
                              onScreenWindowsOnly:YES
                                completionHandler:^(SCShareableContent *content, NSError *error) {
                                  dispatch_async(dispatch_get_main_queue(), ^{
-                                   if (s->invalidated.load() || !s->live->load() || Clock::now() >= deadline) {
+                                   if (!s->permitted() || s->invalidated.load() || !s->live->load() ||
+                                       Clock::now() >= deadline) {
                                      s->fail("CapturePreparationExpired");
                                      s->stopDone.store(true);
                                      return;
@@ -329,6 +353,8 @@ void MacCaptureSource::poll()
   auto s = m_impl->state;
   if (!m_impl->launched || m_impl->stopping)
     return;
+  if (!s->permitted())
+    s->fail("CaptureMediaPermitInactive");
   if (s->invalidated.load())
     s->fail("CaptureTopologyChanged");
   if (s->live && !s->live->load())
