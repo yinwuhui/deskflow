@@ -117,6 +117,10 @@ struct State
   uint64_t inputSequence = 0, inputCapture = 0, mediaSequence = 0, lastDecoded = 0;
   GstClockTime lastPts = GST_CLOCK_TIME_NONE;
   QString remoteSdpDigest, pipelineDiagnostic;
+  bool permitted() const
+  {
+    return config.permit && config.permit->active();
+  }
   void fail(const char *why)
   {
     const char *empty = nullptr;
@@ -143,7 +147,7 @@ Shared state(gpointer data)
 void connect(const Shared &s, GObject *object, const char *name, GCallback callback)
 {
   std::lock_guard lock(s->connectionsMutex);
-  if (s->closing.load())
+  if ((!s->permitted() || s->closing.load()))
     return;
   if (s->connections.size() >= 256) {
     s->fail("NativeSignalBudgetExceeded");
@@ -168,7 +172,7 @@ void probe(const Shared &s, GstPad *pad, GstPadProbeType type, GstPadProbeCallba
     return;
   }
   std::lock_guard lock(s->connectionsMutex);
-  if (!s->closing.load()) {
+  if (!(!s->permitted() || s->closing.load())) {
     auto id =
         gst_pad_add_probe(pad, type, callback, new Shared(s), [](gpointer p) { delete static_cast<Shared *>(p); });
     s->probes.push_back({GST_PAD(gst_object_ref(pad)), id});
@@ -207,7 +211,7 @@ bool candidate(const Shared &s, QString value, bool local = false)
 }
 void enqueue(const Shared &s, WorkerMediaSignal signal)
 {
-  if (s->closing.load())
+  if ((!s->permitted() || s->closing.load()))
     return;
   if (!validMediaSignal(signal)) {
     s->fail("MediaSignalInvalid");
@@ -238,7 +242,7 @@ gboolean endHandled(GObject *, const gchar *, gpointer)
 gboolean sendSdp(GObject *, const gchar *, GstWebRTCSessionDescription *description, gpointer data)
 {
   auto s = state(data);
-  if (s->closing.load())
+  if ((!s->permitted() || s->closing.load()))
     return TRUE;
   gchar *text = gst_sdp_message_as_text(description->sdp);
   WorkerMediaSignal signal;
@@ -251,7 +255,7 @@ gboolean sendSdp(GObject *, const gchar *, GstWebRTCSessionDescription *descript
 gboolean sendIce(GObject *, const gchar *, const gchar *value, guint line, const gchar *mid, gpointer data)
 {
   auto s = state(data);
-  if (s->closing.load() || !value || !*value)
+  if ((!s->permitted() || s->closing.load()) || !value || !*value)
     return TRUE;
   WorkerMediaSignal signal;
   signal.kind = WebRtcSignalKind::Ice;
@@ -265,7 +269,7 @@ gboolean sendIce(GObject *, const gchar *, const gchar *value, guint line, const
 void selectedPair(NiceAgent *, guint, guint component, NiceCandidate *local, NiceCandidate *remote, gpointer data)
 {
   auto s = state(data);
-  if (s->closing.load() || component != 1)
+  if ((!s->permitted() || s->closing.load()) || component != 1)
     return;
   const bool approved = local && remote && local->type == NICE_CANDIDATE_TYPE_HOST &&
                         remote->type == NICE_CANDIDATE_TYPE_HOST && local->transport == NICE_CANDIDATE_TRANSPORT_UDP &&
@@ -332,7 +336,7 @@ void encoderRate(GObject *object, GParamSpec *, gpointer data)
 GstPadProbeReturn encoderProbe(GstPad *, GstPadProbeInfo *info, gpointer data)
 {
   auto s = state(data);
-  if (s->closing.load())
+  if ((!s->permitted() || s->closing.load()))
     return GST_PAD_PROBE_DROP;
   if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
     GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
@@ -399,7 +403,7 @@ GstPadProbeReturn inspectOutgoing(const Shared &s, GstPad *pad, GstBuffer *buffe
 }
 template <class Inspect> GstPadProbeReturn inspectRtp(const Shared &s, GstPadProbeInfo *info, Inspect inspect)
 {
-  if (s->closing.load() || s->failure.load() || !s->pairApproved.load())
+  if ((!s->permitted() || s->closing.load()) || s->failure.load() || !s->pairApproved.load())
     return GST_PAD_PROBE_DROP;
   if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER_LIST) {
     auto *list = GST_PAD_PROBE_INFO_BUFFER_LIST(info);
@@ -494,8 +498,10 @@ gboolean payloaderSetup(GstElement *, const gchar *peer, const gchar *, GstEleme
 }
 void publishPending(const Shared &s)
 {
+  if (!s->permitted())
+    return;
   std::lock_guard lock(s->mutex);
-  for (auto it = s->pending.begin(); it != s->pending.end();) {
+  for (auto it = s->pending.begin(); it != s->pending.end() && s->permitted();) {
     const auto mapping = s->inboundMaps.find(it->key);
     if (mapping == s->inboundMaps.end()) {
       ++it;
@@ -536,7 +542,7 @@ GstFlowReturn decodedSample(GstAppSink *sink, gpointer data)
   GstSample *sample = gst_app_sink_pull_sample(sink);
   if (!sample)
     return GST_FLOW_EOS;
-  if (s->closing.load() || !s->pairApproved.load() || !s->profile.load()) {
+  if ((!s->permitted() || s->closing.load()) || !s->pairApproved.load() || !s->profile.load()) {
     gst_sample_unref(sample);
     return GST_FLOW_OK;
   }
@@ -612,7 +618,7 @@ GstFlowReturn decodedSample(GstAppSink *sink, gpointer data)
   }
   {
     std::lock_guard lock(s->mutex);
-    if (s->closing.load()) {
+    if ((!s->permitted() || s->closing.load())) {
       s->output->abortWrite(*ticket);
       return GST_FLOW_FLUSHING;
     }
@@ -757,12 +763,13 @@ bool NativeWebRtcEngine::prepare(const NativeWebRtcConfiguration &config)
   }
   const auto &p = config.preparation;
   const auto &b = config.binding;
-  WorkerProtocol identity(WorkerSide::Worker, b, QByteArray(32, 'x'), Clock::now());
+
   const QHostAddress local(config.localAddress);
   const auto localAddresses = QNetworkInterface::allAddresses();
-  if (identity.failed() || b.purpose != WorkerPurpose::Media || b.backend != "webrtc" ||
-      !validWorkerPrepare(p, b.direction, Clock::now()) || p.protocol != WireProtocol::WebRtc ||
-      p.video.width != 1920 || p.video.height != 1080 || p.video.fpsNumerator != 30 || p.video.fpsDenominator != 1 ||
+  if (!config.permit || !config.permit->matches(config) || !validWorkerBinding(b) ||
+      b.purpose != WorkerPurpose::Media || b.backend != "webrtc" || !validWorkerPrepare(p, b.direction, Clock::now()) ||
+      p.protocol != WireProtocol::WebRtc || p.video.width != 1920 || p.video.height != 1080 ||
+      p.video.fpsNumerator != 30 || p.video.fpsDenominator != 1 ||
       p.video.graphics != GraphicsMode::H264ConstrainedBaseline || p.video.color != ColorProfile::SdrBt709Limited8 ||
       p.video.cursor != CursorMode::Embedded || p.encodedQueueFrames != 2 || p.encodedQueueBytes != 4 * 1024 * 1024 ||
       !validId(config.streamSourceResource.toStdString(), 16) || !config.streamTopologyGeneration || local.isNull() ||
@@ -875,7 +882,7 @@ bool NativeWebRtcEngine::prepare(const NativeWebRtcConfiguration &config)
 bool NativeWebRtcEngine::start()
 {
   auto s = m_impl->state;
-  if (!s->prepared || s->started || s->closing.load() || s->failure.load())
+  if (!s->prepared || s->started || (!s->permitted() || s->closing.load()) || s->failure.load())
     return false;
   s->started = true;
   if (gst_element_set_state(s->pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
@@ -887,7 +894,7 @@ bool NativeWebRtcEngine::start()
 bool NativeWebRtcEngine::applySignal(const WorkerMediaSignal &signal)
 {
   auto s = m_impl->state;
-  if (!s->started || s->closing.load() || s->failure.load() || !validMediaSignal(signal))
+  if (!s->started || (!s->permitted() || s->closing.load()) || s->failure.load() || !validMediaSignal(signal))
     return false;
   if (!s->sessionStarted) {
     const auto bytes =
@@ -966,7 +973,7 @@ bool NativeWebRtcEngine::applySignal(const WorkerMediaSignal &signal)
 namespace {
 bool pushInput(const Shared &s, std::shared_ptr<CpuFrameLease> lease, bool repeated)
 {
-  if (!lease || s->closing.load() || s->failure.load())
+  if (!lease || (!s->permitted() || s->closing.load()) || s->failure.load())
     return false;
   const auto &d = lease->descriptor();
   if (d.session != s->config.binding.token.session ||
@@ -1042,13 +1049,15 @@ bool NativeWebRtcEngine::submit(std::shared_ptr<CpuFrameLease> frame)
 std::shared_ptr<CpuFrameLease> NativeWebRtcEngine::takeDecoded()
 {
   auto s = m_impl->state;
-  if (s->closing.load() || s->failure.load() || !s->pairApproved.load() || !s->output)
+  if ((!s->permitted() || s->closing.load()) || s->failure.load() || !s->pairApproved.load() || !s->output)
     return {};
   return CpuFrameLease::acquire(s->output);
 }
 std::vector<WorkerMediaSignal> NativeWebRtcEngine::takeSignals()
 {
   auto s = m_impl->state;
+  if (!s->permitted())
+    return {};
   std::lock_guard lock(s->mutex);
   std::vector<WorkerMediaSignal> values(s->outboundSignals.begin(), s->outboundSignals.end());
   s->outboundSignals.clear();
@@ -1058,6 +1067,8 @@ std::vector<WorkerMediaSignal> NativeWebRtcEngine::takeSignals()
 std::vector<NativeFrameCorrelation> NativeWebRtcEngine::takeCorrelations()
 {
   auto s = m_impl->state;
+  if (!s->permitted())
+    return {};
   std::lock_guard lock(s->mutex);
   std::vector<NativeFrameCorrelation> values(s->outboundMaps.begin(), s->outboundMaps.end());
   s->outboundMaps.clear();
@@ -1066,8 +1077,8 @@ std::vector<NativeFrameCorrelation> NativeWebRtcEngine::takeCorrelations()
 bool NativeWebRtcEngine::applyCorrelation(const NativeFrameCorrelation &m)
 {
   auto s = m_impl->state;
-  if (!s->started || s->closing.load() || s->failure.load() || s->config.binding.direction != Direction::Receive ||
-      m.sourceResource != s->config.streamSourceResource ||
+  if (!s->started || (!s->permitted() || s->closing.load()) || s->failure.load() ||
+      s->config.binding.direction != Direction::Receive || m.sourceResource != s->config.streamSourceResource ||
       m.topologyGeneration != s->config.streamTopologyGeneration || m.epoch != s->config.binding.token.epoch ||
       !validFrameCorrelation(m))
     return false;
@@ -1096,6 +1107,11 @@ void NativeWebRtcEngine::poll()
   auto s = m_impl->state;
   if (!s->started || s->closing.load())
     return;
+  if (!s->permitted()) {
+    s->fail("MediaPermitInactive");
+    stop();
+    return;
+  }
   for (int i = 0; i < 16 && g_main_context_pending(nullptr); ++i)
     g_main_context_iteration(nullptr, FALSE);
   if (!s->sessionStarted && s->signallerReady.load()) {
@@ -1151,6 +1167,8 @@ void NativeWebRtcEngine::poll()
 bool NativeWebRtcEngine::refresh()
 {
   auto s = m_impl->state;
+  if (!s->permitted() || s->closing.load())
+    return false;
   GstElement *encoder = nullptr;
   {
     std::lock_guard lock(s->mutex);

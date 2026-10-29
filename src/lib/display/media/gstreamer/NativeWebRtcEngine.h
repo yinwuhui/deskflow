@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "display/frame/FrameModel.h"
-#include "display/supervision/WorkerProtocol.h"
+#include "display/supervision/MediaWorkPermit.h"
 #include <memory>
 namespace deskflow::display::infra {
-struct NativeWebRtcConfiguration
+struct NativeWebRtcConfiguration : MediaWorkContext
 {
-  WorkerBinding binding;
-  WorkerPrepare preparation;
-  // From the committed media plan. On receive this is the remote stream identity,
-  // never local capture authority. ICE binds only this verified local address.
-  QString localAddress, streamSourceResource;
-  uint64_t streamTopologyGeneration = 0;
+  std::shared_ptr<MediaWorkPermit> permit;
 };
 using NativeFrameCorrelation = WebRtcFrameCorrelation;
 struct NativeWebRtcStatistics

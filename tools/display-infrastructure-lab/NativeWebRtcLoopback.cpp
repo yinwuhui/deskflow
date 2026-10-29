@@ -49,11 +49,25 @@ static NativeWebRtcConfiguration configuration(Direction direction)
     p.sourceContextDigest = QString(64, 'a');
     p.sourceTopologyGeneration = 1;
   }
+  c.permit = MediaWorkPermit::issue(c, Clock::now() + std::chrono::seconds(30));
   return c;
 }
 static void policyChecks()
 {
   uint32_t checks = 0;
+  for (int mode = 0; mode < 3; ++mode) {
+    auto c = configuration(Direction::Receive);
+    if (mode == 0)
+      c.permit.reset();
+    if (mode == 1)
+      c.permit->revoke();
+    if (mode == 2)
+      c.binding.token.attempt++;
+    NativeWebRtcEngine engine;
+    require(!engine.prepare(c), "invalid media permit admitted");
+    require(engine.stop(), "rejected engine stop failed");
+    ++checks;
+  }
   // Header-only metadata fixtures, not complete coded-frame/SPS certification.
   const QByteArray constrained = QByteArray::fromHex("0142c028ffe100");
   auto headerEvidence = [](const QByteArray &bytes, const char *label = "baseline") {
@@ -181,7 +195,7 @@ int main(int argc, char **argv)
     elapsed.start();
     qint64 next = 0;
     uint64_t sequence = 0, decoded = 0, markers = 0;
-    std::shared_ptr<CpuFrameLease> heldDecoded;
+    std::shared_ptr<CpuFrameLease> heldDecoded, heldInput;
     while (elapsed.elapsed() < 8000) {
       QCoreApplication::processEvents();
       tx.poll();
@@ -224,6 +238,7 @@ int main(int argc, char **argv)
               "synthetic pool publish"
           );
           auto lease = CpuFrameLease::acquire(pool);
+          heldInput = lease;
           require(lease && tx.submit(std::move(lease)), qPrintable(tx.error()));
         }
       }
@@ -246,6 +261,30 @@ int main(int argc, char **argv)
       QThread::msleep(2);
     }
     const auto stats = tx.statistics(), received = rx.statistics();
+    send.permit->revoke();
+    receive.permit->revoke();
+    WorkerMediaSignal deniedSignal;
+    deniedSignal.kind = WebRtcSignalKind::Ice;
+    deniedSignal.candidate = "candidate:1 1 UDP 2122260223 127.0.0.1 50000 typ host";
+    NativeFrameCorrelation deniedMap;
+    deniedMap.sourceResource = receive.streamSourceResource;
+    deniedMap.topologyGeneration = receive.streamTopologyGeneration;
+    deniedMap.epoch = receive.binding.token.epoch;
+    deniedMap.frame = deniedMap.captureFrame = deniedMap.captureNanoseconds = 1;
+    deniedMap.captureClockId = "lab.monotonic";
+    require(
+        validMediaSignal(deniedSignal) && validFrameCorrelation(deniedMap) && bool(heldInput), "invalid revoke fixture"
+    );
+    require(
+        !tx.refresh() && !rx.takeDecoded() && !rx.applyCorrelation(deniedMap) && !tx.applySignal(deniedSignal) &&
+            tx.takeSignals().empty() && tx.takeCorrelations().empty(),
+        "revoked engine accepted new work"
+    );
+    require(!tx.submit(heldInput), "revoked submit accepted");
+    tx.poll();
+    rx.poll();
+    require(tx.error() == "MediaPermitInactive" && rx.error() == "MediaPermitInactive", "revoke not observed");
+    heldInput.reset();
     pool->retire();
     const bool stoppedTx = tx.stop();
     const bool leaseBlockedStop = heldDecoded && !rx.stop();
@@ -258,6 +297,7 @@ int main(int argc, char **argv)
         {"decodedFrames", QString::number(decoded)},
         {"markerFrames", QString::number(markers)},
         {"leaseBlockedStop", leaseBlockedStop},
+        {"revokedEntrypointsRejected", true},
         {"inputFrames", QString::number(stats.inputFrames)},
         {"receiverPublished", QString::number(received.decodedFrames)},
         {"receiverCompatibleProfileLabels", QString::number(received.compatibleProfileLabels)},

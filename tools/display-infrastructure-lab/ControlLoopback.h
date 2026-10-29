@@ -31,6 +31,11 @@ public:
         !m_right.acceptHello(m_left.hello(), m_sender, "lab.receiver", error) || m_left.id() != m_right.id())
       throw std::runtime_error("ControlLoopbackBindingFailed");
     send.binding.controlBinding = receive.binding.controlBinding = m_left.id();
+    // Explicit diagnostic owner grant, before either engine is prepared.
+    send.permit = MediaWorkPermit::issue(send, Clock::now() + std::chrono::seconds(30));
+    receive.permit = MediaWorkPermit::issue(receive, Clock::now() + std::chrono::seconds(30));
+    if (!send.permit || !receive.permit)
+      throw std::runtime_error("DiagnosticPermitRejected");
   }
   LabControlLoopback(const LabControlLoopback &) = delete;
   LabControlLoopback &operator=(const LabControlLoopback &) = delete;
