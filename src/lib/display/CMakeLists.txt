@@ -3,7 +3,8 @@
 add_library(deskflow-display-infra-core STATIC
   core/InfrastructureTypes.cpp
   frame/FrameModel.cpp
-  core/InfrastructureSession.cpp)
+  core/InfrastructureSession.cpp
+  core/SessionMailbox.cpp)
 target_compile_features(deskflow-display-infra-core PUBLIC cxx_std_20)
 target_include_directories(deskflow-display-infra-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 if(MSVC)

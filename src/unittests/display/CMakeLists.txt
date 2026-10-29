@@ -184,3 +184,13 @@ if(TARGET deskflow-display-platform-macos)
   add_executable(MacResourceProviderSmoke MacResourceProviderSmoke.cpp)
   target_link_libraries(MacResourceProviderSmoke PRIVATE deskflow-display-platform-macos Qt6::Gui)
 endif()
+
+add_executable(DisplaySessionMailboxTests SessionMailboxTests.cpp)
+find_package(Threads REQUIRED)
+target_link_libraries(DisplaySessionMailboxTests PRIVATE deskflow-display-infra-core Threads::Threads)
+foreach(case MailboxPriorityFlood MailboxLateIntent MailboxExitBeforeAttach MailboxOverflowRetry
+             MailboxEvidenceStatistics MailboxThreadScope MailboxRetiredScope)
+  add_test(NAME Display.Infrastructure.${case} COMMAND DisplaySessionMailboxTests ${case})
+  set_tests_properties(Display.Infrastructure.${case} PROPERTIES TIMEOUT 10)
+endforeach()
+set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplaySessionMailboxTests)
