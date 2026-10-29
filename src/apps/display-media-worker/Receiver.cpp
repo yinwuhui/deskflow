@@ -19,6 +19,7 @@ public:
   std::shared_ptr<CpuFrameLease> frame;
   std::function<void(uint64_t)> painted;
   uint64_t last = 0;
+  bool diagnosticMarker = false;
   void paintEvent(QPaintEvent *) override
   {
     auto lease = frame;
@@ -37,6 +38,13 @@ public:
     painter.end();
     if (windowHandle() && windowHandle()->isExposed() && d.sequence != last) {
       last = d.sequence;
+      // This named developer profile uses a known green scene. Only report
+      // diagnostic paint evidence after checking actual decoded pixel content.
+      if (diagnosticMarker) {
+        const auto *pixel = static_cast<const unsigned char *>(lease->data()) + 200 * d.planes[0].stride + 200 * 4;
+        if (!(pixel[1] > 100 && pixel[1] > pixel[0] + 40 && pixel[1] > pixel[2] + 40))
+          return;
+      }
       if (painted)
         painted(last);
     }
@@ -57,6 +65,7 @@ int main(int argc, char **argv)
   NativeWebRtcConfiguration configuration;
   configuration.binding = binding;
   ReceiverWindow window;
+  window.diagnosticMarker = binding.profile == "diagnostic.webrtc.h264.control-map.v1";
   window.setWindowTitle("BMouse extended display receiver");
   window.resize(960, 540);
   bool stopping = false, started = false, configured = false, notify = false, disconnected = false, draining = false,

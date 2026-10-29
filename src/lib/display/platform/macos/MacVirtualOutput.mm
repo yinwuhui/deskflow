@@ -165,6 +165,9 @@ struct MacVirtualOutput::Impl
   WorkerPrepareOutput request;
   QString identity, owner;
   bool layoutApplied = false;
+  uint32_t layoutAttempts = 0;
+  QString layoutStableDigest;
+  TimePoint layoutStableSince{};
   int32_t origin = 0;
   std::shared_ptr<std::atomic<bool>> terminated = std::make_shared<std::atomic<bool>>(false);
 };
@@ -275,8 +278,6 @@ bool MacVirtualOutput::configureLayout()
   const auto claim = observation();
   if (!claim)
     return false;
-  if (m_impl->layoutApplied)
-    return healthy();
   const auto inventory = macDisplayInventory();
   if (!inventory.complete)
     return false;
@@ -292,6 +293,25 @@ bool MacVirtualOutput::configureLayout()
       right = std::max(right, other.bounds.right());
   if (right > INT32_MAX - m_impl->request.width)
     return false;
+  // WindowServer may change a transient gap while preparing an output. Verify
+  // this owned output against fresh topology instead of retaining a stale edge.
+  if (m_impl->layoutApplied && target->bounds.x() == std::ceil(right) && target->bounds.y() == 0) {
+    m_impl->origin = int32_t(std::ceil(right));
+    if (!healthy()) {
+      m_impl->layoutStableDigest.clear();
+      return false;
+    }
+    if (m_impl->layoutStableDigest != inventory.digest) {
+      m_impl->layoutStableDigest = inventory.digest;
+      m_impl->layoutStableSince = Clock::now();
+      return false;
+    }
+    return Clock::now() - m_impl->layoutStableSince >= std::chrono::milliseconds(250);
+  }
+  m_impl->layoutStableDigest.clear();
+  if (m_impl->layoutAttempts >= 3)
+    return false;
+  ++m_impl->layoutAttempts;
   CGDisplayConfigRef config = nullptr;
   if (CGBeginDisplayConfiguration(&config) != kCGErrorSuccess)
     return false;

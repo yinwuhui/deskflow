@@ -19,3 +19,23 @@ SDK prefix 必须包含 `lib/pkgconfig` 或 `lib/<triplet>/pkgconfig`、相应�
 成功至少要求真实 BGRA 解码输出、编码器实际输出 Constrained Baseline、实际选择 x264、GCC 估计与编码器 bitrate 通知都出现。输出 JSON 保存源码 SHA-256、SDK 版本、实际 caps、计数和失败状态。此实验没有包办发布依赖清单、插件白名单、帧内存预算、进程 IPC 和既有设备授权，不能发布为 available。
 
 实验记录：[E001](../../docs/dev/extended-display-architecture/experiments/E001-native-webrtc.zh-CN.md)。
+
+## 隔离发送与 Mac→Ubuntu 跨机诊断（M034/M035）
+
+显式私有 SDK 构建新增 `busymouse-display-media-sender`、`busymouse-display-media-receiver` 和 `NativeRemoteReceiverAgent`。默认产品入口未切换，工具不安装为生产后端。
+
+Mac（先构建 helper、两个 Worker、NativeMacWebRtcLoopback）：
+
+```
+NativeMacWebRtcLoopback <absolute-helper> <private-runtime> --sender-worker=<absolute-sender>
+NativeMacWebRtcLoopback <absolute-helper> <private-runtime> --sender-worker=<absolute-sender> --ubuntu-receiver
+NativeMacWebRtcLoopback <absolute-helper> <private-runtime> --sender-worker=<absolute-sender> --ubuntu-disconnect
+```
+
+后两项固定连接已配置的 `ywh@10.20.1.71` 和 `/home/ywh/code/github/deskflow/build/bin/NativeRemoteReceiverAgent`，Ubuntu 需先编译 IPC v5、接收 Worker 和 Agent，并有活动 `/run/user/1000/wayland-0` 图形会话。保持其他显示器布局调整暂停；工具只创建/回收自己的 Mac 副屏，不调整其他输出。
+
+媒体走真实 LAN WebRTC，控制使用 SSH 宿主认证和显式诊断身份，不能替代产品设备证书、用户同意、输入隔离或 PlanCommit 验收。Ubuntu 诊断 profile 仅在实际解码像素通过绿色色块检查并完成 native paint 后报告帧；Mac 的远端模式不回传原始像素，JSON 的本机 decodedFrames/markerFrames 因而为0。跨机 nativePaintFrames 是远端带色块校验的绘制数。
+
+`--ubuntu-disconnect` 在至少30帧后关闭控制输入，检查双方停止与Mac输出独立清理。正常/断线后的窗口排空、进程退出、系统副屏不存在和账本关闭是分开的证据。任何失败保留临时账本，不删除现场。
+
+已知 ledger 可用 `--recover-ledger=<absolute-ledger>` 保守核对：已有活动owner时要求原helper出生身份已不存在、本owner输出hint不存在、用户会话/boot一致，再由现有provider验证关闭。不能凭此终止持久化PID或删除发现的任意显示器。无活动owner时仅报告幂等账本状态，不重新认证系统资源。

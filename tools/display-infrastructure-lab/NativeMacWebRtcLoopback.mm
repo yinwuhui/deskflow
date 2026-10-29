@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Manual diagnostic: real virtual output -> SCK -> standard WebRTC -> native paint.
 #include "ControlLoopback.h"
+#include "LabReceiver.h"
 #include "MacResourceThread.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
 #include "display/platform/macos/MacResourceProvider.h"
@@ -14,6 +15,7 @@
 #include <QImage>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkInterface>
 #include <QPainter>
 #include <QTemporaryDir>
 #include <QThread>
@@ -171,12 +173,87 @@ int main(int argc, char **argv)
   QApplication app(argc, argv);
   app.setQuitOnLastWindowClosed(false);
   try {
-    const QString senderArgument = argc == 4 ? QString::fromLocal8Bit(argv[3]) : QString{};
+    if (argc == 4 && QString::fromLocal8Bit(argv[3]).startsWith("--recover-ledger=")) {
+      const auto path = QString::fromLocal8Bit(argv[3]).mid(QString("--recover-ledger=").size());
+      DurableResourceLedger ledger(path);
+      require(ledger.status() == DurableResourceLedger::Status::Ready, "recovery ledger unavailable");
+      const auto owner = ledger.activeOwner();
+      if (owner.isEmpty()) {
+        std::cout << "{\"scope\":\"ledger already has no active owner; no resources modified\",\"ownerClosed\":true}\n";
+        return 0;
+      }
+      require(!ledger.records().isEmpty(), "recovery active owner missing");
+      const auto record = ledger.records().first();
+      require(
+          record.userSession == macUserSessionReference() && record.bootInstance == macBootInstanceReference(),
+          "recovery desktop scope changed"
+      );
+      const auto inventory = macDisplayInventory();
+      require(inventory.complete, "recovery inventory incomplete");
+      for (const auto &r : ledger.records()) {
+        require(r.owner == owner, "recovery owner mismatch");
+        if (r.kind == "worker") {
+          const auto identity = NativeProcessIdentity::decode(r.platformReference);
+          require(
+              identity && nativeProcessPresence(*identity) == NativeProcessPresence::OriginalAbsent,
+              "recovery helper absence unproven"
+          );
+        } else if (r.kind == "virtualOutput")
+          require(!macResourceHintPresent(inventory, owner, r.id), "recovery output still present");
+        else
+          require(false, "recovery unknown resource kind");
+      }
+      WorkerBinding binding;
+      binding.token = {record.session.toStdString(), 1, 1, 1, owner.toStdString(), makeId().toStdString()};
+      binding.localUserSession = record.userSession;
+      binding.buildCompatibility = "platform-helper1";
+      binding.backend = "platform.macos.virtual-output";
+      binding.profile = "macos.virtual-output.cgdisplay.sdr1080.v1";
+      binding.planHash = record.planHash;
+      binding.purpose = WorkerPurpose::Platform;
+      binding.localIdentity = QString::fromLatin1(
+          QCryptographicHash::hash(record.userSession.toUtf8(), QCryptographicHash::Sha256).toHex()
+      );
+      QFile helper(QFileInfo(QString::fromLocal8Bit(argv[1])).canonicalFilePath());
+      require(helper.open(QIODevice::ReadOnly), "recovery helper file");
+      WorkerRegistration registration{
+          QFileInfo(helper).canonicalFilePath(),
+          QString::fromLatin1(QCryptographicHash::hash(helper.readAll(), QCryptographicHash::Sha256).toHex()),
+          binding.backend, binding.profile, WorkerPurpose::Platform
+      };
+      auto provider = std::make_shared<MacResourceProvider>(ledger, registration, binding);
+      ResourceExecutor executor(ledger, record.userSession, record.bootInstance, [&](const QString &candidate) {
+        return candidate == owner;
+      });
+      auto registered = provider->registration();
+      registered.implementation = provider;
+      require(executor.registerProvider(std::move(registered)), "recovery provider registration");
+      const auto result = executor.cleanupOwner(owner, Clock::now() + std::chrono::seconds(5));
+      require(
+          result.outcome == ResourceOutcome::Closed && ledger.activeOwner().isEmpty(), "recovery closure unconfirmed"
+      );
+      std::cout << QJsonDocument(
+                       QJsonObject{
+                           {"scope", "reconcile already-absent recorded platform resources only; no PID termination"},
+                           {"ownerClosed", true},
+                           {"outputAbsenceVerified", true},
+                           {"ledger", path}
+                       }
+                   )
+                       .toJson(QJsonDocument::Compact)
+                       .constData()
+                << '\n';
+      return 0;
+    }
+    const QString senderArgument = argc >= 4 ? QString::fromLocal8Bit(argv[3]) : QString{};
+    const bool disconnectRemote = argc == 5 && QString::fromLocal8Bit(argv[4]) == "--ubuntu-disconnect";
+    const bool remoteReceiver =
+        argc == 5 && (QString::fromLocal8Bit(argv[4]) == "--ubuntu-receiver" || disconnectRemote);
     const bool isolatedSender = senderArgument.startsWith("--sender-worker=");
     const bool cancelBeforeCreate = argc == 4 && QString::fromLocal8Bit(argv[3]) == "--cancel-before-create";
     require(
-        argc == 3 || cancelBeforeCreate || isolatedSender,
-        "usage: NativeMacWebRtcLoopback <absolute-helper> <private-runtime> [--cancel-before-create]"
+        argc == 3 || cancelBeforeCreate || (isolatedSender && (argc == 4 || remoteReceiver)),
+        "usage: NativeMacWebRtcLoopback <absolute-helper> <private-runtime> [--cancel-before-create | --sender-worker=<absolute> [--ubuntu-receiver|--ubuntu-disconnect] | --recover-ledger=<path>]"
     );
     QString error;
     if (!NativeWebRtcEngine::initializeRuntime(QString::fromLocal8Bit(argv[2]), error))
@@ -324,12 +401,34 @@ int main(int argc, char **argv)
             .count()
     );
     receive.preparation.startupDeadlineNanoseconds = send.preparation.startupDeadlineNanoseconds;
+    QString senderAddress;
+    if (remoteReceiver) {
+      const QHostAddress remote("10.20.1.71");
+      for (const auto &interface : QNetworkInterface::allInterfaces())
+        for (const auto &entry : interface.addressEntries())
+          if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol && entry.prefixLength() > 0 &&
+              !entry.ip().isLoopback() && remote.isInSubnet(entry.ip(), entry.prefixLength()))
+            senderAddress = entry.ip().toString();
+      require(!senderAddress.isEmpty(), "Mac LAN address unavailable");
+      send.localAddress = senderAddress;
+      send.preparation.allowedPeerAddresses = {"10.20.1.71"};
+      send.preparation.allowLoopbackDiagnostics = false;
+    }
     LabControlLoopback control(send, receive);
     if (isolatedSender) {
       require(captureBinding->claimWorkerSource(send.preparation), "worker source claim");
       require(!captureBinding->fillWorkerSource(receive.preparation), "claimed source reused");
-      NativeWebRtcEngine rx;
+      LabReceiver rx(remoteReceiver ? QString("10.20.1.71") : QString{}, senderAddress);
       require(rx.prepare(receive) && rx.start(), "worker receive prepare/start");
+      require(
+          until([&] { return rx.ready() || !rx.error().isEmpty(); }, 15000) && rx.ready(), "remote receiver readiness"
+      );
+      send.preparation.startupDeadlineNanoseconds = uint64_t(
+          std::chrono::duration_cast<std::chrono::nanoseconds>(
+              (Clock::now() + std::chrono::seconds(10)).time_since_epoch()
+          )
+              .count()
+      );
       const auto senderPath = senderArgument.mid(QString("--sender-worker=").size());
       QFile image(senderPath);
       require(image.open(QIODevice::ReadOnly), "sender executable");
@@ -339,7 +438,7 @@ int main(int argc, char **argv)
           send.binding.backend, send.binding.profile
       };
       WorkerProcess sender;
-      bool started = false, failed = false, quiesced = false, exited = false;
+      bool started = false, failed = false, quiesced = false, exited = false, disconnectedRemote = false;
       QString senderError;
       sender.onEstablished = [&] {
         if (!sender.send(send.preparation) || !sender.send(WorkerSendBinding{send.localAddress}))
@@ -372,6 +471,13 @@ int main(int argc, char **argv)
       uint64_t decoded = 0, markers = 0;
       while (!failed && run.elapsed() < 10000) {
         QCoreApplication::processEvents();
+        if (disconnectRemote && !disconnectedRemote && rx.presented() >= 30) {
+          disconnectedRemote = true;
+          rx.disconnectControl();
+          sender.stop(StopReason::ConnectionLost);
+        }
+        if (disconnectedRemote && rx.stopped() && exited)
+          break;
         rx.poll();
         if (started)
           control.toSenderWorker(rx, sender);
@@ -396,19 +502,22 @@ int main(int argc, char **argv)
         }
         if (!rx.error().isEmpty()) {
           failed = true;
-          senderError = rx.error();
+          if (senderError.isEmpty())
+            senderError = rx.error();
         }
         QThread::msleep(2);
       }
-      const auto paint = presenter.presented;
-      const bool visible = onScreen(native(presenter));
+      const auto paint = remoteReceiver ? rx.presented() : presenter.presented;
+      const bool visible = remoteReceiver ? rx.presented() > 0 : onScreen(native(presenter));
+      rx.stop(); // Notify the remote stop transaction before closing the media transport.
       sender.stop(StopReason::Revoked);
       require(until([&] { return exited; }, 6500), "sender exit deadline");
+      mediaQuiesced->store(true);
       presenter.frame.reset();
       presenter.hide();
       receive.permit->revoke();
       rx.stop();
-      require(until([&] { return rx.stopped(); }, 5000), "worker receiver drain");
+      const bool receiverStopped = until([&] { return rx.stopped(); }, 5000);
       [scene orderOut:nil];
       [scene close];
       mediaQuiesced->store(true);
@@ -421,13 +530,22 @@ int main(int argc, char **argv)
       const bool absent =
           after.complete && !macResourceHintPresent(after, owner, output.id) && resources.snapshot().ownerClosed;
       QJsonObject report{
-          {"scope", "real Mac output -> isolated capture/encode worker -> local receiver; diagnostic authentication"},
+          {"scope",
+           remoteReceiver
+               ? "Mac isolated capture worker -> real LAN WebRTC -> Ubuntu isolated visible receiver; SSH diagnostic "
+                 "control, not product authentication"
+               : "real Mac output -> isolated capture/encode worker -> local receiver; diagnostic authentication"},
           {"decodedFrames", QString::number(decoded)},
           {"markerFrames", QString::number(markers)},
           {"nativePaintFrames", QString::number(paint)},
           {"windowVisible", visible},
           {"senderQuiesced", quiesced},
           {"senderExited", exited},
+          {"remoteControlDisconnected", disconnectedRemote},
+          {"remoteReceiverStopped", remoteReceiver && receiverStopped},
+          {"receiverError", rx.error()},
+          {"receiverWorkerDiagnostic", rx.workerDiagnostic()},
+          {"lateReceiverError", rx.lateError()},
           {"senderError", senderError + sender.error()},
           {"outputAbsent", absent},
           {"ownerClosed", resources.snapshot().ownerClosed},
@@ -436,7 +554,8 @@ int main(int argc, char **argv)
       };
       std::cout << QJsonDocument(report).toJson(QJsonDocument::Compact).constData() << '\n';
       require(
-          !failed && decoded >= 10 && markers >= 5 && paint >= 5 && visible && quiesced && absent,
+          !failed && (remoteReceiver ? paint >= 30 : (decoded >= 10 && markers >= 5 && paint >= 5)) && visible &&
+              quiesced && absent && receiverStopped && (!disconnectRemote || disconnectedRemote),
           "isolated sender evidence incomplete"
       );
       audit.setAutoRemove(true);

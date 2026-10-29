@@ -199,3 +199,8 @@ if(TARGET deskflow-display-native-webrtc AND TARGET deskflow-display-platform-ma
   target_compile_options(busymouse-display-media-sender PRIVATE -fobjc-arc)
   set_target_properties(busymouse-display-media-sender PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED ON BUILD_RPATH "${DESKFLOW_GSTREAMER_RUNTIME}/lib")
 endif()
+
+if(TARGET deskflow-display-native-webrtc AND UNIX)
+  add_executable(NativeRemoteReceiverAgent ../../../tools/display-infrastructure-lab/NativeRemoteReceiverAgent.cpp)
+  target_link_libraries(NativeRemoteReceiverAgent PRIVATE deskflow-display-infra-runtime)
+endif()

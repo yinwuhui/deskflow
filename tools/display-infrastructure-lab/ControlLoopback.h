@@ -66,7 +66,7 @@ public:
     if (!receive.takeCorrelations().empty())
       throw std::runtime_error("ReverseFrameCorrelationDenied");
   }
-  void fromSenderWorker(const WorkerMessage &message, NativeWebRtcEngine &receiver)
+  template <class Receiver> void fromSenderWorker(const WorkerMessage &message, Receiver &receiver)
   {
     if (auto s = std::get_if<WorkerMediaSignal>(&message))
       signal(*s, true, receiver);
@@ -79,7 +79,7 @@ public:
       ++m_correlations;
     }
   }
-  void toSenderWorker(NativeWebRtcEngine &receiver, WorkerProcess &sender)
+  template <class Receiver> void toSenderWorker(Receiver &receiver, WorkerProcess &sender)
   {
     for (const auto &s : receiver.takeSignals()) {
       ControlError error;
@@ -116,7 +116,7 @@ private:
       throw std::runtime_error("SerializedControlScopeMismatch");
     return *received;
   }
-  void signal(const WorkerMediaSignal &s, bool fromSender, NativeWebRtcEngine &target)
+  template <class Receiver> void signal(const WorkerMediaSignal &s, bool fromSender, Receiver &target)
   {
     auto &sequence = fromSender ? m_leftSignals : m_rightSignals;
     if (sequence == UINT64_MAX)

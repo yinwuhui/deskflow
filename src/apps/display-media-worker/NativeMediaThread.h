@@ -177,8 +177,16 @@ private:
             decoded(frame);
         });
     }
-    if (!engine->error().isEmpty())
-      fail("NativeMediaThreadFailed");
+    const auto error = engine->error();
+    if (!error.isEmpty()) {
+      auto code = error.section(": ", 0, 0);
+      if (code == "NativePipelineError") {
+        auto cause = error.section(": ", 1).replace('/', '.');
+        if (validName(cause.toStdString(), 80))
+          code += "." + cause;
+      }
+      fail(validName(code.toStdString()) ? code : QString("NativeMediaThreadFailed"));
+    }
   }
   QThread thread;
   QObject *executor = nullptr;
