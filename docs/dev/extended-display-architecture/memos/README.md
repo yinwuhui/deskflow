@@ -37,8 +37,8 @@
 | M029 | 本地媒体工作许可原语 | 作用域/到期/四线程不可逆撤销；尚未接入引擎及采集入口 | [媒体工作许可](M029-media-work-permit.zh-CN.md) |
 | M030 | 原生引擎媒体许可接入 | 双端政策/真实媒体撤销及租约排空；采集许可和生产授权待接入 | [引擎许可](M030-native-engine-permit.zh-CN.md) |
 | M031 | Mac 采集媒体许可绑定 | 真实采集/呈现、拒绝错误许可、撤销及借出帧排空通过；生产 owner/Worker 待完成 | [采集许可](M031-mac-capture-permit.zh-CN.md) |
-
 | M032 | 隔离接收 Worker 开发装配 | Mac 真实子进程 RTP→195 帧绘制/撤销排空；生产认证及 Ubuntu 待接入 | [隔离接收](M032-isolated-receiver.zh-CN.md) |
+| M033 | 产品认证控制接线/Ubuntu 接收 | Mac 139项、Ubuntu 25项；两端真实呈现/撤销/父 EOF；生产计划 owner 待接入 | [控制接线与接收](M033-product-control-and-linux-receiver.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 

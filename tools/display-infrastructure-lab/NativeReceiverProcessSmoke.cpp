@@ -6,6 +6,7 @@
 #include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QTemporaryDir>
 #include <QThread>
 #include <iostream>
 using namespace deskflow::display::infra;
@@ -54,7 +55,14 @@ int main(int argc, char **argv)
   receiverPreparation.sourceIdentity.clear();
   receiverPreparation.sourceContextDigest.clear();
   receiverPreparation.sourceTopologyGeneration = 0;
-  QFile executable(QString::fromLocal8Bit(argv[2]));
+  // Register a private immutable-to-other-users image, retaining strict runtime
+  // executable checks even when the build directory has a shared umask.
+  QTemporaryDir imageDirectory;
+  const auto image = imageDirectory.filePath("receiver-worker");
+  if (!imageDirectory.isValid() || !QFile::copy(QString::fromLocal8Bit(argv[2]), image) ||
+      !QFile::setPermissions(image, QFileDevice::ReadOwner | QFileDevice::ExeOwner))
+    return 4;
+  QFile executable(image);
   if (!executable.open(QIODevice::ReadOnly))
     return 4;
   WorkerRegistration registration{
@@ -80,8 +88,11 @@ int main(int argc, char **argv)
       if (!sender.applySignal(*signal))
         failed = true;
     if (auto frame = std::get_if<WorkerPresented>(&m))
-      if (frame->exposed && frame->evidence == PresentationEvidence::NativePaintConfirmed)
+      if (frame->exposed && frame->evidence == PresentationEvidence::NativePaintConfirmed) {
         ++presented;
+        if (presented == 30)
+          std::cerr << "receiver-presented-30 pid=" << worker.processId() << std::endl;
+      }
     if (auto failure = std::get_if<WorkerFailure>(&m)) {
       std::cerr << failure->code.toStdString() << "\n";
       failed = true;

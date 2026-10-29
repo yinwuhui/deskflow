@@ -4,9 +4,11 @@
 #include <QApplication>
 #include <QImage>
 #include <QPainter>
+#include <QThread>
 #include <QTimer>
 #include <QWidget>
 #include <QWindow>
+#include <atomic>
 using namespace deskflow::display::infra;
 
 // This window is created locally by the receiver. No peer-selected native handle
@@ -40,6 +42,164 @@ public:
     }
   }
 };
+// Media library calls must never block the IPC lease or the GUI event loop.
+// Commands have a hard queue limit; decoded delivery retains at most one queued
+// lease in addition to the window's current frame.
+class ReceiverMedia final : public QObject
+{
+public:
+  std::function<void()> ready, drained;
+  std::function<void(const QString &)> failed;
+  std::function<void(const WorkerMediaSignal &)> signal;
+  std::function<void(std::shared_ptr<CpuFrameLease>)> decoded;
+  ReceiverMedia()
+  {
+    executor = new QObject;
+    executor->moveToThread(&thread);
+    connect(&thread, &QThread::finished, executor, &QObject::deleteLater);
+    thread.start();
+    QMetaObject::invokeMethod(executor, [this] {
+      engine = std::make_unique<NativeWebRtcEngine>();
+      timer = new QTimer(executor);
+      connect(timer, &QTimer::timeout, executor, [this] { poll(); });
+      timer->start(5);
+    }, Qt::QueuedConnection);
+  }
+  ~ReceiverMedia()
+  {
+    thread.quit();
+    thread.wait();
+  }
+  bool prepare(NativeWebRtcConfiguration config)
+  {
+    return post([this, config] {
+      QString error;
+      if (stopping.load())
+        return;
+      if (!NativeWebRtcEngine::initializeRuntime(QStringLiteral(DISPLAY_PRIVATE_RUNTIME), error) || stopping.load() ||
+          !engine->prepare(config)) {
+        if (!stopping.load())
+          fail("ReceiverPrepareFailed");
+        return;
+      }
+      deliver([this] {
+        if (ready)
+          ready();
+      });
+    });
+  }
+  bool start()
+  {
+    return post([this] {
+      if (!engine->start())
+        fail("ReceiverStartFailed");
+      else
+        started = true;
+    });
+  }
+  bool apply(WorkerMediaSignal value)
+  {
+    return post([this, value] {
+      if (!engine->applySignal(value))
+        fail("ReceiverSignalFailed");
+    });
+  }
+  bool apply(WebRtcFrameCorrelation value)
+  {
+    return post([this, value] {
+      if (!engine->applyCorrelation(value))
+        fail("ReceiverCorrelationFailed");
+    });
+  }
+  bool refresh()
+  {
+    return post([this] {
+      if (!engine->refresh())
+        fail("ReceiverRefreshFailed");
+    });
+  }
+  void stop()
+  {
+    stopping.store(true);
+  }
+
+private:
+  void deliver(std::function<void()> work)
+  {
+    QMetaObject::invokeMethod(this, std::move(work), Qt::QueuedConnection);
+  }
+  bool post(std::function<void()> work)
+  {
+    if (pending.fetch_add(1) >= 72) {
+      pending.fetch_sub(1);
+      return false;
+    }
+    QMetaObject::invokeMethod(
+        executor,
+        [this, work = std::move(work)] {
+          pending.fetch_sub(1);
+          if (!stopping.load())
+            work();
+        },
+        Qt::QueuedConnection
+    );
+    return true;
+  }
+  void fail(const QString &code)
+  {
+    if (stopping.exchange(true))
+      return;
+    deliver([this, code] {
+      if (failed)
+        failed(code);
+    });
+  }
+  void poll()
+  {
+    if (!engine)
+      return;
+    if (stopping.load()) {
+      if (!stopIssued) {
+        stopIssued = true;
+        engine->stop();
+      }
+      if (engine->stopped()) {
+        timer->stop();
+        engine.reset();
+        deliver([this] {
+          if (drained)
+            drained();
+        });
+      }
+      return;
+    }
+    if (!started)
+      return;
+    engine->poll();
+    for (const auto &value : engine->takeSignals())
+      deliver([this, value] {
+        if (signal)
+          signal(value);
+      });
+    if (auto frame = engine->takeDecoded()) {
+      if (!framePending.exchange(true))
+        deliver([this, frame = std::move(frame)] {
+          framePending.store(false);
+          if (decoded)
+            decoded(frame);
+        });
+    }
+    if (!engine->error().isEmpty())
+      fail("ReceiverMediaFailed");
+  }
+  QThread thread;
+  QObject *executor = nullptr;
+  QTimer *timer = nullptr;
+  std::unique_ptr<NativeWebRtcEngine> engine;
+  std::atomic<unsigned> pending{0};
+  std::atomic<bool> stopping{false}, framePending{false};
+  bool started = false, stopIssued = false;
+};
 int main(int argc, char **argv)
 {
   QApplication app(argc, argv);
@@ -51,13 +211,14 @@ int main(int argc, char **argv)
     return 2;
   const auto binding = bootstrap->binding;
   WorkerConnection connection(std::move(*bootstrap));
-  NativeWebRtcEngine engine;
+  ReceiverMedia media;
   NativeWebRtcConfiguration configuration;
   configuration.binding = binding;
   ReceiverWindow window;
   window.setWindowTitle("BMouse extended display receiver");
   window.resize(960, 540);
-  bool stopping = false, started = false, configured = false, notify = false, disconnected = false, draining = false;
+  bool stopping = false, started = false, configured = false, notify = false, disconnected = false, draining = false,
+       mediaDrained = false;
   auto stop = [&] {
     if (stopping)
       return;
@@ -66,9 +227,10 @@ int main(int argc, char **argv)
       configuration.permit->revoke();
     window.hide();
     window.frame.reset();
-    engine.stop();
+    media.stop();
   };
   auto failure = [&](const QString &code) {
+    if (stopping) return; // Native failures queued before revoke may arrive during cleanup.
     connection.send(WorkerFailure{code});
     notify = true;
     stop();
@@ -98,17 +260,14 @@ int main(int argc, char **argv)
       // Only the authenticated local supervisor may submit this binding after
       // authorization. IPC proof is not itself proof of remote user consent.
       configuration.permit = MediaWorkPermit::issue(configuration, Clock::now() + std::chrono::hours(24));
-      if (!NativeWebRtcEngine::initializeRuntime(QStringLiteral(DISPLAY_PRIVATE_RUNTIME), error) ||
-          !engine.prepare(configuration)) {
+      if (!media.prepare(configuration)) {
         failure("ReceiverPrepareFailed");
         return;
       }
       configured = true;
-      if (!connection.send(WorkerReady{}))
-        stop();
     }
     if (std::holds_alternative<WorkerStart>(message)) {
-      if (!configured || !engine.start()) {
+      if (!configured || !media.start()) {
         failure("ReceiverStartFailed");
         return;
       }
@@ -116,19 +275,35 @@ int main(int argc, char **argv)
       window.show();
     }
     if (const auto *signal = std::get_if<WorkerMediaSignal>(&message))
-      if (!engine.applySignal(*signal))
+      if (!media.apply(*signal))
         failure("ReceiverSignalFailed");
     if (const auto *map = std::get_if<WebRtcFrameCorrelation>(&message))
-      if (!engine.applyCorrelation(*map))
+      if (!media.apply(*map))
         failure("ReceiverCorrelationFailed");
     if (std::holds_alternative<WorkerRefresh>(message))
-      if (!engine.refresh())
+      if (!media.refresh())
         failure("ReceiverRefreshFailed");
+  };
+  media.ready = [&] {
+    if (!stopping && !connection.send(WorkerReady{}))
+      stop();
+  };
+  media.failed = failure;
+  media.drained = [&] { mediaDrained = true; };
+  media.signal = [&](const WorkerMediaSignal &value) {
+    if (!stopping && !connection.send(value))
+      stop();
+  };
+  media.decoded = [&](std::shared_ptr<CpuFrameLease> frame) {
+    if (!stopping) {
+      window.frame = std::move(frame);
+      window.update();
+    }
   };
   QTimer timer;
   QObject::connect(&timer, &QTimer::timeout, [&] {
     if (stopping) {
-      if (engine.stopped()) {
+      if (mediaDrained) {
         if (disconnected) {
           app.quit();
           return;
@@ -156,18 +331,6 @@ int main(int argc, char **argv)
       failure("ReceiverTargetClosed");
       return;
     }
-    engine.poll();
-    for (const auto &signal : engine.takeSignals())
-      if (!connection.send(signal)) {
-        stop();
-        return;
-      }
-    if (auto frame = engine.takeDecoded()) {
-      window.frame = std::move(frame);
-      window.update();
-    }
-    if (!engine.error().isEmpty())
-      failure("ReceiverMediaFailed");
   });
   timer.start(5);
   connection.connectToAgent();

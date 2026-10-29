@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "ProductDisplayRuntime.h"
+#include "InfrastructureControlChannel.h"
 #include "ScreenInventoryService.h"
 #include <QGuiApplication>
 #include "common/Settings.h"
@@ -90,6 +91,10 @@ ProductDisplayRuntime::ProductDisplayRuntime(PeerUsageService* usage,DisplayServ
       m_publicCertificate=QString::fromLatin1(certs.first().toPem());
       if(!save(m_runtime.identityDirectory+"/cert.pem",certs.first().toPem())||!save(m_runtime.identityDirectory+"/key.pem",bytes))m_publicCertificate.clear();
     }
+  }
+  if(!m_publicCertificate.isEmpty()) {
+    const auto certs=QSslCertificate::fromData(m_publicCertificate.toLatin1());
+    if(certs.size()==1)new InfrastructureControlChannel(QString::fromLatin1(certs.first().digest(QCryptographicHash::Sha256).toHex()),channel,usage,this);
   }
   if(qEnvironmentVariableIsSet("BMOUSE_DISPLAY_DIAGNOSTICS")){
     auto report=[previous=std::make_shared<QHash<QByteArray,QByteArray>>()](const char* kind,const QJsonObject& value){

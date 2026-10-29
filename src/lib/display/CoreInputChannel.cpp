@@ -102,9 +102,12 @@ void CoreInputChannel::observe(const QJsonObject& record){
   auto outcome=m_usage->syncConnectedPeer(std::move(known),caps,std::move(connection));
   if(outcome.accepted||outcome.reason==Reason::CleanupFailed){m_records[id]=record;Q_EMIT authenticatedConnectionObserved(record);}
 }
-void CoreInputChannel::sendPeerControl(const QString& peer,const QString& connection,const QJsonObject& body){
-  if(!m_authenticated||!m_records.contains(connection)||m_records.value(connection).value("peerId")!=peer)return;
+bool CoreInputChannel::sendPeerControl(const QString& peer,const QString& connection,const QJsonObject& body){
+  if(!m_authenticated||!m_records.contains(connection)||m_records.value(connection).value("peerId")!=peer)return false;
   auto bytes=QJsonDocument(QJsonObject{{"kind","control"},{"peerId",peer},{"baseConnectionId",connection},{"body",body}}).toJson(QJsonDocument::Compact);
-  if(bytes.size()<=16384&&m_socket.bytesToWrite()<65536)m_socket.write("inputControl="+bytes+'\n');
+  const auto framed="inputControl="+bytes+'\n';
+  if(bytes.size()>16384||m_socket.bytesToWrite()+framed.size()>65536)return false;
+  if(m_socket.write(framed)==framed.size())return true;
+  m_socket.abort();failed();return false;
 }
 }

@@ -13,7 +13,7 @@ class CoreInputChannel : public QObject {
   Q_OBJECT
 public:
   explicit CoreInputChannel(InputRouteAdapter* adapter,PeerUsageService* usage,QObject* parent=nullptr,const QString& endpoint={},bool enabled=true);
-  void sendPeerControl(const QString& peerId,const QString& connectionId,const QJsonObject& body);
+  bool sendPeerControl(const QString& peerId,const QString& connectionId,const QJsonObject& body);
 Q_SIGNALS:
   void peerControlReceived(const QJsonObject& event);
   void authenticatedConnectionObserved(const QJsonObject& connection);
