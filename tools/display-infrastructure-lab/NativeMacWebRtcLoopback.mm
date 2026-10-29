@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Manual diagnostic: real virtual output -> SCK -> standard WebRTC -> native paint.
+#include "ControlLoopback.h"
 #include "MacResourceThread.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
 #include "display/platform/macos/MacResourceProvider.h"
@@ -148,7 +149,7 @@ media(Direction direction, const QString &session, const QString &owner, const Q
   b.localUserSession = macUserSessionReference();
   b.buildCompatibility = "native-mac-loopback1";
   b.backend = "webrtc";
-  b.profile = "diagnostic.software.h264";
+  b.profile = "diagnostic.webrtc.h264.control-map.v1";
   b.direction = direction;
   b.planHash = plan;
   b.controlBinding = QString(64, 'c');
@@ -325,6 +326,7 @@ int main(int argc, char **argv)
     mediaQuiesced->store(false, std::memory_order_release);
     if (!capture.start(*captureBinding, Clock::now() + std::chrono::seconds(8)))
       throw std::runtime_error(capture.error().toStdString());
+    LabControlLoopback control(send, receive);
     NativeWebRtcEngine tx, rx;
     if (!tx.prepare(send) || !rx.prepare(receive))
       throw std::runtime_error((tx.error() + rx.error()).toStdString());
@@ -346,22 +348,7 @@ int main(int argc, char **argv)
         [sceneView setNeedsDisplay:YES];
         [scene displayIfNeeded];
       }
-      for (const auto &signal : tx.takeSignals())
-        if (!rx.applySignal(signal))
-          throw std::runtime_error(rx.error().toStdString());
-      for (const auto &signal : rx.takeSignals())
-        if (!tx.applySignal(signal))
-          throw std::runtime_error(tx.error().toStdString());
-      for (const auto &mapping : tx.takeCorrelations()) {
-        if (!rx.applyCorrelation(mapping)) {
-          std::cerr << "mappingRejected frame=" << mapping.frame << " captureFrame=" << mapping.captureFrame
-                    << " captureNs=" << mapping.captureNanoseconds << " epoch=" << mapping.epoch
-                    << " topology=" << mapping.topologyGeneration << " ssrc=" << mapping.ssrc
-                    << " rtpTimestamp=" << mapping.rtpTimestamp << " rx=" << rx.error().toStdString()
-                    << " tx=" << tx.error().toStdString() << '\n';
-          throw std::runtime_error("RTP mapping rejected");
-        }
-      }
+      control.pump(tx, rx);
       if (auto frame = capture.takeCpuLease()) {
         const auto *raw =
             static_cast<const unsigned char *>(frame->data()) + 200 * frame->descriptor().planes[0].stride + 200 * 4;
@@ -402,8 +389,8 @@ int main(int argc, char **argv)
               << " profile=" << stats.constrainedBaseline << " pair=" << stats.addressPairApproved
               << " sceneVisible=" << scene.visible << " sceneScreen=" << screenId(scene) << '\n';
     require(
-        decoded >= 10 && markers >= 5 && presenter.presented >= 5 && windowOnScreen && stats.constrainedBaseline &&
-            stats.addressPairApproved,
+        control.serializedCorrelations() >= decoded && decoded >= 10 && markers >= 5 && presenter.presented >= 5 &&
+            windowOnScreen && stats.constrainedBaseline && stats.addressPairApproved,
         "native display evidence incomplete"
     );
     capture.stop();
@@ -437,6 +424,7 @@ int main(int argc, char **argv)
         {"resourceThreadIsolated", resourceState.isolated},
         {"receiverCompatibleProfileLabels", QString::number(rx.statistics().compatibleProfileLabels)},
         {"guiTicksDuringCreate", QString::number(guiTicksDuringCreate)},
+        {"serializedCorrelations", QString::number(control.serializedCorrelations())},
         {"capturedFrames", QString::number(captured.published)},
         {"decodedFrames", QString::number(decoded)},
         {"markerFrames", QString::number(markers)},

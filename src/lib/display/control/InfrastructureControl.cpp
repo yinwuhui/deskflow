@@ -206,9 +206,10 @@ bool positive(const QJsonValue &value, uint64_t maximum, uint64_t &out)
   out = static_cast<uint64_t>(d);
   return true;
 }
-const QSet<QString> messages{"CapabilitiesSnapshot", "PlanOffer",     "PlanAnswer",  "PlanPropose",   "PlanAccept",
-                             "PlanCommit",           "PlanCommitted", "MediaSignal", "EndpointReady", "MediaReady",
-                             "FirstFrameEvidence",   "HealthSummary", "Stop",        "Stopped",       "Error"};
+const QSet<QString> messages{"CapabilitiesSnapshot", "PlanOffer",     "PlanAnswer",    "PlanPropose",
+                             "PlanAccept",           "PlanCommit",    "PlanCommitted", "MediaSignal",
+                             "FrameCorrelation",     "EndpointReady", "MediaReady",    "FirstFrameEvidence",
+                             "HealthSummary",        "Stop",          "Stopped",       "Error"};
 bool needsPlan(const QString &type)
 {
   return type != "CapabilitiesSnapshot" && type != "PlanOffer" && type != "PlanAnswer" && type != "Stop" &&

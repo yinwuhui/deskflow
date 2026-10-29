@@ -16,6 +16,7 @@ ID128 为非零 32 位小写 hex；摘要/PeerId 为非零 64 位小写 hex。U6
 | PlanCommit | operationId、planHash、senderAuthorizationDigest、receiverAuthorizationDigest、senderBarrierRef、receiverBarrierRef；摘要同外层；授权摘要与屏障引用仅是声明，必须查本地有效登记 |
 | PlanCommitted | operationId、planHash、committed、localCommitRef；hash 同外层、committed=true |
 | MediaSignal | backend、signalSequence、kind、description、candidate、mid、mediaLine；当前仅 webrtc，单视频 mediaLine=0；offer/answer/ice/end-of-candidates 字段互斥，复用 M010 结构预算 |
+| FrameCorrelation | backend=webrtc、mappingProfile=control.rtp-map.v1、sourceResource、captureClockId、topologyGeneration、frame、captureFrame、captureNanoseconds、epoch、ssrc、rtpTimestamp、repeated；U64 字符串保留精度；RTP uint32 允许 0 与回绕；必须绑定外层 session/attempt/plan |
 | EndpointReady | backend、resourceRef、prepared；backend 为 rdp/webrtc、resourceRef 为 ID128、prepared=true。只承载端点登记引用，不承载私钥、路径、任意 URL 或 peer 可选的本地程序 |
 | MediaReady | backend、planHash、video、securityProfileId；hash 同外层，视频与安全配置必须和后端相容；还需与实际锁定计划和协商结果比较 |
 | FirstFrameEvidence | epoch、frame、sourceResource、targetResource、targetValid、evidence；epoch 为正 uint32；等级为 decoded/submitted/native-paint-confirmed/compositor-presented；声明等级不等于本机原生证据 |
@@ -37,3 +38,5 @@ WebRTC 安全标识为 webrtc.authenticated-dtls-srtp.v1；RDP 为 rdp.authentic
 ## 边界
 
 正文合规不等于当前状态允许执行，更不等于得到采集/创建输出/接收输入授权。网络装配必须查验当前基础连接、session/attempt/epoch、能力修订、精确候选、计划引用、授权和屏障，再经 owner mailbox 调用核心。对端不能把新声明的 capability、localCleanup 或 FirstFrameEvidence 变成本机平台证据。首帧和统计没有跨机时间差字段，不能用对端时刻伪造本机延迟。
+
+M028 增加 FrameCorrelation 后共 16 类正文。仅双方锁定包含 control.rtp-map.v1 的 profile/实现版本组合才可交换；旧 peer 不认识该必选消息时必须拒绝，不能默认兼容或降级。当前只由显式开发样机使用，未发布生产 available。Native Worker IPC 暂未加入此消息。

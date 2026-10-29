@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Manual developer fixture: synthetic frames, local signaling and loopback only.
+#include "ControlLoopback.h"
 #include "display/media/gstreamer/H264CodecEvidence.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
 #include <QCoreApplication>
@@ -26,7 +27,7 @@ static NativeWebRtcConfiguration configuration(Direction direction)
   b.localUserSession = "diagnostic.local";
   b.buildCompatibility = "native-webrtc-lab1";
   b.backend = "webrtc";
-  b.profile = "diagnostic.software.h264";
+  b.profile = "diagnostic.webrtc.h264.control-map.v1";
   b.planHash = QString(64, 'd');
   b.controlBinding = QString(64, 'c');
   b.localIdentity = QString(64, direction == Direction::Send ? 'a' : 'b');
@@ -138,7 +139,9 @@ static void policyChecks()
     m.rtpTimestamp = 20;
     auto wrong = m;
     wrong.topologyGeneration = 2;
-    require(!engine.applyCorrelation(wrong), "wrong generation mapping admitted");
+    ControlError error;
+    const auto decodedWrong = decodeFrameCorrelationBody(encodeFrameCorrelationBody(wrong, error), error);
+    require(decodedWrong && !engine.applyCorrelation(*decodedWrong), "wrong generation mapping admitted");
     require(engine.applyCorrelation(m) && engine.applyCorrelation(m), "idempotent mapping rejected");
     wrong = m;
     wrong.captureNanoseconds = 2;
@@ -167,6 +170,7 @@ int main(int argc, char **argv)
     }
     NativeWebRtcEngine tx, rx;
     auto send = configuration(Direction::Send), receive = configuration(Direction::Receive);
+    LabControlLoopback control(send, receive);
     require(tx.prepare(send), qPrintable(tx.error()));
     require(rx.prepare(receive), qPrintable(rx.error()));
     require(rx.start(), qPrintable(rx.error()));
@@ -182,12 +186,7 @@ int main(int argc, char **argv)
       QCoreApplication::processEvents();
       tx.poll();
       rx.poll();
-      for (const auto &signal : tx.takeSignals())
-        require(rx.applySignal(signal), qPrintable(rx.error()));
-      for (const auto &signal : rx.takeSignals())
-        require(tx.applySignal(signal), qPrintable(tx.error()));
-      for (const auto &mapping : tx.takeCorrelations())
-        require(rx.applyCorrelation(mapping), "RTP correlation rejected");
+      control.pump(tx, rx);
       if (elapsed.elapsed() >= next) {
         next = elapsed.elapsed() + 33;
         if (auto ticket = pool->reserve(8294400, MemoryDomain::Cpu)) {
@@ -255,6 +254,7 @@ int main(int argc, char **argv)
     QJsonObject report{
         {"scope", "synthetic local engine/standard signaling/real RTP correlation only; no product authorization or "
                   "visible presentation"},
+        {"serializedCorrelations", QString::number(control.serializedCorrelations())},
         {"decodedFrames", QString::number(decoded)},
         {"markerFrames", QString::number(markers)},
         {"leaseBlockedStop", leaseBlockedStop},
@@ -270,8 +270,8 @@ int main(int argc, char **argv)
     };
     std::cout << QJsonDocument(report).toJson(QJsonDocument::Compact).constData() << '\n';
     require(
-        decoded >= 30 && markers >= 30 && leaseBlockedStop && stats.constrainedBaseline && stats.addressPairApproved &&
-            stats.gccUpdates > 0 && stats.encoderUpdates > 0,
+        control.serializedCorrelations() >= decoded && decoded >= 30 && markers >= 30 && leaseBlockedStop &&
+            stats.constrainedBaseline && stats.addressPairApproved && stats.gccUpdates > 0 && stats.encoderUpdates > 0,
         "native media evidence incomplete"
     );
     require(stoppedTx && stoppedRx && pool->drained() && budget->usage().bytes == 0, "native media did not quiesce");

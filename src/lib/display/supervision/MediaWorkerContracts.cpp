@@ -6,6 +6,11 @@
 #include <QUuid>
 #include <algorithm>
 namespace deskflow::display::infra {
+bool validFrameCorrelation(const WebRtcFrameCorrelation &m)
+{
+  return validId(m.sourceResource.toStdString(), 16) && validName(m.captureClockId.toStdString(), 56) &&
+         m.topologyGeneration && m.frame && m.captureFrame && m.captureNanoseconds && m.epoch;
+}
 bool validMediaSignal(const WorkerMediaSignal &s)
 {
   if (s.mediaLine != 0 || s.mid.size() > 64 || (!s.mid.isEmpty() && !validName(s.mid.toStdString(), 64)))

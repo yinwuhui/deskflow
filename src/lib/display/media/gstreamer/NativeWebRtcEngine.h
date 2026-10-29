@@ -13,14 +13,7 @@ struct NativeWebRtcConfiguration
   QString localAddress, streamSourceResource;
   uint64_t streamTopologyGeneration = 0;
 };
-struct NativeFrameCorrelation
-{
-  QString sourceResource, captureClockId;
-  uint64_t topologyGeneration = 0, frame = 0, captureFrame = 0, captureNanoseconds = 0;
-  uint32_t epoch = 0, ssrc = 0, rtpTimestamp = 0;
-  bool repeated = false;
-  bool operator==(const NativeFrameCorrelation &) const = default;
-};
+using NativeFrameCorrelation = WebRtcFrameCorrelation;
 struct NativeWebRtcStatistics
 {
   uint64_t inputFrames = 0, decodedFrames = 0, gccUpdates = 0, encoderUpdates = 0, deniedPackets = 0;

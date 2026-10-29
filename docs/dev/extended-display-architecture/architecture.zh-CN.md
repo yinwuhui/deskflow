@@ -1247,6 +1247,7 @@ src/apps/
 | `PlanCommit` | 当前双方授权范围摘要、屏障就绪引用、承诺的计划摘要 |
 | `PlanCommitted` | 同一计划/尝试、接收并完成本地提交状态 |
 | `MediaSignal` | 后端 ID、标准信令类型、受限 payload、当前 signal sequence |
+| `FrameCorrelation` | 仅双方锁定支持的控制面映射 Profile：源/拓扑/epoch、真实采集时钟和序号、标准 SSRC/RTP timestamp；不携带 OS 句柄或像素 |
 | `EndpointReady` | 当前资源/端点准备状态、受限端点参数，不泄露私钥 |
 | `MediaReady` | 标准协商完成、实际图形/编码配置与所选计划一致 |
 | `FirstFrameEvidence` | epoch、帧标识、呈现等级、来源、目标有效性；跨机时间不得伪作本机测量 |

@@ -252,6 +252,7 @@
             "PlanCommit",
             "PlanCommitted",
             "MediaSignal",
+            "FrameCorrelation",
             "EndpointReady",
             "MediaReady",
             "FirstFrameEvidence",
@@ -332,7 +333,8 @@
                   "EndpointReady",
                   "MediaReady",
                   "FirstFrameEvidence",
-                  "HealthSummary"
+                  "HealthSummary",
+                  "FrameCorrelation"
                 ]
               }
             }

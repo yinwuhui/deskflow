@@ -54,6 +54,18 @@ struct WorkerMediaSignal
   uint32_t mediaLine = 0;
   bool operator==(const WorkerMediaSignal &) const = default;
 };
+// Abstract stream metadata only: no platform handle or process pointer. RTP
+// fields are standard unsigned 32-bit values, including valid zero/wraparound.
+struct WebRtcFrameCorrelation
+{
+  QString sourceResource, captureClockId;
+  uint64_t topologyGeneration = 0, frame = 0, captureFrame = 0, captureNanoseconds = 0;
+  uint32_t epoch = 0, ssrc = 0, rtpTimestamp = 0;
+  bool repeated = false;
+  bool operator==(const WebRtcFrameCorrelation &) const = default;
+};
+bool validFrameCorrelation(const WebRtcFrameCorrelation &);
+
 // Structural budgets only. The native adapter must still parse standard SDP/ICE
 // with its media engine and verify negotiated format, fingerprint and IP policy.
 bool validMediaSignal(const WorkerMediaSignal &);

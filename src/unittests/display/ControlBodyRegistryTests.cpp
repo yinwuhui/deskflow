@@ -14,9 +14,10 @@ static void require(bool v, const char *why)
     throw std::runtime_error(why);
 }
 static const QString peer(64, 'a'), remote(64, 'b'), digest(64, 'c'), ref(32, 'd');
-static const QStringList types{"CapabilitiesSnapshot", "PlanOffer",     "PlanAnswer",  "PlanPropose",   "PlanAccept",
-                               "PlanCommit",           "PlanCommitted", "MediaSignal", "EndpointReady", "MediaReady",
-                               "FirstFrameEvidence",   "HealthSummary", "Stop",        "Stopped",       "Error"};
+static const QStringList types{"CapabilitiesSnapshot", "PlanOffer",     "PlanAnswer",    "PlanPropose",
+                               "PlanAccept",           "PlanCommit",    "PlanCommitted", "MediaSignal",
+                               "FrameCorrelation",     "EndpointReady", "MediaReady",    "FirstFrameEvidence",
+                               "HealthSummary",        "Stop",          "Stopped",       "Error"};
 static QJsonObject video()
 {
   return {
@@ -113,7 +114,15 @@ static Envelope envelope(const QString &type)
     o = {{"backend", "webrtc"}, {"signalSequence", "1"}, {"kind", "end-of-candidates"},
          {"description", ""},   {"candidate", ""},       {"mid", ""},
          {"mediaLine", 0}};
-  else if (type == "EndpointReady")
+  else if (type == "FrameCorrelation") {
+    WebRtcFrameCorrelation mapping;
+    mapping.sourceResource = ref;
+    mapping.captureClockId = "test.monotonic";
+    mapping.topologyGeneration = mapping.frame = mapping.captureFrame = mapping.captureNanoseconds = 1;
+    mapping.epoch = 1;
+    ControlError error;
+    o = encodeFrameCorrelationBody(mapping, error);
+  } else if (type == "EndpointReady")
     o = {{"backend", "webrtc"}, {"resourceRef", ref}, {"prepared", true}};
   else if (type == "MediaReady")
     o = {
@@ -325,6 +334,121 @@ static void sequenceIsolation()
   require(QJsonDocument::fromJson(next).object()["sequence"] == "2", "failed encode advanced sequence");
   require(c.right.receive(next, peer, "right", c.error).has_value(), "valid sequence after invalid body");
 }
+static WebRtcFrameCorrelation mappedFrame()
+{
+  WebRtcFrameCorrelation m;
+  m.sourceResource = ref;
+  m.captureClockId = "source.monotonic";
+  m.topologyGeneration = m.frame = m.captureFrame = m.captureNanoseconds = UINT64_MAX;
+  m.epoch = UINT32_MAX;
+  m.ssrc = 0;
+  m.rtpTimestamp = UINT32_MAX;
+  m.repeated = true;
+  return m;
+}
+static void frameCorrelationWire()
+{
+  ControlError error;
+  const auto original = mappedFrame();
+  auto e = envelope("FrameCorrelation");
+  e.body = encodeFrameCorrelationBody(original, error);
+  require(e.body["captureNanoseconds"] == "18446744073709551615", "capture time lost uint64 precision");
+  Connection c;
+  const auto bytes = c.left.encode(e, error);
+  const auto received = c.right.receive(bytes, peer, "right", error);
+  require(received.has_value(), "bound frame mapping envelope rejected");
+  const auto decoded = decodeFrameCorrelationBody(received->body, error);
+  require(decoded && *decoded == original, "frame correlation wire lost source/clock/wrap/repeat evidence");
+  require(!c.right.receive(bytes, peer, "right", error), "frame correlation replay bypassed transport sequence");
+  e.planHash.clear();
+  require(c.left.encode(e, error).isEmpty(), "unbound mapping admitted");
+  auto zeroWrap = original;
+  zeroWrap.rtpTimestamp = 0;
+  zeroWrap.ssrc = UINT32_MAX;
+  const auto roundtrip = decodeFrameCorrelationBody(encodeFrameCorrelationBody(zeroWrap, error), error);
+  require(roundtrip && *roundtrip == zeroWrap, "standard RTP zero/wrap values rejected");
+}
+static void malformedCorrelation()
+{
+  ControlError error;
+  const auto good = encodeFrameCorrelationBody(mappedFrame(), error);
+  for (const auto &key : good.keys()) {
+    auto bad = good;
+    bad.remove(key);
+    require(!decodeFrameCorrelationBody(bad, error), "mapping required field omitted");
+    bad = good;
+    bad[key] = QJsonValue(QJsonValue::Null);
+    require(!decodeFrameCorrelationBody(bad, error), "null mapping field admitted");
+  }
+  for (int i = 0; i < 12; ++i) {
+    auto bad = good;
+    switch (i) {
+    case 0:
+      bad["epoch"] = 0;
+      break;
+    case 1:
+      bad["epoch"] = 4294967296.0;
+      break;
+    case 2:
+      bad["ssrc"] = -1;
+      break;
+    case 3:
+      bad["rtpTimestamp"] = 0.5;
+      break;
+    case 4:
+      bad["frame"] = 1;
+      break;
+    case 5:
+      bad["captureNanoseconds"] = "01";
+      break;
+    case 6:
+      bad["repeated"] = "true";
+      break;
+    case 7:
+      bad["mappingProfile"] = "control.rtp-map.v2";
+      break;
+    case 8:
+      bad["backend"] = "rdp";
+      break;
+    case 9:
+      bad["captureClockId"] = QString(57, 'x');
+      break;
+    case 10:
+      bad["sourceResource"] = "cgdisplay:77";
+      break;
+    case 11:
+      bad["localPointer"] = "0x1234";
+      break;
+    }
+    require(!decodeFrameCorrelationBody(bad, error), "malformed/unbounded/native-locator mapping admitted");
+  }
+  auto invalid = mappedFrame();
+  invalid.captureNanoseconds = 0;
+  require(encodeFrameCorrelationBody(invalid, error).isEmpty(), "invented unknown capture time admitted");
+}
+static void typedSignalWire()
+{
+  for (const auto kind :
+       {WebRtcSignalKind::Offer, WebRtcSignalKind::Answer, WebRtcSignalKind::Ice, WebRtcSignalKind::EndOfCandidates}) {
+    ControlMediaSignal m;
+    m.sequence = UINT64_MAX;
+    m.signal.kind = kind;
+    if (kind == WebRtcSignalKind::Offer || kind == WebRtcSignalKind::Answer)
+      m.signal.description = "v=0\r\n";
+    if (kind == WebRtcSignalKind::Ice) {
+      m.signal.candidate = "candidate:1 1 UDP 1 127.0.0.1 5000 typ host";
+      m.signal.mid = "video0";
+    }
+    ControlError error;
+    const auto decoded = decodeWebRtcSignalBody(encodeWebRtcSignalBody(m, error), error);
+    require(
+        decoded && decoded->sequence == m.sequence && decoded->signal == m.signal,
+        "typed signal codec lost standard payload"
+    );
+    m.sequence = 0;
+    require(encodeWebRtcSignalBody(m, error).isEmpty(), "zero signal sequence admitted");
+  }
+}
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
@@ -333,7 +457,10 @@ int main(int argc, char **argv)
       {"BodyRegistryFields", fieldGates},
       {"BodyRegistryCapabilities", capabilityGates},
       {"BodyRegistrySignals", signalGates},
-      {"BodyRegistrySequence", sequenceIsolation}
+      {"BodyRegistrySequence", sequenceIsolation},
+      {"FrameCorrelationWire", frameCorrelationWire},
+      {"FrameCorrelationMalformed", malformedCorrelation},
+      {"MediaSignalTypedWire", typedSignalWire}
   };
   try {
     require(argc == 2, "one test required");

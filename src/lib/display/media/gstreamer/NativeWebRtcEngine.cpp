@@ -1069,7 +1069,7 @@ bool NativeWebRtcEngine::applyCorrelation(const NativeFrameCorrelation &m)
   if (!s->started || s->closing.load() || s->failure.load() || s->config.binding.direction != Direction::Receive ||
       m.sourceResource != s->config.streamSourceResource ||
       m.topologyGeneration != s->config.streamTopologyGeneration || m.epoch != s->config.binding.token.epoch ||
-      !m.frame || !m.captureFrame || !m.captureNanoseconds || !validName(m.captureClockId.toStdString(), 56))
+      !validFrameCorrelation(m))
     return false;
   {
     std::lock_guard lock(s->mutex);

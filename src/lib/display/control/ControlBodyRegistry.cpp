@@ -224,6 +224,10 @@ bool body(const Envelope &e, const QString &sender)
            o["committed"] == true && id(o["localCommitRef"], 16);
   if (type == "MediaSignal")
     return mediaSignal(o);
+  if (type == "FrameCorrelation") {
+    ControlError error;
+    return decodeFrameCorrelationBody(o, error).has_value();
+  }
   if (type == "EndpointReady")
     return fields(o, {"backend", "resourceRef", "prepared"}) && protocol(o["backend"]) && id(o["resourceRef"], 16) &&
            o["prepared"] == true;
@@ -257,6 +261,106 @@ bool body(const Envelope &e, const QString &sender)
   return false;
 }
 } // namespace
+QJsonObject encodeWebRtcSignalBody(const ControlMediaSignal &value, ControlError &error)
+{
+  if (!value.sequence || !validMediaSignal(value.signal)) {
+    error = {"InvalidMediaSignal", {}};
+    return {};
+  }
+  const char *kind = nullptr;
+  switch (value.signal.kind) {
+  case WebRtcSignalKind::Offer:
+    kind = "offer";
+    break;
+  case WebRtcSignalKind::Answer:
+    kind = "answer";
+    break;
+  case WebRtcSignalKind::Ice:
+    kind = "ice";
+    break;
+  case WebRtcSignalKind::EndOfCandidates:
+    kind = "end-of-candidates";
+    break;
+  }
+  error = {};
+  return {
+      {"backend", "webrtc"},
+      {"signalSequence", QString::number(value.sequence)},
+      {"kind", QString::fromLatin1(kind)},
+      {"description", value.signal.description},
+      {"candidate", value.signal.candidate},
+      {"mid", value.signal.mid},
+      {"mediaLine", int(value.signal.mediaLine)}
+  };
+}
+std::optional<ControlMediaSignal> decodeWebRtcSignalBody(const QJsonObject &o, ControlError &error)
+{
+  if (!mediaSignal(o)) {
+    error = {"InvalidMediaSignal", {}};
+    return {};
+  }
+  ControlMediaSignal value;
+  value.sequence = *parseCounter(o["signalSequence"].toString().toStdString());
+  const auto kind = o["kind"].toString();
+  value.signal.kind = kind == "offer"    ? WebRtcSignalKind::Offer
+                      : kind == "answer" ? WebRtcSignalKind::Answer
+                      : kind == "ice"    ? WebRtcSignalKind::Ice
+                                         : WebRtcSignalKind::EndOfCandidates;
+  value.signal.description = o["description"].toString();
+  value.signal.candidate = o["candidate"].toString();
+  value.signal.mid = o["mid"].toString();
+  error = {};
+  return value;
+}
+QJsonObject encodeFrameCorrelationBody(const WebRtcFrameCorrelation &m, ControlError &error)
+{
+  if (!validFrameCorrelation(m)) {
+    error = {"InvalidFrameCorrelation", {}};
+    return {};
+  }
+  error = {};
+  return {
+      {"backend", "webrtc"},
+      {"mappingProfile", "control.rtp-map.v1"},
+      {"sourceResource", m.sourceResource},
+      {"captureClockId", m.captureClockId},
+      {"topologyGeneration", QString::number(m.topologyGeneration)},
+      {"frame", QString::number(m.frame)},
+      {"captureFrame", QString::number(m.captureFrame)},
+      {"captureNanoseconds", QString::number(m.captureNanoseconds)},
+      {"epoch", double(m.epoch)},
+      {"ssrc", double(m.ssrc)},
+      {"rtpTimestamp", double(m.rtpTimestamp)},
+      {"repeated", m.repeated}
+  };
+}
+std::optional<WebRtcFrameCorrelation> decodeFrameCorrelationBody(const QJsonObject &o, ControlError &error)
+{
+  if (!fields(
+          o, {"backend", "mappingProfile", "sourceResource", "captureClockId", "topologyGeneration", "frame",
+              "captureFrame", "captureNanoseconds", "epoch", "ssrc", "rtpTimestamp", "repeated"}
+      ) ||
+      o["backend"] != "webrtc" || o["mappingProfile"] != "control.rtp-map.v1" || !id(o["sourceResource"], 16) ||
+      !name(o["captureClockId"], 56) || !counter(o["topologyGeneration"]) || !counter(o["frame"]) ||
+      !counter(o["captureFrame"]) || !counter(o["captureNanoseconds"]) || !number(o["epoch"], UINT32_MAX) ||
+      !number(o["ssrc"], UINT32_MAX, true) || !number(o["rtpTimestamp"], UINT32_MAX, true) || !flag(o, "repeated")) {
+    error = {"InvalidFrameCorrelation", {}};
+    return {};
+  }
+  WebRtcFrameCorrelation m;
+  m.sourceResource = o["sourceResource"].toString();
+  m.captureClockId = o["captureClockId"].toString();
+  m.topologyGeneration = *parseCounter(o["topologyGeneration"].toString().toStdString());
+  m.frame = *parseCounter(o["frame"].toString().toStdString());
+  m.captureFrame = *parseCounter(o["captureFrame"].toString().toStdString());
+  m.captureNanoseconds = *parseCounter(o["captureNanoseconds"].toString().toStdString());
+  m.epoch = uint32_t(o["epoch"].toDouble());
+  m.ssrc = uint32_t(o["ssrc"].toDouble());
+  m.rtpTimestamp = uint32_t(o["rtpTimestamp"].toDouble());
+  m.repeated = o["repeated"].toBool();
+  error = {};
+  return m;
+}
 bool validateControlBody(const Envelope &e, const QString &sender, ControlError &error)
 {
   if (!validId(sender.toStdString(), 32) || !body(e, sender)) {
