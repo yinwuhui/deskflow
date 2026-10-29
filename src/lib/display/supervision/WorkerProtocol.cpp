@@ -323,6 +323,23 @@ std::optional<WorkerMessage> message(const QJsonObject &o)
   return value;
 }
 } // namespace
+bool validWorkerBinding(const WorkerBinding &binding)
+{
+  const auto &t = binding.token;
+  const bool media = binding.purpose == WorkerPurpose::Media && id(binding.peerIdentity, 64) &&
+                     binding.localIdentity != binding.peerIdentity && id(binding.controlBinding, 64) &&
+                     (binding.direction == Direction::Send || binding.direction == Direction::Receive);
+  const bool platform =
+      binding.purpose == WorkerPurpose::Platform && binding.peerIdentity.isEmpty() &&
+      binding.controlBinding.isEmpty() && binding.direction == Direction::Send &&
+      (binding.backend == "platform.macos.virtual-output" || binding.backend == "platform.linux.virtual-output" ||
+       binding.backend == "platform.windows.virtual-output");
+  return !(
+      !validId(t.session, 16) || !validId(t.owner, 16) || !validId(t.worker, 16) || !t.attempt || !t.generation ||
+      !t.epoch || !name(binding.localUserSession) || !name(binding.buildCompatibility) || !name(binding.backend) ||
+      !name(binding.profile) || !id(binding.planHash, 64) || !id(binding.localIdentity, 64) || (!media && !platform)
+  );
+}
 WorkerProtocol::WorkerProtocol(WorkerSide s, WorkerBinding binding, QByteArray secret, TimePoint now)
     : m_side(s),
       m_binding(std::move(binding)),
@@ -331,19 +348,7 @@ WorkerProtocol::WorkerProtocol(WorkerSide s, WorkerBinding binding, QByteArray s
       m_handshakeDeadline(now + std::chrono::seconds(3)),
       m_leaseDeadline(now)
 {
-  const auto &t = m_binding.token;
-  const bool media = m_binding.purpose == WorkerPurpose::Media && id(m_binding.peerIdentity, 64) &&
-                     m_binding.localIdentity != m_binding.peerIdentity && id(m_binding.controlBinding, 64) &&
-                     (m_binding.direction == Direction::Send || m_binding.direction == Direction::Receive);
-  const bool platform =
-      m_binding.purpose == WorkerPurpose::Platform && m_binding.peerIdentity.isEmpty() &&
-      m_binding.controlBinding.isEmpty() && m_binding.direction == Direction::Send &&
-      (m_binding.backend == "platform.macos.virtual-output" || m_binding.backend == "platform.linux.virtual-output" ||
-       m_binding.backend == "platform.windows.virtual-output");
-  if (m_secret.size() != 32 || !validId(t.session, 16) || !validId(t.owner, 16) || !validId(t.worker, 16) ||
-      !t.attempt || !t.generation || !t.epoch || !name(m_binding.localUserSession) ||
-      !name(m_binding.buildCompatibility) || !name(m_binding.backend) || !name(m_binding.profile) ||
-      !id(m_binding.planHash, 64) || !id(m_binding.localIdentity, 64) || (!media && !platform))
+  if (m_secret.size() != 32 || !validWorkerBinding(m_binding))
     fail("InvalidBootstrap");
 }
 WorkerProtocol::~WorkerProtocol()

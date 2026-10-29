@@ -34,6 +34,7 @@ if(TARGET Qt6::Core)
     supervision/WorkerProcess.cpp
     supervision/NativeProcessIdentity.cpp
     supervision/MediaWorkerContracts.cpp
+    supervision/MediaWorkPermit.cpp
     supervision/PlatformWorkerContracts.cpp
     resource/DurableResourceLedger.cpp
     resource/ResourceExecutor.cpp)

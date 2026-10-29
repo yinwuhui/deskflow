@@ -24,6 +24,8 @@ struct WorkerBinding
   WorkerPurpose purpose = WorkerPurpose::Media;
   bool operator==(const WorkerBinding &) const = default;
 };
+// Structural validation only; authentication still requires the IPC handshake.
+bool validWorkerBinding(const WorkerBinding &);
 enum class WorkerSide
 {
   Agent,

@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 // SPDX-License-Identifier: MIT
+#include "display/supervision/MediaWorkPermit.h"
 #include "display/supervision/WorkerProtocol.h"
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QtEndian>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 using namespace deskflow::display::infra;
 static void require(bool b, const char *why)
 {
@@ -509,13 +512,112 @@ static void purposeIsolation()
   agent.hello();
   require(!agent.feed(worker.hello(), true, {}), "cross-purpose hello accepted");
 }
+static void mediaPermit()
+{
+  const TimePoint now{};
+  MediaWorkContext c;
+  c.binding = binding();
+  c.preparation = preparation(now);
+  c.localAddress = "10.20.1.72";
+  c.streamSourceResource = c.preparation.sourceResource;
+  c.streamTopologyGeneration = 1;
+  const auto expires = now + std::chrono::seconds(20);
+  auto permit = MediaWorkPermit::issue(c, expires, now);
+  require(bool(permit) && permit->matches(c, now), "valid permit rejected");
+  require(!permit->active(expires) && !permit->active(now - std::chrono::nanoseconds(1)), "time boundary accepted");
+  require(!MediaWorkPermit::issue(c, now, now), "expired issue accepted");
+  for (int field = 0; field < 12; ++field) {
+    auto other = c;
+    switch (field) {
+    case 0:
+      ++other.binding.token.attempt;
+      break;
+    case 1:
+      ++other.binding.token.epoch;
+      break;
+    case 2:
+      other.binding.token.owner = std::string(32, '9');
+      break;
+    case 3:
+      other.binding.planHash = QString(64, '9');
+      break;
+    case 4:
+      other.binding.controlBinding = QString(64, '9');
+      break;
+    case 5:
+      other.binding.direction = Direction::Receive;
+      break;
+    case 6:
+      other.preparation.source.primary++;
+      break;
+    case 7:
+      ++other.streamTopologyGeneration;
+      break;
+    case 8:
+      other.localAddress = "10.20.1.73";
+      break;
+    case 9:
+      other.streamSourceResource = QString(32, '9');
+      break;
+    case 10:
+      other.binding.localUserSession = "other.session";
+      break;
+    case 11:
+      ++other.preparation.rawFrameBytes;
+      break;
+    }
+    require(!permit->matches(other, now), "scope mutation accepted");
+  }
+  const auto &b = c.binding;
+  const auto &p = c.preparation;
+  auto capture = [&](uint64_t generation) {
+    return permit->allowsCapture(
+        b.token.owner, b.token.session, b.token.epoch, b.planHash, b.localUserSession, p.sourceResource, p.source,
+        p.sourceIdentity, p.sourceContextDigest, generation, now
+    );
+  };
+  require(capture(1) && !capture(2), "capture generation scope failed");
+  auto invalid = c;
+  invalid.localAddress = "0.0.0.0";
+  require(!MediaWorkPermit::issue(invalid, expires, now), "wildcard accepted");
+  invalid = c;
+  invalid.streamSourceResource = QString(32, '9');
+  require(!MediaWorkPermit::issue(invalid, expires, now), "foreign stream accepted");
+  invalid = c;
+  invalid.binding.token.owner.clear();
+  require(!MediaWorkPermit::issue(invalid, expires, now), "invalid binding accepted");
+  auto receiver = c;
+  receiver.binding = binding(Direction::Receive);
+  receiver.preparation = preparation(now, Direction::Receive);
+  auto rp = MediaWorkPermit::issue(receiver, expires, now);
+  require(
+      bool(rp) && !rp->allowsCapture(
+                      b.token.owner, b.token.session, b.token.epoch, b.planHash, b.localUserSession, p.sourceResource,
+                      p.source, p.sourceIdentity, p.sourceContextDigest, 1, now
+                  ),
+      "receiver allowed capture"
+  );
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 4; ++i)
+    threads.emplace_back([&] {
+      for (int j = 0; j < 1000; ++j) {
+        permit->active(now);
+        permit->revoke();
+      }
+    });
+  for (auto &t : threads)
+    t.join();
+  require(!permit->active(now) && !permit->matches(c, now) && !capture(1), "revocation reversed");
+}
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
   try {
     require(argc == 2, "case required");
     const std::string c = argv[1];
-    if (c == "WorkerHandshake")
+    if (c == "MediaWorkPermit")
+      mediaPermit();
+    else if (c == "WorkerHandshake")
       handshake();
     else if (c == "WorkerBinding")
       bindingGates();
