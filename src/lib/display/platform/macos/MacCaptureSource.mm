@@ -2,6 +2,7 @@
 #include "MacCaptureSource.h"
 #include "MacVirtualOutput.h"
 #include "display/supervision/MediaWorkPermit.h"
+#include "display/supervision/WorkerProcess.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreVideo/CoreVideo.h>
 #include <QCoreApplication>
@@ -192,6 +193,13 @@ bool MacCaptureBinding::fillWorkerSource(WorkerPrepare &p) const
   p.sourceTopologyGeneration = m_generation;
   return true;
 }
+bool MacCaptureBinding::claimWorkerSource(WorkerPrepare &p) const
+{
+  if (!fillWorkerSource(p))
+    return false;
+  bool expected = false;
+  return m_claimed->compare_exchange_strong(expected, true);
+}
 std::optional<MacCaptureBinding> MacCaptureBinding::withMediaPermit(std::shared_ptr<MediaWorkPermit> permit) const
 {
   if (m_permit || !m_live || !m_live->load() || !m_claimed || m_claimed->load() || !permit ||
@@ -218,6 +226,43 @@ MacCaptureSource::~MacCaptureSource()
   stop();
   if (m_impl->registered)
     CGDisplayRemoveReconfigurationCallback(topologyChanged, m_impl->state.get());
+}
+bool MacCaptureSource::start(
+    const WorkerSourceLease &lease, std::shared_ptr<MediaWorkPermit> permit, TimePoint deadline
+)
+{
+  const auto &b = lease.binding();
+  const auto &p = lease.preparation();
+  const auto inventory = macDisplayInventory();
+  bool owned = false;
+  for (const auto &d : inventory.displays)
+    owned |= d.id == p.source.primary && d.identity == p.sourceIdentity && d.vendor == 0x424d && d.product == 0x0201 &&
+             d.serial == macResourceSerial(QString::fromStdString(b.token.owner), p.sourceResource);
+  if (!lease.active() || b.localUserSession != macUserSessionReference() || b.direction != Direction::Send ||
+      p.source.kind != NativeSourceKind::CgDisplay || !inventory.complete || !owned ||
+      inventory.digest != p.sourceContextDigest || !permit ||
+      !permit->allowsCapture(
+          b.token.owner, b.token.session, b.token.epoch, b.planHash, b.localUserSession, p.sourceResource, p.source,
+          p.sourceIdentity, p.sourceContextDigest, p.sourceTopologyGeneration
+      )) {
+    m_impl->state->fail("CaptureWorkerEvidenceRejected");
+    return false;
+  }
+  MacCaptureBinding binding;
+  binding.m_live = lease.m_live;
+  binding.m_claimed = lease.m_claimed;
+  binding.m_resource = p.sourceResource.toStdString();
+  binding.m_session = b.token.session;
+  binding.m_owner = b.token.owner;
+  binding.m_planHash = b.planHash;
+  binding.m_userSession = b.localUserSession;
+  binding.m_permit = std::move(permit);
+  binding.m_identity = p.sourceIdentity;
+  binding.m_topologyDigest = p.sourceContextDigest;
+  binding.m_display = uint32_t(p.source.primary);
+  binding.m_epoch = b.token.epoch;
+  binding.m_generation = p.sourceTopologyGeneration;
+  return start(binding, deadline);
 }
 bool MacCaptureSource::start(const MacCaptureBinding &binding, TimePoint deadline)
 {

@@ -11,6 +11,7 @@
 #include <QProcessEnvironment>
 #include <QRandomGenerator>
 #include <QtEndian>
+#include <utility>
 #ifdef Q_OS_UNIX
 #include <cerrno>
 #include <fcntl.h>
@@ -100,7 +101,7 @@ QByteArray bootstrapBytes(const WorkerBinding &b, const QString &endpoint, const
   return QJsonDocument(
              QJsonObject{
                  {"protocol",
-                  b.purpose == WorkerPurpose::Platform ? "display-platform-bootstrap/1" : "display-worker-bootstrap/4"},
+                  b.purpose == WorkerPurpose::Platform ? "display-platform-bootstrap/1" : "display-worker-bootstrap/5"},
                  {"binding", bindingObject(b)},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
@@ -362,7 +363,7 @@ std::optional<WorkerBootstrap> readWorkerBootstrap(QString &error)
   ControlError e;
   auto o = parseBoundedObject(bytes, WorkerProtocol::MaxBootstrapBytes, e);
   if (!o || o->size() != 5 ||
-      (o->value("protocol") != "display-worker-bootstrap/4" && o->value("protocol") != "display-platform-bootstrap/1"
+      (o->value("protocol") != "display-worker-bootstrap/5" && o->value("protocol") != "display-platform-bootstrap/1"
       ) ||
       !o->value("binding").isObject() || !o->value("endpoint").isString() || !o->value("parentPid").isString() ||
       !o->value("secret").isString()) {
@@ -660,6 +661,7 @@ void WorkerProcess::terminateOwnedProcess()
 }
 WorkerConnection::WorkerConnection(WorkerBootstrap bootstrap, QObject *parent)
     : QObject(parent),
+      m_binding(bootstrap.binding),
       m_protocol(
           std::make_unique<WorkerProtocol>(
               WorkerSide::Worker, std::move(bootstrap.binding), bootstrap.secret, Clock::now()
@@ -694,9 +696,16 @@ WorkerConnection::WorkerConnection(WorkerBootstrap bootstrap, QObject *parent)
 }
 WorkerConnection::~WorkerConnection()
 {
+  m_sourceLive->store(false);
   onShutdown = {};
   m_timer.stop();
   m_socket.abort();
+}
+std::optional<WorkerSourceLease> WorkerConnection::takeSourceLease()
+{
+  if (!m_established || m_shuttingDown || !m_sourceLive->load())
+    return {};
+  return std::exchange(m_sourceLease, {});
 }
 void WorkerConnection::connectToAgent()
 {
@@ -722,9 +731,15 @@ void WorkerConnection::read()
     if (onEstablished)
       onEstablished();
   }
-  for (const auto &m : m_protocol->takeMessages())
+  for (const auto &m : m_protocol->takeMessages()) {
+    if (const auto *prepare = std::get_if<WorkerPrepare>(&m))
+      if (m_binding.purpose == WorkerPurpose::Media && m_binding.direction == Direction::Send)
+        m_sourceLease = WorkerSourceLease(m_binding, *prepare, m_sourceLive);
+    if (std::holds_alternative<WorkerStop>(m))
+      m_sourceLive->store(false);
     if (!std::holds_alternative<WorkerHeartbeat>(m) && onMessage)
       onMessage(m);
+  }
   if (m_socket.bytesAvailable() > 0)
     QTimer::singleShot(0, this, [this] { read(); });
 }
@@ -752,6 +767,7 @@ void WorkerConnection::poll()
 }
 void WorkerConnection::fail(const QString &code)
 {
+  m_sourceLive->store(false);
   if (m_shuttingDown)
     return;
   m_shuttingDown = true;

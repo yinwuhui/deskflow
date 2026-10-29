@@ -46,6 +46,11 @@ struct WorkerReceiveBinding
   uint64_t topologyGeneration = 0;
   bool operator==(const WorkerReceiveBinding &) const = default;
 };
+struct WorkerSendBinding
+{
+  QString localAddress;
+  bool operator==(const WorkerSendBinding &) const = default;
+};
 struct WorkerStart
 {
   bool operator==(const WorkerStart &) const = default;
@@ -86,7 +91,7 @@ struct WorkerFailure
 using WorkerMessage = std::variant<
     WorkerStart, WorkerStop, WorkerHeartbeat, WorkerRefresh, WorkerReady, WorkerPresented, WorkerQuiesced,
     WorkerFailure, WorkerPrepare, WorkerMediaSignal, WorkerReceiveBinding, WebRtcFrameCorrelation, WorkerPrepareOutput,
-    WorkerOutputObserved, WorkerConfigureOutput, WorkerOutputReady>;
+    WorkerOutputObserved, WorkerConfigureOutput, WorkerOutputReady, WorkerSendBinding>;
 
 // Single event-loop owner. Both ends require an independently authenticated local
 // transport. A secret delivered over an inherited private channel authenticates
@@ -133,6 +138,7 @@ private:
   std::optional<WorkerPrepare> m_configuration;
   std::optional<WorkerPrepareOutput> m_outputConfiguration;
   std::optional<WorkerReceiveBinding> m_receiveBinding;
+  bool m_sendBound = false;
   bool m_outputObserved = false, m_outputConfigureRequested = false, m_outputReady = false;
   uint32_t m_agentIce = 0, m_workerIce = 0;
   QString m_agentSdpDigest, m_workerSdpDigest;

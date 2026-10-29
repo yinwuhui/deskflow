@@ -171,9 +171,11 @@ int main(int argc, char **argv)
   QApplication app(argc, argv);
   app.setQuitOnLastWindowClosed(false);
   try {
+    const QString senderArgument = argc == 4 ? QString::fromLocal8Bit(argv[3]) : QString{};
+    const bool isolatedSender = senderArgument.startsWith("--sender-worker=");
     const bool cancelBeforeCreate = argc == 4 && QString::fromLocal8Bit(argv[3]) == "--cancel-before-create";
     require(
-        argc == 3 || cancelBeforeCreate,
+        argc == 3 || cancelBeforeCreate || isolatedSender,
         "usage: NativeMacWebRtcLoopback <absolute-helper> <private-runtime> [--cancel-before-create]"
     );
     QString error;
@@ -323,6 +325,123 @@ int main(int argc, char **argv)
     );
     receive.preparation.startupDeadlineNanoseconds = send.preparation.startupDeadlineNanoseconds;
     LabControlLoopback control(send, receive);
+    if (isolatedSender) {
+      require(captureBinding->claimWorkerSource(send.preparation), "worker source claim");
+      require(!captureBinding->fillWorkerSource(receive.preparation), "claimed source reused");
+      NativeWebRtcEngine rx;
+      require(rx.prepare(receive) && rx.start(), "worker receive prepare/start");
+      const auto senderPath = senderArgument.mid(QString("--sender-worker=").size());
+      QFile image(senderPath);
+      require(image.open(QIODevice::ReadOnly), "sender executable");
+      WorkerRegistration mediaRegistration{
+          QFileInfo(image).canonicalFilePath(),
+          QString::fromLatin1(QCryptographicHash::hash(image.readAll(), QCryptographicHash::Sha256).toHex()),
+          send.binding.backend, send.binding.profile
+      };
+      WorkerProcess sender;
+      bool started = false, failed = false, quiesced = false, exited = false;
+      QString senderError;
+      sender.onEstablished = [&] {
+        if (!sender.send(send.preparation) || !sender.send(WorkerSendBinding{send.localAddress}))
+          failed = true;
+      };
+      sender.onMessage = [&](const WorkerMessage &message) {
+        if (std::holds_alternative<WorkerReady>(message)) {
+          started = sender.send(WorkerStart{});
+          if (!started)
+            failed = true;
+        }
+        if (auto failure = std::get_if<WorkerFailure>(&message)) {
+          failed = true;
+          senderError = failure->code;
+        }
+        if (std::holds_alternative<WorkerQuiesced>(message))
+          quiesced = true;
+        control.fromSenderWorker(message, rx);
+      };
+      sender.onExited = [&](int code, QProcess::ExitStatus status) {
+        exited = true;
+        if (code != 0 || status != QProcess::NormalExit)
+          failed = true;
+      };
+      mediaQuiesced->store(false);
+      require(sender.launch(mediaRegistration, send.binding), "sender worker launch");
+      QElapsedTimer run;
+      run.start();
+      qint64 next = 0;
+      uint64_t decoded = 0, markers = 0;
+      while (!failed && run.elapsed() < 10000) {
+        QCoreApplication::processEvents();
+        rx.poll();
+        if (started)
+          control.toSenderWorker(rx, sender);
+        if (run.elapsed() >= next) {
+          next = run.elapsed() + 33;
+          ++sceneView.frameNumber;
+          [sceneView setNeedsDisplay:YES];
+          [scene displayIfNeeded];
+        }
+        if (auto frame = rx.takeDecoded()) {
+          const auto &d = frame->descriptor();
+          require(
+              d.sourceResource == output.id.toStdString() && d.captureClockId == "remote.macos.cm-host-time",
+              "worker decoded source identity"
+          );
+          const auto *pixel = static_cast<const unsigned char *>(frame->data()) + 200 * d.planes[0].stride + 200 * 4;
+          if (pixel[1] > 100 && pixel[1] > pixel[0] + 40 && pixel[1] > pixel[2] + 40)
+            ++markers;
+          presenter.frame = std::move(frame);
+          presenter.update();
+          ++decoded;
+        }
+        if (!rx.error().isEmpty()) {
+          failed = true;
+          senderError = rx.error();
+        }
+        QThread::msleep(2);
+      }
+      const auto paint = presenter.presented;
+      const bool visible = onScreen(native(presenter));
+      sender.stop(StopReason::Revoked);
+      require(until([&] { return exited; }, 6500), "sender exit deadline");
+      presenter.frame.reset();
+      presenter.hide();
+      receive.permit->revoke();
+      rx.stop();
+      require(until([&] { return rx.stopped(); }, 5000), "worker receiver drain");
+      [scene orderOut:nil];
+      [scene close];
+      mediaQuiesced->store(true);
+      require(resources.cleanup(Clock::now() + std::chrono::seconds(5)), "worker resource cleanup");
+      require(
+          until([&] { return resources.snapshot().cleanupDone; }, 7500) && resources.wait(2000),
+          "worker resource cleanup deadline"
+      );
+      const auto after = macDisplayInventory();
+      const bool absent =
+          after.complete && !macResourceHintPresent(after, owner, output.id) && resources.snapshot().ownerClosed;
+      QJsonObject report{
+          {"scope", "real Mac output -> isolated capture/encode worker -> local receiver; diagnostic authentication"},
+          {"decodedFrames", QString::number(decoded)},
+          {"markerFrames", QString::number(markers)},
+          {"nativePaintFrames", QString::number(paint)},
+          {"windowVisible", visible},
+          {"senderQuiesced", quiesced},
+          {"senderExited", exited},
+          {"senderError", senderError + sender.error()},
+          {"outputAbsent", absent},
+          {"ownerClosed", resources.snapshot().ownerClosed},
+          {"displaysBefore", int(before.displays.size())},
+          {"displaysAfter", int(after.displays.size())}
+      };
+      std::cout << QJsonDocument(report).toJson(QJsonDocument::Compact).constData() << '\n';
+      require(
+          !failed && decoded >= 10 && markers >= 5 && paint >= 5 && visible && quiesced && absent,
+          "isolated sender evidence incomplete"
+      );
+      audit.setAutoRemove(true);
+      return 0;
+    }
     require(!captureBinding->withMediaPermit(receive.permit), "receiver permit authorized capture");
     auto wrongContext = static_cast<const MediaWorkContext &>(send);
     wrongContext.binding.token.owner = std::string(32, '9');

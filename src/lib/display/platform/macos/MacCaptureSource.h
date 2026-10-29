@@ -8,6 +8,7 @@ namespace deskflow::display::infra {
 class MacResourceProvider;
 struct WorkerPrepare;
 class MediaWorkPermit;
+class WorkerSourceLease;
 struct MacCaptureStatistics
 {
   uint64_t samples = 0, complete = 0, published = 0, budgetDrops = 0;
@@ -22,6 +23,7 @@ public:
   // Describes this live source for a trusted local Worker Prepare. Does not
   // grant network authority or consume the capture claim.
   bool fillWorkerSource(WorkerPrepare &) const;
+  bool claimWorkerSource(WorkerPrepare &) const;
   std::optional<MacCaptureBinding> withMediaPermit(std::shared_ptr<MediaWorkPermit>) const;
   const std::string &resource() const
   {
@@ -50,6 +52,7 @@ public:
   MacCaptureSource();
   ~MacCaptureSource();
   bool start(const MacCaptureBinding &, TimePoint deadline);
+  bool start(const WorkerSourceLease &, std::shared_ptr<MediaWorkPermit>, TimePoint deadline);
   void poll();
   void stop();
   bool stopped() const;

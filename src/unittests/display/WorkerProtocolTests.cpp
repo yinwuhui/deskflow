@@ -653,13 +653,33 @@ static void receiverBinding()
   early.start();
   require(early.a.encode(map, early.now).isEmpty(), "unbound correlation");
 }
+static void senderMapping()
+{
+  Pair sender;
+  sender.start();
+  WebRtcFrameCorrelation map{QString(32, '4'), "capture.clock", 1, 1, 1, 1, 1, 10, 20, false};
+  const auto inFlight = sender.w.encode(map, sender.now);
+  require(!inFlight.isEmpty(), "sender worker map encode");
+  require(sender.w.feed(sender.a.encode(WorkerStop{}, sender.now), true, sender.now), "sender stop");
+  require(sender.a.feed(inFlight, true, sender.now), "late worker map authentication");
+  require(sender.a.takeMessages().empty(), "late worker map dispatched after stop");
+  Pair reverse;
+  reverse.start();
+  require(reverse.a.encode(map, reverse.now).isEmpty(), "agent injected sender mapping");
+  Pair wrong;
+  wrong.start();
+  ++map.topologyGeneration;
+  require(wrong.w.encode(map, wrong.now).isEmpty(), "wrong sender topology admitted");
+}
 int main(int argc, char **argv)
 {
   QCoreApplication app(argc, argv);
   try {
     require(argc == 2, "case required");
     const std::string c = argv[1];
-    if (c == "WorkerReceiveBinding")
+    if (c == "WorkerSenderMapping")
+      senderMapping();
+    else if (c == "WorkerReceiveBinding")
       receiverBinding();
     else if (c == "MediaWorkPermit")
       mediaPermit();

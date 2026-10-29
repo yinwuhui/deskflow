@@ -89,7 +89,9 @@ static int fixture(QCoreApplication &app)
   auto boot = readWorkerBootstrap(error);
   if (!boot)
     return 42;
+  const auto expectedBinding = boot->binding;
   const auto profile = boot->binding.profile;
+  std::optional<WorkerSourceLease> source;
   if (profile == "fixture.slow")
     QThread::sleep(4);
   if (profile == "fixture.wrongpeer")
@@ -98,14 +100,27 @@ static int fixture(QCoreApplication &app)
   connection.onShutdown = [&] { app.exit(profile == "fixture.finalclose" ? 0 : 43); };
 
   connection.onMessage = [&](const WorkerMessage &m) {
-    if (std::holds_alternative<WorkerPrepare>(m))
+    if (auto prepare = std::get_if<WorkerPrepare>(&m)) {
+      if (profile == "fixture.sourcelease") {
+        source = connection.takeSourceLease();
+        if (!source || !source->active() || source->binding() != expectedBinding || source->preparation() != *prepare ||
+            connection.takeSourceLease()) {
+          connection.send(WorkerFailure{"SourceLeaseInvalid"});
+          return;
+        }
+      }
       connection.send(WorkerReady{});
+    }
     if (std::holds_alternative<WorkerStart>(m)) {
       if (profile == "fixture.crash")
         std::_Exit(17);
       connection.send(WorkerPresented{1, PresentationEvidence::NativePaintConfirmed, true});
     }
     if (std::holds_alternative<WorkerStop>(m) && profile != "fixture.ignorestop") {
+      if (source && source->active()) {
+        connection.send(WorkerFailure{"SourceLeaseNotRevoked"});
+        return;
+      }
       connection.send(WorkerQuiesced{});
       if (profile == "fixture.finalclose")
         connection.disconnectAfterWrites();
@@ -126,10 +141,10 @@ static bool launchPrepared(WorkerProcess &p, const WorkerBinding &b)
   };
   return p.launch(registration(b), b);
 }
-static void lifecycle(bool finalClose = false)
+static void lifecycle(bool finalClose = false, bool sourceLease = false)
 {
   WorkerProcess p;
-  auto b = binding(finalClose ? "fixture.finalclose" : "fixture.clean");
+  auto b = binding(sourceLease ? "fixture.sourcelease" : finalClose ? "fixture.finalclose" : "fixture.clean");
   bool established = false, presented = false, quiesced = false, exited = false;
   int exit = -1;
   p.onEstablished = [&] { established = true; };
@@ -292,7 +307,7 @@ static QByteArray boot(const WorkerBinding &b, const QString &endpoint, const QB
   const auto &t = b.token;
   return QJsonDocument(
              QJsonObject{
-                 {"protocol", "display-worker-bootstrap/4"},
+                 {"protocol", "display-worker-bootstrap/5"},
                  {"endpoint", endpoint},
                  {"parentPid", QString::number(QCoreApplication::applicationPid())},
                  {"secret", QString::fromLatin1(secret.toHex())},
@@ -325,12 +340,12 @@ static void legacyBootstrap()
   process.start();
   require(process.waitForStarted(2000), "start legacy fixture");
   auto bytes = boot(b, "/unreachable-display-fixture", QByteArray(32, 'x'));
-  bytes.replace("display-worker-bootstrap/4", "display-worker-bootstrap/3");
+  bytes.replace("display-worker-bootstrap/5", "display-worker-bootstrap/4");
   require(process.write(bytes) == bytes.size(), "legacy bootstrap write");
   process.closeWriteChannel();
   require(process.waitForFinished(2000), "legacy bootstrap did not fail closed");
   require(
-      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 42, "legacy bootstrap accepted by v4 worker"
+      process.exitStatus() == QProcess::NormalExit && process.exitCode() == 42, "legacy bootstrap accepted by v5 worker"
   );
 }
 static void parentEof()
@@ -383,7 +398,9 @@ int main(int argc, char **argv)
   try {
     require(argc == 2, "case required");
     const std::string c = argv[1];
-    if (c == "WorkerProcessLifecycle")
+    if (c == "WorkerSourceLeaseLifecycle")
+      lifecycle(false, true);
+    else if (c == "WorkerProcessLifecycle")
       lifecycle();
     else if (c == "WorkerFinalDrain")
       lifecycle(true);

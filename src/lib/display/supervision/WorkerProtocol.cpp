@@ -230,6 +230,8 @@ QJsonObject body(const WorkerMessage &message)
           result.insert("type", "FrameCorrelation");
           return result;
         }
+        if constexpr (std::is_same_v<T, WorkerSendBinding>)
+          return {{"type", "SendBinding"}, {"localAddress", m.localAddress}};
         if constexpr (std::is_same_v<T, WorkerStart>)
           return {{"type", "Start"}};
         if constexpr (std::is_same_v<T, WorkerStop>)
@@ -323,6 +325,10 @@ std::optional<WorkerMessage> message(const QJsonObject &o)
     if (!correlation)
       return {};
     value = *correlation;
+  } else if (type == "SendBinding") {
+    if (!o.value("localAddress").isString())
+      return {};
+    value = WorkerSendBinding{o.value("localAddress").toString()};
   } else if (type == "Start")
     value = WorkerStart{};
   else if (type == "Stop") {
@@ -393,7 +399,7 @@ QByteArray WorkerProtocol::context() const
 {
   const auto &t = m_binding.token;
   return json(
-      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/4"},
+      {{"protocol", m_binding.purpose == WorkerPurpose::Platform ? "display-platform/1" : "display-worker/5"},
        {"session", QString::fromStdString(t.session)},
        {"attempt", counter(t.attempt)},
        {"generation", counter(t.generation)},
@@ -530,7 +536,8 @@ bool WorkerProtocol::consume(const QByteArray &bytes, TimePoint now)
   const bool lateObservation =
       m_stopping &&
       (std::holds_alternative<WorkerPresented>(*typed) || std::holds_alternative<WorkerReady>(*typed) ||
-       std::holds_alternative<WorkerMediaSignal>(*typed) || std::holds_alternative<WorkerOutputReady>(*typed));
+       std::holds_alternative<WorkerMediaSignal>(*typed) || std::holds_alternative<WebRtcFrameCorrelation>(*typed) ||
+       std::holds_alternative<WorkerOutputReady>(*typed));
   if (!lateObservation)
     m_pending.push_back(*typed);
   m_leaseDeadline = now + std::chrono::milliseconds(1500);
@@ -564,7 +571,8 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
   const bool lateObservation =
       !outbound && m_side == WorkerSide::Agent &&
       (std::holds_alternative<WorkerPresented>(m) || std::holds_alternative<WorkerReady>(m) ||
-       std::holds_alternative<WorkerMediaSignal>(m) || std::holds_alternative<WorkerOutputReady>(m));
+       std::holds_alternative<WorkerMediaSignal>(m) || std::holds_alternative<WebRtcFrameCorrelation>(m) ||
+       std::holds_alternative<WorkerOutputReady>(m));
   const bool resourceObservation =
       !agent && m_binding.purpose == WorkerPurpose::Platform && std::holds_alternative<WorkerOutputObserved>(m);
   if (m_stopping && !lateObservation && !resourceObservation)
@@ -621,11 +629,24 @@ bool WorkerProtocol::acceptMessage(const WorkerMessage &m, bool outbound, TimePo
     m_receiveBinding = *target;
     return true;
   }
+  if (const auto *endpoint = std::get_if<WorkerSendBinding>(&m)) {
+    QHostAddress local(endpoint->localAddress);
+    if (!agent || m_binding.direction != Direction::Send || !m_configuration || m_sendBound || m_ready ||
+        local.isNull() || local.isMulticast() || local == QHostAddress::AnyIPv4 || local == QHostAddress::AnyIPv6 ||
+        local == QHostAddress::Broadcast || (local.isLoopback() && !m_configuration->allowLoopbackDiagnostics))
+      return false;
+    m_sendBound = true;
+    return true;
+  }
   if (const auto *map = std::get_if<WebRtcFrameCorrelation>(&m)) {
-    return agent && m_binding.direction == Direction::Receive && m_started && m_receiveBinding &&
-           validFrameCorrelation(*map) && map->epoch == m_binding.token.epoch &&
-           map->sourceResource == m_receiveBinding->sourceResource &&
-           map->topologyGeneration == m_receiveBinding->topologyGeneration;
+    if (!m_started || !validFrameCorrelation(*map) || map->epoch != m_binding.token.epoch)
+      return false;
+    if (agent && m_binding.direction == Direction::Receive && m_receiveBinding)
+      return map->sourceResource == m_receiveBinding->sourceResource &&
+             map->topologyGeneration == m_receiveBinding->topologyGeneration;
+    return !agent && m_binding.direction == Direction::Send && m_configuration &&
+           map->sourceResource == m_configuration->sourceResource &&
+           map->topologyGeneration == m_configuration->sourceTopologyGeneration;
   }
   if (const auto *signal = std::get_if<WorkerMediaSignal>(&m)) {
     if (!m_configuration || m_binding.backend != "webrtc" || !validMediaSignal(*signal) ||

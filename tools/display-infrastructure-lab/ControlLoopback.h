@@ -2,6 +2,7 @@
 #pragma once
 #include "display/control/ControlBodyRegistry.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
+#include "display/supervision/WorkerProcess.h"
 #include <QUuid>
 #include <stdexcept>
 using namespace deskflow::display::infra;
@@ -64,6 +65,29 @@ public:
     }
     if (!receive.takeCorrelations().empty())
       throw std::runtime_error("ReverseFrameCorrelationDenied");
+  }
+  void fromSenderWorker(const WorkerMessage &message, NativeWebRtcEngine &receiver)
+  {
+    if (auto s = std::get_if<WorkerMediaSignal>(&message))
+      signal(*s, true, receiver);
+    if (auto map = std::get_if<WebRtcFrameCorrelation>(&message)) {
+      ControlError error;
+      const auto wire = transfer("FrameCorrelation", encodeFrameCorrelationBody(*map, error), true);
+      const auto decoded = decodeFrameCorrelationBody(wire.body, error);
+      if (!decoded || decoded->epoch != m_epoch || !receiver.applyCorrelation(*decoded))
+        throw std::runtime_error("WorkerFrameCorrelationRejected");
+      ++m_correlations;
+    }
+  }
+  void toSenderWorker(NativeWebRtcEngine &receiver, WorkerProcess &sender)
+  {
+    for (const auto &s : receiver.takeSignals()) {
+      ControlError error;
+      const auto wire = transfer("MediaSignal", encodeWebRtcSignalBody({++m_rightSignals, s}, error), false);
+      const auto decoded = decodeWebRtcSignalBody(wire.body, error);
+      if (!decoded || !sender.send(decoded->signal))
+        throw std::runtime_error("WorkerReturnSignalRejected");
+    }
   }
   uint64_t serializedCorrelations() const
   {

@@ -8,6 +8,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -83,6 +84,39 @@ private:
 #endif
 };
 
+// Minted only by a proven private WorkerConnection after authenticated Prepare.
+// Not a network grant and not constructible from a raw display number.
+class WorkerSourceLease
+{
+public:
+  const WorkerBinding &binding() const
+  {
+    return m_binding;
+  }
+  const WorkerPrepare &preparation() const
+  {
+    return m_preparation;
+  }
+  bool active() const
+  {
+    return m_live && m_live->load();
+  }
+
+private:
+  friend class WorkerConnection;
+  friend class MacCaptureSource;
+  WorkerSourceLease(WorkerBinding binding, WorkerPrepare preparation, std::shared_ptr<std::atomic<bool>> live)
+      : m_binding(std::move(binding)),
+        m_preparation(std::move(preparation)),
+        m_live(std::move(live))
+  {
+  }
+  WorkerBinding m_binding;
+  WorkerPrepare m_preparation;
+  std::shared_ptr<std::atomic<bool>> m_live;
+  std::shared_ptr<std::atomic<bool>> m_claimed = std::make_shared<std::atomic<bool>>(false);
+};
+
 // Native worker-side connection; EOF/lease failure calls onShutdown exactly once.
 // Backend must stop capture/network and release native objects on this callback.
 class WorkerConnection : public QObject
@@ -92,6 +126,7 @@ public:
   ~WorkerConnection() override;
   void connectToAgent();
   void disconnectAfterWrites();
+  std::optional<WorkerSourceLease> takeSourceLease();
   bool send(const WorkerMessage &);
   QString error() const
   {
@@ -107,6 +142,9 @@ private:
   void fail(const QString &);
   QLocalSocket m_socket;
   QTimer m_timer;
+  WorkerBinding m_binding;
+  std::shared_ptr<std::atomic<bool>> m_sourceLive = std::make_shared<std::atomic<bool>>(true);
+  std::optional<WorkerSourceLease> m_sourceLease;
   std::unique_ptr<WorkerProtocol> m_protocol;
   QString m_endpoint, m_error;
   uint64_t m_parentPid;
