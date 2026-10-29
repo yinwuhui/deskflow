@@ -18,6 +18,15 @@ CoreInputChannel::CoreInputChannel(InputRouteAdapter* adapter,PeerUsageService* 
   connect(&m_socket,&QLocalSocket::disconnected,this,&CoreInputChannel::failed);
   connect(&m_socket,&QLocalSocket::errorOccurred,this,[this]{failed();});
 }
+CoreInputChannel::~CoreInputChannel(){
+  // Socket destruction can emit disconnected after later-declared maps have
+  // been destroyed. Do not call adapters during member teardown.
+  QObject::disconnect(&m_socket,nullptr,this,nullptr);
+  m_socket.abort();
+  m_poll.stop();
+  if(m_adapter)QObject::disconnect(m_adapter,nullptr,this,nullptr);
+  failed(); // Members are still alive; guarded owners may already be gone.
+}
 void CoreInputChannel::send(const QJsonObject& command){
   auto bytes="inputControl="+QJsonDocument(command).toJson(QJsonDocument::Compact)+'\n';
   if(bytes.size()>65536||m_pending.size()>=32||m_socket.bytesToWrite()>65536){failed();return;}
@@ -26,6 +35,7 @@ void CoreInputChannel::send(const QJsonObject& command){
   if(m_socket.state()==QLocalSocket::UnconnectedState)m_socket.connectToServer(m_endpoint);
 }
 void CoreInputChannel::read(){
+  if(!m_adapter||!m_usage){m_socket.abort();return;}
   while(m_socket.bytesAvailable()>0){
     const auto room=65536-m_buffer.size();if(room<=0){failed();m_socket.abort();return;}
     m_buffer.append(m_socket.read(room));
@@ -65,9 +75,9 @@ void CoreInputChannel::read(){
   }
 }
 void CoreInputChannel::failed(){
-  m_authenticated=false;m_buffer.clear();m_pending.clear();m_adapter->coreUnavailable();
+  m_authenticated=false;m_buffer.clear();m_pending.clear();if(m_adapter)m_adapter->coreUnavailable();
   auto records=m_records;m_records.clear();m_seen.clear();m_scanning=false;
-  for(auto it=records.begin();it!=records.end();++it)m_usage->connectionClosed(it.value().value("peerId").toString(),it.key(),m_generations.take(it.key()));
+  if(m_usage)for(auto it=records.begin();it!=records.end();++it)m_usage->connectionClosed(it.value().value("peerId").toString(),it.key(),m_generations.take(it.key()));
 }
 void CoreInputChannel::poll(){
   if(m_authenticated){if(m_socket.bytesToWrite()<65536)m_socket.write("peerUsageSnapshot\n");}

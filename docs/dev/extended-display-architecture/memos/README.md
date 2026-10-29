@@ -41,6 +41,7 @@
 | M033 | 产品认证控制接线/Ubuntu 接收 | Mac 139项、Ubuntu 25项；两端真实呈现/撤销/父 EOF；生产计划 owner 待接入 | [控制接线与接收](M033-product-control-and-linux-receiver.zh-CN.md) |
 | M034 | 真实Mac隔离发送Worker | 186帧色块/绘制与副屏回收，26项回归；生产授权及跨机待接入 | [隔离发送](M034-isolated-mac-sender.zh-CN.md) |
 | M035 | Mac→Ubuntu 真实副屏跨机诊断 | 最终245次绿色像素绘制、30帧控制断线、双端停止/输出回收；产品授权待接线 | [跨机诊断](M035-mac-ubuntu-native-diagnostic.zh-CN.md) |
+| M036 | 产品授权事实接入既有桥 | 两端145项；用户同意/输入隔离/断线及核心析构，生产计划owner待消费 | [授权事实](M036-product-authorization-facts.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 

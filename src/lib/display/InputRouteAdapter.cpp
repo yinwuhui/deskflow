@@ -6,11 +6,55 @@
 namespace deskflow::display {
 namespace {
 SessionId parse(const QString& value){auto bytes=QByteArray::fromHex(value.toLatin1());SessionId result{};if(bytes.size()==16)std::copy(bytes.begin(),bytes.end(),result.begin());return result;}
+int64_t monotonicNanoseconds(){return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 QString hex(const SessionId& value){return QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(value.data()),16).toHex());}
+}
+bool InputIsolationProof::active() const {
+  if(!m_state || !m_state->valid.load(std::memory_order_acquire))return false;
+  if(monotonicNanoseconds()>=m_state->expires.load(std::memory_order_acquire)) {
+    m_state->valid.store(false,std::memory_order_release);return false;
+  }
+  return true;
+}
+InputRouteAdapter::~InputRouteAdapter(){for(auto& [peer,proof]:m_isolation)proof.m_state->valid.store(false);}
+void InputRouteAdapter::revokeIsolation(const QString& peer){
+  auto it=m_isolation.find(peer);if(it==m_isolation.end())return;
+  const auto reference=it->second.reference();it->second.m_state->valid.store(false,std::memory_order_release);
+  m_isolation.erase(it);Q_EMIT isolationRevoked(peer,reference);
+}
+void InputRouteAdapter::revokeAllIsolation(){while(!m_isolation.empty())revokeIsolation(m_isolation.begin()->first);}
+std::optional<InputIsolationProof> InputRouteAdapter::isolationProof(const QString& peer,const UsageKey& key)const{
+  const auto it=m_isolation.find(peer);if(it==m_isolation.end()||it->second.operation()!=key||!it->second.active())return {};
+  const auto current=m_usage->snapshot(peer);
+  if(!current.value("baseConnected").toBool()||current.value("baseConnectionId")!=it->second.connection()||
+     current.value("baseConnectionGeneration")!=it->second.connectionGeneration()||
+     current.value("operationId")!=hex(key.operation)||current.value("operationGeneration")!=QString::number(key.generation))return {};
+  return it->second;
+}
+bool InputRouteAdapter::verifyIsolation(const InputIsolationProof& proof){
+  if(!proof.active()||m_pending.contains(proof.peer()))return false;
+  const auto current=isolationProof(proof.peer(),proof.operation());
+  if(!current||current->reference()!=proof.reference())return false;
+  Pending pending;pending.key=proof.operation();pending.effect="VerifyIsolation";pending.enabled=false;
+  pending.connectionId=proof.connection();pending.connectionGeneration=proof.connectionGeneration();
+  pending.sequence=proof.m_state->sequence;pending.elapsed.start();
+  m_pending.insert_or_assign(proof.peer(),std::move(pending));send(proof.peer(),m_pending.at(proof.peer()),"status");return true;
 }
 InputRouteAdapter::InputRouteAdapter(PeerUsageService* usage,DisplayService* display,QObject* parent)
  :QObject(parent),m_usage(usage),m_display(display){
   connect(usage,&PeerUsageService::backendCommand,this,&InputRouteAdapter::effect);
+  connect(usage,&PeerUsageService::connectionChanged,this,[this](const QJsonObject& connection){
+    const auto peer=connection.value("peerId").toString();const auto it=m_isolation.find(peer);
+    if(it!=m_isolation.end()&&(!connection.value("baseConnected").toBool()||
+       connection.value("baseConnectionId")!=it->second.connection()||
+       connection.value("baseConnectionGeneration")!=it->second.connectionGeneration()))revokeIsolation(peer);
+  });
+  connect(usage,&PeerUsageService::snapshotChanged,this,[this](const QJsonObject& snapshot){
+    if(snapshot.value("effectiveMode")=="input"){revokeAllIsolation();return;}
+    const auto peer=snapshot.value("peerId").toString();const auto it=m_isolation.find(peer);
+    if(it!=m_isolation.end()&&(snapshot.value("operationId")!=hex(it->second.operation().operation)||
+      snapshot.value("operationGeneration")!=QString::number(it->second.operation().generation)))revokeIsolation(peer);
+  });
   m_timer.setInterval(100);connect(&m_timer,&QTimer::timeout,this,&InputRouteAdapter::tick);m_timer.start();
 }
 void InputRouteAdapter::send(const QString& peer,Pending& p,const QString& kind){
@@ -33,10 +77,13 @@ void InputRouteAdapter::effect(const QJsonObject& command){
     if(released==m_released.end()||released->second.first!=key){m_usage->complete(peer,key,PeerUsageService::Completion::InputStopped,Reason::InputReleaseFailed,false);return;}
     pending.sequence=released->second.second;
   }
+  if(pending.enabled)revokeAllIsolation();else revokeIsolation(peer);
   m_pending[peer]=pending;send(peer,m_pending.at(peer),"status");
 }
 void InputRouteAdapter::fail(const QString& peer,Reason reason){
-  auto it=m_pending.find(peer);if(it==m_pending.end())return;auto p=it->second;m_pending.erase(it);
+  auto it=m_pending.find(peer);if(it==m_pending.end()){revokeIsolation(peer);return;}auto p=it->second;m_pending.erase(it);
+  revokeIsolation(peer);
+  if(p.effect=="VerifyIsolation")return;
   if(p.effect=="PreflightInput"||p.effect=="PreflightDisplay")m_usage->complete(peer,p.key,PeerUsageService::Completion::Preflight,reason);
   else if(p.effect=="RequestInputPermission")m_usage->complete(peer,p.key,PeerUsageService::Completion::Permission,reason);
   else if(p.effect=="VerifyRollbackAuthorization")m_usage->complete(peer,p.key,PeerUsageService::Completion::RollbackAuthorization,reason,false);
@@ -61,6 +108,16 @@ void InputRouteAdapter::coreResult(const QJsonObject& result){
   if(!numberValid||last>std::numeric_limits<uint32_t>::max())return;
   m_sequence[peer]=std::max(m_sequence[peer],static_cast<uint32_t>(last));
   const bool local=result.value("localFocus").toBool();auto key=p.key;auto effect=p.effect;
+  if(effect=="VerifyIsolation"){
+    const auto proof=m_isolation.find(peer);
+    if(proof==m_isolation.end()||!proof->second.active()||last!=p.sequence||
+       !result.value("suspended").toBool()||!local||!result.value("otherRoutesIsolated").toBool()||
+       !result.value("acknowledged").toBool()||!result.value("acknowledgementReceived").toBool()){
+      fail(peer,Reason::InputReleaseFailed);return;
+    }
+    proof->second.m_state->expires.store(monotonicNanoseconds()+1500000000LL,std::memory_order_release);
+    m_pending.erase(it);return;
+  }
   if(effect=="PreflightInput"||effect=="PreflightDisplay"){
     const bool isolated=effect!="PreflightDisplay"||result.value("otherRoutesIsolated").toBool();
     if(effect=="PreflightDisplay"&&isolated&&result.value("suspended").toBool())m_display->setInputRouting(Routing::Clear);
@@ -83,11 +140,24 @@ void InputRouteAdapter::coreResult(const QJsonObject& result){
   if(!result.value("acknowledged").toBool()||!local){fail(peer,Reason::InputReleaseFailed);return;}
   if(effect=="ReleaseInputs"||effect=="RevokeInput"||effect=="StopInput"){
     if(!result.value("suspended").toBool()){fail(peer,Reason::InputReleaseFailed);return;}
-    m_released[peer]={key,p.sequence};m_pending.erase(it);
+    const auto verifiedSequence=p.sequence;
+    m_released[peer]={key,verifiedSequence};m_pending.erase(it);
     // Preserve permission truth; release itself cannot grant input permission.
     const auto permission=current.value("inputPermissionsReady").toBool()?Permission::Granted:Permission::Unknown;
     m_usage->inputStatus(peer,key,permission,"local");
     if(effect=="StopInput"&&result.value("otherRoutesIsolated").toBool())m_display->setInputRouting(Routing::Clear);
+    if(effect=="StopInput"&&result.value("otherRoutesIsolated").toBool()&&last==verifiedSequence){
+      const auto latest=m_usage->snapshot(peer);
+      if(latest.value("operationId")==hex(key.operation)&&latest.value("operationGeneration")==QString::number(key.generation)&&
+         latest.value("switchStage")=="StoppingInput"){
+        auto state=std::make_shared<InputIsolationProof::State>();state->peer=peer;state->key=key;
+        state->connection=latest.value("baseConnectionId").toString();
+        state->connectionGeneration=latest.value("baseConnectionGeneration").toString();
+        state->reference=QUuid::createUuid().toString(QUuid::Id128);state->sequence=static_cast<uint32_t>(last);
+        state->expires.store(monotonicNanoseconds()+1500000000LL);
+        m_isolation.insert_or_assign(peer,InputIsolationProof(std::move(state)));
+      }
+    }
     m_usage->complete(peer,key,effect=="StopInput"?PeerUsageService::Completion::InputStopped:effect=="RevokeInput"?
       (current.value("usageState")=="CleanupRequired"?PeerUsageService::Completion::InputCleaned:PeerUsageService::Completion::InputsReleased):PeerUsageService::Completion::InputsReleased,Reason::None,true);return;
   }
@@ -105,5 +175,5 @@ void InputRouteAdapter::tick(){
     send(peer,it->second,"status");
   }
 }
-void InputRouteAdapter::coreUnavailable(){std::vector<QString> peers;for(const auto& [peer,p]:m_pending)peers.push_back(peer);for(const auto& peer:peers)fail(peer,Reason::ConnectionLost);}
+void InputRouteAdapter::coreUnavailable(){revokeAllIsolation();std::vector<QString> peers;for(const auto& [peer,p]:m_pending)peers.push_back(peer);for(const auto& peer:peers)fail(peer,Reason::ConnectionLost);}
 }

@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QThread>
 #include <iostream>
 #include <stdexcept>
 using namespace deskflow::display;
@@ -239,6 +240,49 @@ int main(int argc,char** argv){
     effects.clear();display.stopManagedSession(dk,Reason::UserStopped);drain();display.cleanupFinished(display.currentKey(),true);drain();
     check(s.snapshot(identity).value("effectiveMode")=="none","peer end kept usage active");
     for(auto event:effects)check(event.at(0).toJsonObject().value("operation")!="StartInput","peer end started input");
+   }
+  }else if(name=="NativeInputIsolationProof"||name=="NativeInputIsolationExpiry"||name=="NativeInputIsolationDisconnect"){
+   DisplayService display({Availability::Supported,Availability::Supported,false,false,true,1},{});
+   display.authenticatedPeer({identity.toStdString(),"Ubuntu",{Availability::Supported,Availability::Supported,false,false,true,1}});
+   InputRouteAdapter input(&s,&display);UsageDisplayBridge bridge(&s,&display);
+   uint32_t sequence=0;bool suspended=false,received=false,ready=false,isolated=true,hold=false;unsigned resultMode=0;
+   QList<QJsonObject> commands;QJsonObject held;
+   QObject::connect(&input,&InputRouteAdapter::coreCommand,&input,[&](const QJsonObject& request){
+    commands.append(request);auto response=request;const auto kind=request.value("kind").toString();
+    const auto requested=request.value("sequence").toString().toUInt();
+    if(kind=="probe"){sequence=requested;received=true;ready=true;resultMode=3;}
+    else if(kind=="suspend"){sequence=requested;suspended=true;received=true;ready=false;resultMode=1;}
+    else if(kind=="resume"){sequence=requested;received=true;ready=false;resultMode=2;}
+    else if(kind=="commitResume")suspended=false;
+    response.insert("accepted",true);response.insert("connected",true);response.insert("supported",true);
+    response.insert("suspended",suspended);response.insert("localFocus",true);
+    response.insert("acknowledgementReceived",requested==sequence&&received);
+    response.insert("acknowledged",requested==sequence&&resultMode==(request.value("enabled").toBool()?2U:1U));
+    response.insert("inputPermissionsReady",requested==sequence&&ready);response.insert("otherRoutesIsolated",isolated);
+    response.insert("lastSequence",QString::number(sequence));
+    if(hold)held=response;else input.coreResult(response);
+   });
+   start("input");check(s.snapshot(identity).value("effectiveMode")=="input","isolation fixture input start");
+   s.execute(command("switchPeerUsageMode",{{"peerId",identity},{"targetMode","extended"},{"operationId","02000000000000000000000000000000"}}));drain();
+   const auto displayKey=display.currentKey();check(display.snapshot().value("state")=="Connecting","isolation fixture consent");
+   display.peerResponse(displayKey,true,Reason::None);display.permissionResult(displayKey,Permission::Granted);drain();
+   const auto usageKey=key(s.snapshot(identity));
+   auto proof=input.isolationProof(identity,usageKey);
+   check(proof&&proof->active()&&proof->connection()==QString(32,'c')&&proof->connectionGeneration()=="1","native isolation acknowledgement missing");
+   auto stale=usageKey;++stale.generation;check(!input.isolationProof(identity,stale),"old input operation authorized new generation");
+   const auto copy=*proof;commands.clear();
+   if(name=="NativeInputIsolationProof"){
+    check(input.verifyIsolation(copy)&&copy.active(),"verifyCurrent rejected valid core status");
+    check(commands.size()==1&&commands.front().value("kind")=="status","verifyCurrent mutated input route");
+    isolated=false;check(input.verifyIsolation(copy),"verifyCurrent false status dispatch");
+    check(!copy.active()&&!input.isolationProof(identity,usageKey),"conflicting input route retained isolation");
+   }else if(name=="NativeInputIsolationDisconnect"){
+    check(s.connectionClosed(identity,QString(32,'c'),1),"isolation fixture disconnect");
+    check(!copy.active()&&!input.isolationProof(identity,usageKey),"connection loss retained isolation");
+   }else{
+    hold=true;check(input.verifyIsolation(copy)&&!held.isEmpty(),"delayed verifyCurrent fixture");
+    QThread::msleep(1600);check(!copy.active(),"unrefreshed isolation did not expire");
+    input.coreResult(held);check(!copy.active()&&!input.verifyIsolation(copy),"late core status resurrected expired proof");
    }
   }else if(name=="InputRouteAdapterAcknowledgements"||name=="InputRouteAdapterStaleResult"){
    DisplayService display({},{});InputRouteAdapter input(&s,&display);QSignalSpy commands(&input,&InputRouteAdapter::coreCommand);

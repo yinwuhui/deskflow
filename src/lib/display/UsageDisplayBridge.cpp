@@ -11,7 +11,42 @@ UsageDisplayBridge::UsageDisplayBridge(PeerUsageService* usage,DisplayService* d
  :QObject(parent),m_usage(usage),m_display(display){
   if(!usage||!display||usage->thread()!=thread()||display->thread()!=thread())throw std::invalid_argument("bridge owners");
   connect(usage,&PeerUsageService::backendCommand,this,&UsageDisplayBridge::effect);
-  connect(display,&DisplayService::snapshotChanged,this,[this]{QTimer::singleShot(0,this,[this]{displayChanged();});});
+  connect(display,&DisplayService::snapshotChanged,this,[this]{checkAuthorization();QTimer::singleShot(0,this,[this]{displayChanged();});});
+  connect(usage,&PeerUsageService::snapshotChanged,this,[this]{checkAuthorization();});
+  connect(usage,&PeerUsageService::connectionChanged,this,[this]{checkAuthorization();});
+}
+UsageDisplayBridge::~UsageDisplayBridge(){revokeAuthorization();}
+void UsageDisplayBridge::revokeAuthorization(){
+  if(m_authorization)m_authorization->m_live->store(false,std::memory_order_release);
+  m_authorization.reset();
+}
+bool UsageDisplayBridge::matchesAuthorization(const NativeDisplayAuthorization& fact) const {
+  if(!m_active||!fact.active()||!m_display->authorizationValid(fact.displayKey())||
+     m_display->currentKey()!=fact.displayKey()||fact.displayKey().request!=m_request||
+     fact.isolation().operation()!=m_usageKey||fact.isolation().peer()!=m_peer||
+     fact.control().peerIdentity()!=m_peer||fact.control().connection()!=fact.isolation().connection())return false;
+  const auto display=m_display->snapshot();const auto usage=m_usage->snapshot(m_peer);
+  return display.value("peerId")==m_peer&&
+    display.value("localDisplayRole")== (fact.role()==Role::Host?"host":"receiver")&&
+    usage.value("baseConnected").toBool()&&usage.value("baseConnectionId")==fact.control().connection()&&
+    usage.value("baseConnectionGeneration")==fact.isolation().connectionGeneration()&&
+    usage.value("operationId")==QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(m_usageKey.operation.data()),16).toHex())&&
+    usage.value("operationGeneration")==QString::number(m_usageKey.generation)&&
+    usage.value("effectiveMode")!="input"&&
+    (usage.value("switchStage")=="StartingDisplay"||usage.value("effectiveMode")=="extended")&&
+    usage.value("displayNetworkPolicy")=="networkAllowed";
+}
+void UsageDisplayBridge::checkAuthorization(){
+  if(m_authorization&&!matchesAuthorization(*m_authorization))revokeAuthorization();
+}
+std::optional<NativeDisplayAuthorization> UsageDisplayBridge::nativeAuthorization(
+  const InfrastructureControlChannel::Lease& control,const InputIsolationProof& isolation){
+  NativeDisplayAuthorization candidate(m_display->currentKey(),m_incoming?Role::Receiver:Role::Host,control,isolation);
+  if(!matchesAuthorization(candidate))return {};
+  checkAuthorization();
+  if(m_authorization&&m_authorization->isolation().reference()==isolation.reference()&&
+     m_authorization->control().binding()==control.binding())return m_authorization;
+  revokeAuthorization();m_authorization=std::move(candidate);return m_authorization;
 }
 Outcome UsageDisplayBridge::adoptCleanup(){
   const auto snapshot=m_display->snapshot();

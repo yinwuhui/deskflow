@@ -123,6 +123,15 @@ void Coordinator::finishPending(Reason reason) {
   m_snapshot.cleanup = Cleanup::Verified;
   changed();
 }
+bool Coordinator::authorizationValid(const Key& key, TimePoint now) const {
+  if(!matches(key)||!m_authorized||m_snapshot.permission!=Permission::Granted||!m_local.sessionAvailable)return false;
+  switch(m_state.state()) {
+    case State::Authorizing: return true; // Existing consent/OS permission waits may pause.
+    case State::Negotiating: case State::Preparing: return now<m_deadline;
+    case State::Streaming: case State::Reconfiguring: return true;
+    default: return false;
+  }
+}
 Outcome Coordinator::respond(const Key& key, bool allow, TimePoint now) {
   if (!matches(key) || m_state.state() != State::Authorizing || m_snapshot.role != Role::Receiver || m_authorized)
     return {false, Reason::InvalidRequest};

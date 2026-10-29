@@ -20,6 +20,7 @@ public:
   QJsonObject snapshot() const;
   Key currentKey() const { ownerThread(); return m_coordinator.snapshot().key; }
   QJsonObject localCapabilities() const;
+  bool authorizationValid(const Key& key) const { ownerThread(); return m_coordinator.authorizationValid(key,Coordinator::Clock::now()); }
   void execute(const QJsonObject& command);
   // Adapter-only entry points. Call on the owner thread after authentication/probing.
   void updateCapabilities(Capabilities local);

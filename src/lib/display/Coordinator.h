@@ -98,6 +98,7 @@ public:
   const Snapshot& snapshot() const { return m_snapshot; }
   const Capabilities& capabilities() const { return m_local; }
   std::vector<Effect> takeEffects();
+  bool authorizationValid(const Key& key, TimePoint now) const;
   void setCapabilities(Capabilities local, TimePoint now);
   void setReceiveRequestsEnabled(bool enabled);
   Outcome request(Peer peer, SessionId session, SessionId request, Routing routing, TimePoint now, bool deferPreparation = false);

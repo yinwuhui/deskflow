@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QHash>
 #include <QTimer>
+#include <QPointer>
 namespace deskflow::display {
 // Same-user local core IPC. No TCP endpoint, executable path or unauthenticated
 // peer identifier can be supplied by the GUI through this transport.
@@ -13,6 +14,7 @@ class CoreInputChannel : public QObject {
   Q_OBJECT
 public:
   explicit CoreInputChannel(InputRouteAdapter* adapter,PeerUsageService* usage,QObject* parent=nullptr,const QString& endpoint={},bool enabled=true);
+  ~CoreInputChannel() override;
   bool sendPeerControl(const QString& peerId,const QString& connectionId,const QJsonObject& body);
 Q_SIGNALS:
   void peerControlReceived(const QJsonObject& event);
@@ -28,8 +30,8 @@ private:
   QByteArray m_buffer;
   QList<QByteArray> m_pending;
   bool m_authenticated=false;
-  InputRouteAdapter* m_adapter;
-  PeerUsageService* m_usage;
+  QPointer<InputRouteAdapter> m_adapter;
+  QPointer<PeerUsageService> m_usage;
   QHash<QString,QJsonObject> m_records;
   QSet<QString> m_seen;
   QHash<QString,uint64_t> m_generations;

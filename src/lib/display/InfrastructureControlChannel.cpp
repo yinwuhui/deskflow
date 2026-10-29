@@ -13,6 +13,26 @@ InfrastructureControlChannel::InfrastructureControlChannel(
   connect(core, &CoreInputChannel::authenticatedConnectionObserved, this, &InfrastructureControlChannel::observed);
   connect(core, &CoreInputChannel::peerControlReceived, this, &InfrastructureControlChannel::received);
   connect(usage, &PeerUsageService::connectionChanged, this, &InfrastructureControlChannel::closed);
+  connect(core,&QObject::destroyed,this,[this]{
+    m_core=nullptr;
+    auto entries=std::move(m_entries);m_entries.clear();
+    for(auto& [connection,entry]:entries){
+      entry.live->store(false,std::memory_order_release);
+      Q_EMIT bindingLost(entry.peer,connection);
+    }
+  });
+}
+InfrastructureControlChannel::~InfrastructureControlChannel()
+{
+  for (auto &[connection, entry] : m_entries)
+    entry.live->store(false, std::memory_order_release);
+}
+std::optional<InfrastructureControlChannel::Lease> InfrastructureControlChannel::lease(const QString &connection) const
+{
+  const auto entry = m_entries.find(connection);
+  if (entry == m_entries.end() || !entry->second.binding.ready() || !entry->second.live->load())
+    return {};
+  return Lease(m_local, entry->second.peer, connection, entry->second.binding.id(), entry->second.live);
 }
 void InfrastructureControlChannel::observed(const QJsonObject &record)
 {
@@ -28,6 +48,7 @@ void InfrastructureControlChannel::observed(const QJsonObject &record)
   for (auto it = m_entries.begin(); it != m_entries.end();) {
     if (it->second.peer == peer) {
       const auto old = it->first;
+      it->second.live->store(false, std::memory_order_release);
       it = m_entries.erase(it);
       Q_EMIT bindingLost(peer, old);
     } else
@@ -46,6 +67,7 @@ void InfrastructureControlChannel::closed(const QJsonObject &record)
   if (it == m_entries.end() || it->second.peer != record.value("peerId").toString())
     return;
   const auto peer = it->second.peer;
+  it->second.live->store(false, std::memory_order_release);
   m_entries.erase(it);
   Q_EMIT bindingLost(peer, connection);
 }
@@ -77,7 +99,7 @@ void InfrastructureControlChannel::received(const QJsonObject &event)
 bool InfrastructureControlChannel::send(const QString &connection, const Envelope &envelope)
 {
   auto it = m_entries.find(connection);
-  if (it == m_entries.end())
+  if (!m_core || it == m_entries.end())
     return false;
   // Encode a candidate transcript first. A rejected local write must not consume
   // its sequence. CoreInputChannel enforces the actual wrapped 16 KiB budget.

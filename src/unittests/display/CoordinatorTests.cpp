@@ -29,11 +29,14 @@ void test(const std::string& name) {
   Coordinator c(capabilities());
   if (name == "ConsentBeforeResources") {
     auto key = outgoing(c);
+    check(!c.authorizationValid(key,now),"unconsented authorization fact");
     check(!has(c.takeEffects(), EffectKind::PrepareHost), "created before consent");
     c.peerResponse(key, true, Reason::None, now);
     check(c.snapshot().state == State::Authorizing, "permission must wait");
     check(!has(c.takeEffects(), EffectKind::PrepareHost), "created before system permission");
     c.permission(key, Permission::Granted, now);
+    check(c.authorizationValid(key,now),"authorized preparation fact");
+    check(!c.authorizationValid(key,now+11s),"expired preparation fact");
     check(has(c.takeEffects(), EffectKind::PrepareHost), "missing prepare");
   } else if (name == "ExpiryAndLateConsent") {
     c.incoming(peer(), id(1), id(2), now); auto key = c.snapshot().key;
@@ -53,6 +56,7 @@ void test(const std::string& name) {
     c.respond(key, true, now);
     c.tick(now + 5min);
     check(c.snapshot().state == State::Authorizing, "receiver timed out while sender awaited permission");
+    check(c.authorizationValid(key,now+5min),"existing receiver consent wait invalidated");
     check(!has(c.takeEffects(), EffectKind::PrepareReceiver), "receiver prepared before sender permission");
     check(c.peerReady(key, now + 5min), "sender permission completion ignored");
     check(has(c.takeEffects(), EffectKind::PrepareReceiver), "receiver not prepared");
