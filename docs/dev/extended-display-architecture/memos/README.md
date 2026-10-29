@@ -28,6 +28,7 @@
 | M020 | 媒体 Prepare v3 源身份/拓扑证据 | 源绑定与旧 bootstrap 拒绝测试；待真实媒体 Worker 核查/装配 | [媒体源证据](M020-media-source-binding.zh-CN.md) |
 | M021 | Worker 权限位/Mac 路径及 ACL 准入 | 两端权限回归、Mac 三项原生复测通过；待签名安装策略/原子执行 | [路径权限](M021-worker-path-permissions.zh-CN.md) |
 | M022 | CPU 输入回调租约/明确像素视图 | 跨线程保活/回收及 Mac 实际采集通过，待编码器接入 | [CPU 回调租约](M022-cpu-callback-lease.zh-CN.md) |
+| M023 | 原生 WebRTC 开发引擎 SPI/桌面样机 | 两端色块与反馈、Mac 真实采集/NativePaintConfirmed 通过；生产 Worker/预算认证待完成 | [原生引擎](M023-native-webrtc-engine.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
 
@@ -68,3 +69,5 @@ M013 最新相关回归：Mac/Ubuntu 各 115/115。Mac provider 已有独立原�
 M020/M021 当前相关自动回归为 Mac/Ubuntu 各 118 项通过。M019/M021 原生采集仅有独立模块证据，尚未接入隔离媒体 Worker、产品入口或跨机呈现。
 
 完整当前开发清单见 [开发状态](../implementation-status.zh-CN.md)。M022 最新相关回归：Mac/Ubuntu 各 120/120；独立采集回调租约仍不代表媒体引擎已接入。
+
+M023 最新自动回归：Mac/Ubuntu 各 121/121。两端本机真实媒体与 Mac 桌面诊断有独立证据；仍未生产装配。独立 capture 模式一轮输出配置失败，保留原生间歇问题。

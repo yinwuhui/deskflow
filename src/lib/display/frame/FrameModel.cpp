@@ -24,10 +24,11 @@ bool domain(MemoryDomain m)
 bool validateFrame(const FrameDescriptor &f, uint64_t bytes, const FrameLimits &limits)
 {
   if (!validId(f.session, 16) || !validId(f.sourceResource, 16) || !f.topologyGeneration || !f.sequence || !f.epoch ||
-      !f.captureTimeValid || !f.captureNanoseconds || !f.width || !f.height || f.width > limits.maxWidth ||
-      f.height > limits.maxHeight || !f.logicalWidth || !f.logicalHeight || f.logicalWidth > 8192 ||
-      f.logicalHeight > 8192 || !bytes || bytes > limits.maxBytes || !rect(f.visible, f.width, f.height) ||
-      f.damage.size() > 16 || !domain(f.memory) ||
+      (f.captureTimeValid ? (!f.captureNanoseconds || !validName(f.captureClockId, 64))
+                          : (f.captureNanoseconds != 0 || !f.captureClockId.empty())) ||
+      !f.width || !f.height || f.width > limits.maxWidth || f.height > limits.maxHeight || !f.logicalWidth ||
+      !f.logicalHeight || f.logicalWidth > 8192 || f.logicalHeight > 8192 || !bytes || bytes > limits.maxBytes ||
+      !rect(f.visible, f.width, f.height) || f.damage.size() > 16 || !domain(f.memory) ||
       (f.rotation != 0 && f.rotation != 90 && f.rotation != 180 && f.rotation != 270) ||
       (f.color != ColorProfile::SdrBt709Limited8 && f.color != ColorProfile::SdrBt709Full8) ||
       (f.cursor != CursorMode::Embedded && f.cursor != CursorMode::Metadata))
@@ -244,11 +245,16 @@ bool FramePool::publish(const FrameTicket &t, FrameDescriptor descriptor, bool p
   auto &s = m_slots[t.slot];
   if (!s.allocation.owner || s.allocation.owner.use_count() != 1 || descriptor.session != m_session ||
       descriptor.epoch != m_epoch || descriptor.memory != s.memory || descriptor.sequence <= m_lastSequence ||
-      descriptor.captureNanoseconds <= m_lastTimestamp || (s.memory != MemoryDomain::Cpu && !producerFenceComplete) ||
-      !validateFrame(descriptor, s.bytes, m_limits))
+      (descriptor.captureTimeValid && (descriptor.captureNanoseconds < m_lastTimestamp ||
+                                       (descriptor.captureNanoseconds == m_lastTimestamp && !descriptor.repeated) ||
+                                       (!m_captureClockId.empty() && descriptor.captureClockId != m_captureClockId))) ||
+      (s.memory != MemoryDomain::Cpu && !producerFenceComplete) || !validateFrame(descriptor, s.bytes, m_limits))
     return false;
   m_lastSequence = descriptor.sequence;
-  m_lastTimestamp = descriptor.captureNanoseconds;
+  if (descriptor.captureTimeValid) {
+    m_lastTimestamp = descriptor.captureNanoseconds;
+    m_captureClockId = descriptor.captureClockId;
+  }
   s.descriptor = std::move(descriptor);
   s.state = SlotState::Published;
   return true;

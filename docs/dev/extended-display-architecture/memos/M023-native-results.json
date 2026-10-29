@@ -1,0 +1,318 @@
+{
+  "scope": "Development engine SPI and local labs only; no production Worker/product/cross-machine/Windows certification",
+  "results": {
+    "first-run": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "\nthread 'tokio-rt-worker' (25698241) panicked at net/webrtc/src/webrtcsink/imp.rs:2090:46:\ncalled `Option::unwrap()` on a `None` value\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nNativePipelineError\n",
+      "seconds": 1.633,
+      "sourceSha256": "6ffc52cc2cbddd72330ef604e5fffa645321a6d849f9f22f1131b77ecf669d62"
+    },
+    "second-run": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "NativePipelineError\n",
+      "seconds": 4.102,
+      "sourceSha256": "a29ea555f40d0a9d27b0dd0d73b9d3232400c430f4d2bd5a7532f2027a1f328c"
+    },
+    "third-run": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "NativePipelineError: There is no codec present that can handle the stream's type.\n",
+      "seconds": 3.74,
+      "sourceSha256": "a5046d91db1bb08b3f448b3fdff29128a446733d4c3cbd5c99ab2fc60c15bbde"
+    },
+    "fourth-run": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "RtpSourceCorrelationMissing\n",
+      "seconds": 0.831,
+      "sourceSha256": "e804b3c1448eff5862662da1f437ba40bbf31871ceefe9220020f94deab6ca9a"
+    },
+    "fifth-run": {
+      "exitCode": 0,
+      "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"132\",\"encoderUpdates\":\"50\",\"gccUpdates\":\"49\",\"inputFrames\":\"235\",\"receiverPublished\":\"136\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+      "stderr": "",
+      "seconds": 11.695,
+      "sourceSha256": "6a82f86754b20564b70491a2f64d4a462e17b99ba015fa3a63636cf43ac055db"
+    },
+    "mac-first": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-oEIGWe/ledger\nnative output create\n",
+      "seconds": 8.081,
+      "sourceSha256": "56dadba8ef33a1f1fa16319b279f895e3af2717f23bb1655bb1de4a5c4635843"
+    },
+    "mac-second": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-peDAuA/ledger\nnative display evidence incomplete\n",
+      "seconds": 18.402
+    },
+    "mac-third": {
+      "exitCode": 0,
+      "stdout": "{\"capturedFrames\":\"143\",\"constrainedBaseline\":true,\"decodedFrames\":\"64\",\"displaysAfter\":1,\"displaysBefore\":1,\"encoderUpdates\":\"17\",\"gccUpdates\":\"16\",\"markerFrames\":\"55\",\"nativePaintFrames\":\"64\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"presentationEvidence\":\"NativePaintConfirmed\",\"receiverWindowOnScreen\":true,\"scope\":\"real virtual output/capture/standard WebRTC/decoded marker/native paint; local diagnostic, no product authorization or cross-machine certification\",\"sourceCpuBytesAfterStop\":\"0\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-kIwLfo/ledger\nnativeEvidence captured=143 decoded=64 markers=55 paint=64 onScreen=1 profile=1 pair=1 sceneExposed=1 sceneDpr=1\n",
+      "seconds": 18.393,
+      "sourceSha256": "1c1844f9124f446173e2daf076565789a20228905aedb9c9584019df97550ad2"
+    },
+    "final-mac-media": {
+      "time": "2026-10-29T00:17:26+0800",
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "af80a1bb0698e3dfa1f29571a2930b0c5a13880128c9670dfd16bf45e86d56b8",
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "1c1844f9124f446173e2daf076565789a20228905aedb9c9584019df97550ad2",
+        "/private/tmp/deskflow-build/bin/NativeWebRtcLoopback": "753c0d047cce88789f76aa0060a00b759cf69728e90b7771041d9abdff40274f",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "63063fa15c09c07b221bb1941608374b0fc3a43cf0111d3f87e0c2c0fa30f57e"
+      },
+      "runs": [
+        {
+          "mode": "policy",
+          "exitCode": 0,
+          "seconds": 3.854,
+          "stdout": "{\"policyChecks\":9,\"passed\":true}\n",
+          "stderr": ""
+        },
+        {
+          "mode": "synthetic",
+          "exitCode": 0,
+          "seconds": 8.446,
+          "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"121\",\"encoderUpdates\":\"34\",\"gccUpdates\":\"33\",\"inputFrames\":\"235\",\"receiverPublished\":\"124\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+          "stderr": ""
+        }
+      ]
+    },
+    "final-mac-desktop": {
+      "time": "2026-10-29T00:17:58+0800",
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "1c1844f9124f446173e2daf076565789a20228905aedb9c9584019df97550ad2",
+        "src/lib/display/platform/macos/MacCaptureSource.mm": "a291a7d0d6e5a57777ef2530990ca753013d2aaf89f1fd0471f09671e591c5fb",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "63063fa15c09c07b221bb1941608374b0fc3a43cf0111d3f87e0c2c0fa30f57e",
+        "/private/tmp/deskflow-build/bin/busymouse-display-platform-helper": "77c48f647f6876e6eb7cf34bf1bdc75837ea5be5ae0abb2b841b97c656d765d5"
+      },
+      "exitCode": 1,
+      "seconds": 12.87,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-GcBdpX/ledger\nnativeEvidence captured=189 decoded=115 markers=0 paint=115 onScreen=1 profile=1 pair=1 sceneExposed=1 sceneDpr=1\nnative display evidence incomplete\n"
+    },
+    "cocoa-desktop": {
+      "time": "2026-10-29T00:20:35+0800",
+      "hashes": {
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "c64037e7a7e1869bd6fe7a2511ba5d9cc80836199a1028484ff19d1f0cfa8b63",
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "c129da927e26b374afb1f417b99da79d0d65d8b00588cebe7495f029c9177b36"
+      },
+      "exitCode": 1,
+      "seconds": 11.43,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-IOXnKh/ledger\nnativeEvidence captured=165 decoded=88 markers=0 markerPixel=4286611584 paint=88 onScreen=1 profile=1 pair=1 sceneVisible=1 sceneScreen=154\nnative display evidence incomplete\n"
+    },
+    "raw-diagnostic": {
+      "hashes": {
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "4437f29d411c7f15416cec8c4bc5c994155faf2777a60560d0e7be1b4ec4bca4",
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "afee590dc16d9a041934d551f26536e5cb1d1ac321975fc6c96b4b73339903a8"
+      },
+      "exitCode": 1,
+      "seconds": 10.554,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-kLZdHd/ledger\nEncodedProfileMismatch\n"
+    },
+    "pixel-diagnostic": {
+      "hashes": {
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "e6f7184d000b93f438ed115ac616180168055d8c584d913bf02051f518cd4261",
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "f8b1e95bd0ef41945a6d3407c7f9f605ef76ecc1551b2fcaf5fa08461013a950",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "96a4a4203bfa64f023387f9c8c65be48f7aba08e200c4e0314c66ec2bdccfccf"
+      },
+      "exitCode": 1,
+      "seconds": 14.711,
+      "stdout": "",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-KUYYHN/ledger\nnativeEvidence captured=157 decoded=99 markers=0 rawMarkers=142 rawPixel=4281579590 markerPixel=4286611584 paint=99 onScreen=1 profile=1 pair=1 sceneVisible=1 sceneScreen=156\nnative display evidence incomplete\n"
+    },
+    "rtp-queue-fix": {
+      "hashes": {
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "e6f7184d000b93f438ed115ac616180168055d8c584d913bf02051f518cd4261",
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "83e2fa477dc3ebeb96d341fafbb9723533eb9f39a63f65f08291472fd60b33fa",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "89b0020dadd3fe1c0e0e032505ab51e75eaf210b5e6b67c50b5f8f39bc576513"
+      },
+      "exitCode": 0,
+      "seconds": 12.285,
+      "stdout": "{\"capturedFrames\":\"162\",\"constrainedBaseline\":true,\"decodedFrames\":\"92\",\"displaysAfter\":1,\"displaysBefore\":1,\"encoderUpdates\":\"27\",\"gccUpdates\":\"26\",\"markerFrames\":\"92\",\"nativePaintFrames\":\"92\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"presentationEvidence\":\"NativePaintConfirmed\",\"receiverWindowOnScreen\":true,\"scope\":\"real virtual output/capture/standard WebRTC/decoded marker/native paint; local diagnostic, no product authorization or cross-machine certification\",\"sourceCpuBytesAfterStop\":\"0\"}\n",
+      "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-BgiSmp/ledger\nnativeEvidence captured=162 decoded=92 markers=92 rawMarkers=147 rawPixel=4281579590 markerPixel=4281381697 paint=92 onScreen=1 profile=1 pair=1 sceneVisible=1 sceneScreen=157\n"
+    },
+    "final-mac": {
+      "time": "2026-10-29T00:27:07+0800",
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "49c6f2fa0e9a34d3c44f4361839d0136a3f275b9d0e2ae1c07411e48fc56af17",
+        "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "8d0a563185bdf8a34bcda638f5e8161b43f999ec7f006d43c770288d157afec7",
+        "tools/display-infrastructure-lab/NativeMacWebRtcLoopback.mm": "e6f7184d000b93f438ed115ac616180168055d8c584d913bf02051f518cd4261",
+        "/private/tmp/deskflow-build/bin/NativeWebRtcLoopback": "fcf58057f5100f79d3cbef962d296c9752f3fafaa4ecd89fdf6617122cc333ab",
+        "/private/tmp/deskflow-build/bin/NativeMacWebRtcLoopback": "308c0834d94c6d6c3499f1cec4934250ab5ae9c2aeae51c004cfdfad4402ebdf"
+      },
+      "runs": [
+        {
+          "mode": "policy",
+          "exitCode": 0,
+          "seconds": 0.591,
+          "stdout": "{\"policyChecks\":9,\"passed\":true}\n",
+          "stderr": ""
+        },
+        {
+          "mode": "synthetic",
+          "exitCode": 0,
+          "seconds": 8.447,
+          "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"221\",\"encoderUpdates\":\"23\",\"gccUpdates\":\"22\",\"inputFrames\":\"233\",\"leaseBlockedStop\":true,\"markerFrames\":\"221\",\"receiverPublished\":\"224\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+          "stderr": ""
+        },
+        {
+          "mode": "desktop",
+          "exitCode": 0,
+          "seconds": 11.658,
+          "stdout": "{\"capturedFrames\":\"160\",\"constrainedBaseline\":true,\"decodedFrames\":\"94\",\"displaysAfter\":1,\"displaysBefore\":1,\"encoderUpdates\":\"14\",\"gccUpdates\":\"13\",\"markerFrames\":\"94\",\"nativePaintFrames\":\"93\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"presentationEvidence\":\"NativePaintConfirmed\",\"receiverWindowOnScreen\":true,\"scope\":\"real virtual output/capture/standard WebRTC/decoded marker/native paint; local diagnostic, no product authorization or cross-machine certification\",\"sourceCpuBytesAfterStop\":\"0\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/NativeMacWebRtcLoopback-iDrgCq/ledger\nnativeEvidence captured=160 decoded=94 markers=94 rawMarkers=140 rawPixel=4281579590 markerPixel=4281381697 paint=93 onScreen=1 profile=1 pair=1 sceneVisible=1 sceneScreen=158\n"
+        }
+      ]
+    },
+    "native-capture": {
+      "binarySha256": "f2a8f30e8cdfa469345bb80c11a152fa649f80a82d9e5b3580ffe2ed780dd269",
+      "runs": [
+        {
+          "mode": "capture",
+          "exitCode": 1,
+          "seconds": 5.009,
+          "stdout": "",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-ytLUMW/ledger\nResourceConfigurationFailed/\noutput not active\n"
+        },
+        {
+          "mode": "capture-cancel",
+          "exitCode": 0,
+          "seconds": 4.824,
+          "stdout": "{\"cpuBudgetReleased\":true,\"frameObserved\":false,\"mode\":\"capture-cancel\",\"resourceBound\":true,\"test\":\"native-mac-capture\"}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-cancel\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-XFmrcZ/ledger\n"
+        },
+        {
+          "mode": "capture-revoke",
+          "exitCode": 0,
+          "seconds": 5.099,
+          "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-revoke\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-revoke\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-VtlhEK/ledger\ncaptureSamples=1 complete=1 published=1 budgetDrops=0 status=0\n"
+        },
+        {
+          "mode": "capture-callback",
+          "exitCode": 0,
+          "seconds": 6.992,
+          "stdout": "{\"borrowedFrameBlocksDrain\":true,\"cpuBudgetReleased\":true,\"frameObserved\":true,\"height\":1080,\"mode\":\"capture-callback\",\"resourceBound\":true,\"test\":\"native-mac-capture\",\"width\":1920}\n{\"displaysAfter\":1,\"displaysBefore\":1,\"mode\":\"capture-callback\",\"outputAbsenceVerified\":true,\"ownerClosed\":true,\"scope\":\"real ResourceExecutor/provider lifecycle; no capture/media certification\",\"test\":\"native-mac-resource-provider\"}\n",
+          "stderr": "auditLedger=/private/var/folders/5l/ycscgzhj6mzcp3pj9q8krwq40000gn/T/MacResourceProviderSmoke-iwoDFp/ledger\ncaptureSamples=1 complete=1 published=0 budgetDrops=0 status=0\n"
+        }
+      ]
+    },
+    "ubuntu-media": {
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "af80a1bb0698e3dfa1f29571a2930b0c5a13880128c9670dfd16bf45e86d56b8",
+        "build/bin/NativeWebRtcLoopback": "862c028951a52851519f04f720b56a6e32a471a7e83e8de27a97033a8ac5b34e"
+      },
+      "runs": [
+        {
+          "mode": "policy",
+          "exitCode": 127,
+          "seconds": 0.011,
+          "stdout": "",
+          "stderr": "/home/ywh/code/github/deskflow/build/bin/NativeWebRtcLoopback: error while loading shared libraries: libgupnp-igd-1.6.so.0: cannot open shared object file: No such file or directory\n"
+        },
+        {
+          "mode": "synthetic",
+          "exitCode": 127,
+          "seconds": 0.004,
+          "stdout": "",
+          "stderr": "/home/ywh/code/github/deskflow/build/bin/NativeWebRtcLoopback: error while loading shared libraries: libgupnp-igd-1.6.so.0: cannot open shared object file: No such file or directory\n"
+        }
+      ]
+    },
+    "ubuntu-rpath-media": {
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "51d45257ed7e74db809b3f88a8bfc781c0e9b5d9665756e8385f2b11ac6c6a34",
+        "build/bin/NativeWebRtcLoopback": "8d8f51c7a698bdd38eeb30d85af1eb95613bd84b12034f3c41b87051ca4be08a"
+      },
+      "runs": [
+        {
+          "mode": "policy",
+          "exitCode": 0,
+          "seconds": 3.619,
+          "stdout": "{\"policyChecks\":9,\"passed\":true}\n",
+          "stderr": ""
+        },
+        {
+          "mode": "synthetic",
+          "exitCode": 0,
+          "seconds": 11.358,
+          "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"208\",\"encoderUpdates\":\"43\",\"gccUpdates\":\"42\",\"inputFrames\":\"239\",\"receiverPublished\":\"208\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+          "stderr": ""
+        }
+      ]
+    },
+    "final-ubuntu": {
+      "hashes": {
+        "src/lib/display/media/gstreamer/NativeWebRtcEngine.cpp": "49c6f2fa0e9a34d3c44f4361839d0136a3f275b9d0e2ae1c07411e48fc56af17",
+        "tools/display-infrastructure-lab/NativeWebRtcLoopback.cpp": "8d0a563185bdf8a34bcda638f5e8161b43f999ec7f006d43c770288d157afec7",
+        "build/bin/NativeWebRtcLoopback": "090081241da190d9abf43d5cfef5084851357cd89d0cb0509456cca0c6846f16"
+      },
+      "runs": [
+        {
+          "mode": "policy",
+          "exitCode": 0,
+          "seconds": 3.388,
+          "stdout": "{\"policyChecks\":9,\"passed\":true}\n",
+          "stderr": ""
+        },
+        {
+          "mode": "synthetic",
+          "exitCode": 0,
+          "seconds": 11.378,
+          "stdout": "{\"addressPairApproved\":true,\"constrainedBaseline\":true,\"decodedFrames\":\"224\",\"encoderUpdates\":\"29\",\"gccUpdates\":\"28\",\"inputFrames\":\"239\",\"leaseBlockedStop\":true,\"markerFrames\":\"224\",\"receiverPublished\":\"226\",\"scope\":\"synthetic local engine/standard signaling/real RTP correlation only; no product authorization or visible presentation\",\"sourceBudgetReleased\":true,\"stopped\":true}\n",
+          "stderr": ""
+        }
+      ]
+    }
+  },
+  "regressions": {
+    "Mac": {
+      "passed": 121,
+      "seconds": 20.87
+    },
+    "Ubuntu": {
+      "passed": 121,
+      "seconds": 18.81
+    }
+  },
+  "ubuntuSyncBaseline": {
+    "src/lib/display/CMakeLists.txt": {
+      "expected": "13943e2c740432db2b504d335447eed46fcd8d82ce02021f2ef61ac2f6d94885",
+      "actual": "13943e2c740432db2b504d335447eed46fcd8d82ce02021f2ef61ac2f6d94885"
+    },
+    "src/lib/display/frame/FrameModel.cpp": {
+      "expected": "61a62fa0316287b1f4159b455691a4f6bd608a40d0b7f1856e9aced8f88c285d",
+      "actual": "61a62fa0316287b1f4159b455691a4f6bd608a40d0b7f1856e9aced8f88c285d"
+    },
+    "src/lib/display/frame/FrameModel.h": {
+      "expected": "9a99344c23c9c6ad9b832dd01f3f0a3b4aea4735a2dcb72e60709a503bc8a4d2",
+      "actual": "9a99344c23c9c6ad9b832dd01f3f0a3b4aea4735a2dcb72e60709a503bc8a4d2"
+    },
+    "src/unittests/display/CMakeLists.txt": {
+      "expected": "d4a1528853a17a70855adb83c4ae730073596cd0e187af690d229d6822026b80",
+      "actual": "d4a1528853a17a70855adb83c4ae730073596cd0e187af690d229d6822026b80"
+    },
+    "src/unittests/display/FrameModelTests.cpp": {
+      "expected": "824001779806d8d3cb07f27ce9d8e228d272737055dc3e5b2284b0808cc5cbf8",
+      "actual": "824001779806d8d3cb07f27ce9d8e228d272737055dc3e5b2284b0808cc5cbf8"
+    }
+  },
+  "privateRuntimeManifests": {
+    "MacSha256": "028ea79e04d9013f31786eabc32c661ac17b286687875cbb56271b287ca1d1c1"
+  },
+  "limitations": [
+    "Older attempts have only the originally recorded source hashes; no binary/engine hashes have been reconstructed after the fact.",
+    "Native capture mode failed ResourceConfigurationFailed during the final four-mode regression; other three modes passed. This native output intermittency remains open."
+  ]
+}

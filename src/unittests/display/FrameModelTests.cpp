@@ -25,6 +25,7 @@ static FrameDescriptor descriptor(uint64_t seq = 1, MemoryDomain memory = Memory
   d.planes = {{0, 8, 16}};
   d.visible = {0, 0, 2, 2};
   d.captureTimeValid = true;
+  d.captureClockId = "test.monotonic";
   d.memory = memory;
   return d;
 }
@@ -266,6 +267,39 @@ static void cpuViewGates()
   gpu->retire();
   require(gpu->drained() && budget->usage().bytes == 0, "GPU refusal borrowed or forged a fence");
 }
+static void timestampEvidence()
+{
+  auto d = descriptor();
+  d.captureClockId.clear();
+  require(!validateFrame(d, 16), "capture timestamp without clock accepted");
+  d.captureTimeValid = false;
+  d.captureNanoseconds = 0;
+  require(validateFrame(d, 16), "explicit unknown capture time rejected");
+  auto budget = std::make_shared<FrameBudget>();
+  FramePool pool(instance, 1, session, budget);
+  auto ticket = pool.reserve(16, MemoryDomain::Cpu);
+  require(
+      ticket && pool.adopt(*ticket, allocation()) && pool.publish(*ticket, d), "decoded frame with unknown capture time"
+  );
+  auto read = pool.readNewest();
+  require(
+      read && !read->descriptor.captureTimeValid && read->descriptor.captureNanoseconds == 0,
+      "unknown capture time fabricated"
+  );
+  read->owner.reset();
+  require(pool.releaseRead(read->ticket), "release unknown-time frame");
+  put(pool, 2);
+  ticket = pool.reserve(16, MemoryDomain::Cpu);
+  d = descriptor(3);
+  d.captureClockId = "different.monotonic";
+  require(
+      ticket && pool.adopt(*ticket, allocation()) && !pool.publish(*ticket, d),
+      "clock switch without new epoch accepted"
+  );
+  require(pool.abortWrite(*ticket), "abort clock-switch frame");
+  pool.retire();
+  require(pool.drained(), "timestamp fixture not drained");
+}
 int main(int argc, char **argv)
 {
   try {
@@ -285,6 +319,8 @@ int main(int argc, char **argv)
       retirement();
     else if (c == "FrameQuarantine")
       quarantine();
+    else if (c == "FrameTimestampEvidence")
+      timestampEvidence();
     else if (c == "FrameCpuCallbackLifetime")
       cpuCallbackLifetime();
     else if (c == "FrameCpuViewGates")

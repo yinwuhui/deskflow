@@ -23,8 +23,8 @@ struct FrameRect
 };
 struct FrameDescriptor
 {
-  std::string session, sourceResource;
-  uint64_t topologyGeneration = 0, sequence = 0, captureNanoseconds = 0;
+  std::string session, sourceResource, captureClockId;
+  uint64_t topologyGeneration = 0, sequence = 0, captureNanoseconds = 0, captureSequence = 0;
   uint32_t epoch = 0, width = 0, height = 0, logicalWidth = 0, logicalHeight = 0, rotation = 0;
   PixelFormat pixelFormat = PixelFormat::Bgra8;
   ColorProfile color = ColorProfile::SdrBt709Limited8;
@@ -157,6 +157,7 @@ private:
   std::array<Slot, 6> m_slots;
   mutable std::mutex m_mutex;
   uint64_t m_lastSequence = 0, m_lastTimestamp = 0, m_drops = 0;
+  std::string m_captureClockId;
   bool m_retired = false, m_valid = false;
 };
 // Shared callback lifetime for native encoders/appsrc. It never interprets an

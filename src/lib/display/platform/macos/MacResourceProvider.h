@@ -14,6 +14,7 @@ public:
   MacResourceProvider(DurableResourceLedger &, WorkerRegistration, WorkerBinding);
   ~MacResourceProvider() override;
   ProviderRegistration registration();
+  QString lastError() const { return !m_failure.isEmpty() ? m_failure : (m_process ? m_process->error() : QString{}); }
   std::optional<MacCaptureBinding>
   captureBinding(const QString &resource, TimePoint deadline, QString *error = nullptr);
   ResourceContextSnapshot snapshot(const ResourceRecord &, TimePoint) override;

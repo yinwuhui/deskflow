@@ -6,6 +6,7 @@
 #include <memory>
 namespace deskflow::display::infra {
 class MacResourceProvider;
+struct WorkerPrepare;
 struct MacCaptureStatistics
 {
   uint64_t samples = 0, complete = 0, published = 0, budgetDrops = 0;
@@ -17,6 +18,9 @@ struct MacCaptureStatistics
 class MacCaptureBinding
 {
 public:
+  // Describes this live source for a trusted local Worker Prepare. Does not
+  // grant network authority or consume the capture claim.
+  bool fillWorkerSource(WorkerPrepare &) const;
   const std::string &resource() const
   {
     return m_resource;

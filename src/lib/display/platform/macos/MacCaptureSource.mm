@@ -175,6 +175,17 @@ void topologyChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags, void *conte
 }
 @end
 namespace deskflow::display::infra {
+bool MacCaptureBinding::fillWorkerSource(WorkerPrepare &p) const
+{
+  if (!m_live || !m_live->load() || !m_claimed || m_claimed->load())
+    return false;
+  p.sourceResource = QString::fromStdString(m_resource);
+  p.source = {NativeSourceKind::CgDisplay, m_display, 0};
+  p.sourceIdentity = m_identity;
+  p.sourceContextDigest = m_topologyDigest;
+  p.sourceTopologyGeneration = m_generation;
+  return true;
+}
 struct MacCaptureSource::Impl
 {
   std::shared_ptr<CaptureState> state = std::make_shared<CaptureState>();
@@ -235,6 +246,7 @@ bool MacCaptureSource::start(const MacCaptureBinding &binding, TimePoint deadlin
     return false;
   }
   s->descriptor.session = binding.m_session;
+  s->descriptor.captureClockId = "macos.cm-host-time";
   s->descriptor.sourceResource = binding.m_resource;
   s->descriptor.topologyGeneration = binding.m_generation;
   s->descriptor.epoch = binding.m_epoch;
