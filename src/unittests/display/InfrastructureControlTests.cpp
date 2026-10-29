@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "display/control/InfrastructureControl.h"
 #include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <iostream>
 #include <stdexcept>
@@ -50,7 +51,15 @@ static void bindingAndReplay()
   Envelope message;
   message.type = "CapabilitiesSnapshot";
   message.messageId = QString(32, '1');
-  message.body = {{"revision", "1"}};
+  message.body = {
+      {"peerIdentity", a},
+      {"revision", "1"},
+      {"environment", QString(64, 'f')},
+      {"directNetworkAllowed", false},
+      {"sessionAvailable", false},
+      {"cleanupVerified", true},
+      {"pipelines", QJsonArray{}}
+  };
   const auto encoded = left.encode(message, e);
   require(!encoded.isEmpty(), "encode failed");
   require(right.receive(encoded, a, "right-local-connection", e).has_value(), "authenticated envelope rejected");
@@ -81,6 +90,9 @@ static void fieldAndSizeGates()
   m.attempt = 1;
   require(left.encode(m, e).isEmpty(), "signal without plan binding accepted");
   m.planHash = QString(64, 'c');
+  m.body = {{"backend", "webrtc"}, {"signalSequence", "1"}, {"kind", "end-of-candidates"},
+            {"description", ""},   {"candidate", ""},       {"mid", ""},
+            {"mediaLine", 0}};
   const auto valid = left.encode(m, e);
   require(!valid.isEmpty(), "bound signal rejected");
   auto o = QJsonDocument::fromJson(valid).object();

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2026 Deskflow Developers
 // SPDX-License-Identifier: MIT
 #include "InfrastructureControl.h"
+#include "ControlBodyRegistry.h"
 #include <QCryptographicHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -447,6 +448,8 @@ QByteArray ControlBinding::encode(const Envelope &e, ControlError &error)
     fail(error, "InvalidEnvelope");
     return {};
   }
+  if (!validateControlBody(e, m_local, error))
+    return {};
   QJsonObject o{
       {"protocol", "display-infra/1"},
       {"type", e.type},
@@ -518,6 +521,8 @@ ControlBinding::receive(const QByteArray &bytes, const QString &peer, const QStr
     fail(error, "InvalidEnvelope");
     return {};
   }
+  if (!validateControlBody(e, m_peer, error))
+    return {};
   if (*sequence <= m_rx) {
     fail(error, "ReplayRejected");
     return {};

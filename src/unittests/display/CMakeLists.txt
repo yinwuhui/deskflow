@@ -194,3 +194,12 @@ foreach(case MailboxPriorityFlood MailboxLateIntent MailboxExitBeforeAttach Mail
   set_tests_properties(Display.Infrastructure.${case} PROPERTIES TIMEOUT 10)
 endforeach()
 set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplaySessionMailboxTests)
+
+if(TARGET deskflow-display-infra-runtime)
+  add_executable(DisplayControlBodyRegistryTests ControlBodyRegistryTests.cpp)
+  target_link_libraries(DisplayControlBodyRegistryTests PRIVATE deskflow-display-infra-runtime)
+  foreach(case BodyRegistryAllTypes BodyRegistryFields BodyRegistryCapabilities BodyRegistrySignals BodyRegistrySequence)
+    add_test(NAME Display.Infrastructure.${case} COMMAND DisplayControlBodyRegistryTests ${case})
+  endforeach()
+  set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests DisplayControlBodyRegistryTests)
+endif()

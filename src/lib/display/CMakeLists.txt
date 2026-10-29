@@ -29,6 +29,7 @@ if(TARGET Qt6::Core)
   add_library(deskflow-display-infra-runtime STATIC
     control/InfrastructureControl.cpp
     control/ControlAdmission.cpp
+    control/ControlBodyRegistry.cpp
     supervision/WorkerProtocol.cpp
     supervision/WorkerProcess.cpp
     supervision/NativeProcessIdentity.cpp
