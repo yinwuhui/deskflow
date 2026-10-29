@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Manual diagnostic: real virtual output -> SCK -> standard WebRTC -> native paint.
+#include "MacResourceThread.h"
 #include "display/media/gstreamer/NativeWebRtcEngine.h"
 #include "display/platform/macos/MacResourceProvider.h"
 #import <AppKit/AppKit.h>
@@ -169,7 +170,11 @@ int main(int argc, char **argv)
   QApplication app(argc, argv);
   app.setQuitOnLastWindowClosed(false);
   try {
-    require(argc == 3, "usage: NativeMacWebRtcLoopback <absolute-helper> <private-runtime>");
+    const bool cancelBeforeCreate = argc == 4 && QString::fromLocal8Bit(argv[3]) == "--cancel-before-create";
+    require(
+        argc == 3 || cancelBeforeCreate,
+        "usage: NativeMacWebRtcLoopback <absolute-helper> <private-runtime> [--cancel-before-create]"
+    );
     QString error;
     if (!NativeWebRtcEngine::initializeRuntime(QString::fromLocal8Bit(argv[2]), error))
       throw std::runtime_error(error.toStdString());
@@ -183,7 +188,7 @@ int main(int argc, char **argv)
     require(audit.isValid(), "audit directory");
     audit.setAutoRemove(false);
     std::cerr << "auditLedger=" << audit.path().toStdString() << "/ledger\n";
-    DurableResourceLedger ledger(audit.path() + "/ledger");
+
     auto worker = resource(owner, session, plan, "worker"), output = resource(owner, session, plan, "virtualOutput");
     output.dependencies = {worker.id};
     WorkerBinding binding;
@@ -204,14 +209,7 @@ int main(int argc, char **argv)
         QFileInfo(executable).canonicalFilePath(), QString::fromLatin1(digest.result().toHex()), binding.backend,
         binding.profile, WorkerPurpose::Platform
     };
-    auto provider = std::make_shared<MacResourceProvider>(ledger, registration, binding);
-    bool mediaQuiesced = true;
-    ResourceExecutor executor(ledger, worker.userSession, worker.bootInstance, [&](const QString &) {
-      return mediaQuiesced;
-    });
-    auto registered = provider->registration();
-    registered.implementation = provider;
-    require(executor.registerProvider(std::move(registered)), "register native provider");
+    auto mediaQuiesced = std::make_shared<std::atomic<bool>>(true);
     ResourceAuthorization auth{
         owner,
         session,
@@ -221,14 +219,54 @@ int main(int argc, char **argv)
         Clock::now() + std::chrono::seconds(10),
         std::make_shared<std::atomic<bool>>(false)
     };
-    require(executor.create(worker, auth, auth.expires).outcome == ResourceOutcome::Active, "native helper create");
-    const auto createdOutput = executor.create(output, auth, auth.expires);
-    if (createdOutput.outcome != ResourceOutcome::Active)
-      std::cerr << "outputError=" << createdOutput.primaryError.toStdString() << "/"
-                << createdOutput.cleanupError.toStdString() << " provider=" << provider->lastError().toStdString()
-                << '\n';
-    require(createdOutput.outcome == ResourceOutcome::Active, "native output create");
-    auto captureBinding = provider->captureBinding(output.id, Clock::now() + std::chrono::seconds(3));
+    LabMacResourceThread resources(
+        audit.path() + "/ledger", registration, binding, worker, output, auth, mediaQuiesced
+    );
+    uint64_t guiTicksDuringCreate = 0;
+    QTimer guiPulse;
+    guiPulse.setInterval(5);
+    QObject::connect(&guiPulse, &QTimer::timeout, &app, [&] { ++guiTicksDuringCreate; });
+    guiPulse.start();
+    if (cancelBeforeCreate)
+      require(resources.cleanup(Clock::now() + std::chrono::seconds(5)), "pre-create cancellation post");
+    resources.start();
+    require(until([&] { return resources.snapshot().initialized; }, 15000), "resource owner startup deadline");
+    guiPulse.stop();
+    const auto resourceState = resources.snapshot();
+    if (cancelBeforeCreate) {
+      require(until([&] { return resources.snapshot().cleanupDone; }, 5000), "pre-create cancellation completion");
+      require(resources.wait(2000), "cancel resource thread finalization");
+      const auto cancelled = resources.snapshot();
+      const auto after = macDisplayInventory();
+      require(
+          cancelled.isolated && cancelled.creation.primaryError == "ResourcePermitRejected" &&
+              cancelled.creation.outcome != ResourceOutcome::Active && cancelled.recordCount == 0 &&
+              cancelled.ownerClosed && cancelled.cleanup.outcome == ResourceOutcome::Closed,
+          "pre-create cancellation created resource intent"
+      );
+      require(
+          after.complete && !macResourceHintPresent(after, owner, output.id), "cancelled output absence unconfirmed"
+      );
+      QJsonObject report{
+          {"scope", "resource thread pre-create cancellation; no capture/media execution"},
+          {"cancelBeforeCreate", true},
+          {"resourceThreadIsolated", cancelled.isolated},
+          {"resourceIntents", int(cancelled.recordCount)},
+          {"ownerClosed", cancelled.ownerClosed},
+          {"displaysBefore", int(before.displays.size())},
+          {"displaysAfter", int(after.displays.size())}
+      };
+      std::cout << QJsonDocument(report).toJson(QJsonDocument::Compact).constData() << '\n';
+      audit.setAutoRemove(true);
+      return 0;
+    }
+    if (resourceState.creation.outcome != ResourceOutcome::Active)
+      std::cerr << "outputError=" << resourceState.creation.primaryError.toStdString() << "/"
+                << resourceState.creation.cleanupError.toStdString()
+                << " provider=" << resourceState.providerError.toStdString() << '\n';
+    require(resourceState.creation.outcome == ResourceOutcome::Active, "native output create");
+    require(resourceState.isolated && guiTicksDuringCreate >= 3, "resource I/O blocked GUI owner");
+    auto captureBinding = resourceState.binding;
     require(bool(captureBinding), "native source binding");
     auto send = media(Direction::Send, session, owner, plan, output.id),
          receive = media(Direction::Receive, session, owner, plan, output.id);
@@ -267,7 +305,12 @@ int main(int argc, char **argv)
         ),
         "native source/presenter targets not confirmed"
     );
-    captureBinding = provider->captureBinding(output.id, Clock::now() + std::chrono::seconds(3));
+    const auto previousBinding = resources.snapshot().bindingVersion;
+    require(resources.refreshBinding(Clock::now() + std::chrono::seconds(3)), "source refresh post");
+    require(
+        until([&] { return resources.snapshot().bindingVersion > previousBinding; }, 4500), "source refresh deadline"
+    );
+    captureBinding = resources.snapshot().binding;
     require(bool(captureBinding) && captureBinding->fillWorkerSource(send.preparation), "final source binding");
     send.streamTopologyGeneration = send.preparation.sourceTopologyGeneration;
     receive.streamTopologyGeneration = send.streamTopologyGeneration;
@@ -279,7 +322,7 @@ int main(int argc, char **argv)
     );
     receive.preparation.startupDeadlineNanoseconds = send.preparation.startupDeadlineNanoseconds;
     MacCaptureSource capture;
-    mediaQuiesced = false;
+    mediaQuiesced->store(false, std::memory_order_release);
     if (!capture.start(*captureBinding, Clock::now() + std::chrono::seconds(8)))
       throw std::runtime_error(capture.error().toStdString());
     NativeWebRtcEngine tx, rx;
@@ -309,8 +352,16 @@ int main(int argc, char **argv)
       for (const auto &signal : rx.takeSignals())
         if (!tx.applySignal(signal))
           throw std::runtime_error(tx.error().toStdString());
-      for (const auto &mapping : tx.takeCorrelations())
-        require(rx.applyCorrelation(mapping), "RTP mapping rejected");
+      for (const auto &mapping : tx.takeCorrelations()) {
+        if (!rx.applyCorrelation(mapping)) {
+          std::cerr << "mappingRejected frame=" << mapping.frame << " captureFrame=" << mapping.captureFrame
+                    << " captureNs=" << mapping.captureNanoseconds << " epoch=" << mapping.epoch
+                    << " topology=" << mapping.topologyGeneration << " ssrc=" << mapping.ssrc
+                    << " rtpTimestamp=" << mapping.rtpTimestamp << " rx=" << rx.error().toStdString()
+                    << " tx=" << tx.error().toStdString() << '\n';
+          throw std::runtime_error("RTP mapping rejected");
+        }
+      }
       if (auto frame = capture.takeCpuLease()) {
         const auto *raw =
             static_cast<const unsigned char *>(frame->data()) + 200 * frame->descriptor().planes[0].stride + 200 * 4;
@@ -367,17 +418,25 @@ int main(int argc, char **argv)
         until([&] { return capture.stopped() && tx.stopped() && rx.stopped(); }, 5000),
         "native media quiescence unconfirmed"
     );
-    mediaQuiesced = true;
-    auto cleanup = executor.cleanupOwner(owner, Clock::now() + std::chrono::seconds(5));
-    require(cleanup.outcome == ResourceOutcome::Closed, "native output owner cleanup");
+    mediaQuiesced->store(true, std::memory_order_release);
+    require(resources.cleanup(Clock::now() + std::chrono::seconds(5)), "resource cleanup post");
+    require(until([&] { return resources.snapshot().cleanupDone; }, 7500), "resource cleanup deadline");
+    require(
+        resources.snapshot().cleanup.outcome == ResourceOutcome::Closed && resources.snapshot().ownerClosed,
+        "native output owner cleanup"
+    );
+    require(resources.wait(2000), "resource thread finalization");
     const auto after = macDisplayInventory();
     require(
-        after.complete && !macResourceHintPresent(after, owner, output.id) && ledger.activeOwner().isEmpty(),
+        after.complete && !macResourceHintPresent(after, owner, output.id) && resources.snapshot().ownerClosed,
         "native output absence unconfirmed"
     );
     QJsonObject report{
         {"scope", "real virtual output/capture/standard WebRTC/decoded marker/native paint; local diagnostic, no "
                   "product authorization or cross-machine certification"},
+        {"resourceThreadIsolated", resourceState.isolated},
+        {"receiverCompatibleProfileLabels", QString::number(rx.statistics().compatibleProfileLabels)},
+        {"guiTicksDuringCreate", QString::number(guiTicksDuringCreate)},
         {"capturedFrames", QString::number(captured.published)},
         {"decodedFrames", QString::number(decoded)},
         {"markerFrames", QString::number(markers)},

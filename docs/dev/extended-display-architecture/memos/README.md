@@ -31,6 +31,7 @@
 | M023 | 原生 WebRTC 开发引擎 SPI/桌面样机 | 两端色块与反馈、Mac 真实采集/NativePaintConfirmed 通过；生产 Worker/预算认证待完成 | [原生引擎](M023-native-webrtc-engine.zh-CN.md) |
 | M024 | 生命周期 owner 有界 mailbox | 两端各 128/128；关键事件保留、晚到清理与真实多线程通过，待生产 facade 接线 | [Owner mailbox](M024-session-mailbox.zh-CN.md) |
 | M025 | 公共控制正文注册表 | 15 类双向强制准入、非法正文不消耗序号；两端各 133/133，状态/权限装配待完成 | [正文注册表](M025-control-body-registry.zh-CN.md) |
+| M026 | Mac 桌面样机资源线程 | 真实桌面/GUI 响应及创建前取消通过；含历史失败，非生产 agent | [资源线程样机](M026-mac-lab-resource-thread.zh-CN.md) |
 | M027 | 实际 AVC 头 Profile 证据 | 两端各 17 项政策与真实色块/反馈/排空；不以兼容 caps 标签代替码流头 | [AVC 证据](M027-h264-codec-evidence.zh-CN.md) |
 
 以上四项位于同一基础设施阶段提交。使用 `git log --follow -- <备忘录路径>` 可定位包含其源码的提交；后续修复必须补充原备忘录或新增后续备忘录，不能修改旧测试结果冒充新验证。
